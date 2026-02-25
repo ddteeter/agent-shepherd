@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { FileTree } from '../components/FileTree.js';
@@ -22,7 +22,9 @@ export function PRReview() {
   const [pr, setPr] = useState<any>(null);
   const [diffData, setDiffData] = useState<{ diff: string; files: string[] } | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [visibleFile, setVisibleFile] = useState<string | null>(null);
+  const [scrollToFile, setScrollToFile] = useState<string | null>(null);
+  const scrollKeyRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cycles, setCycles] = useState<ReviewCycle[]>([]);
@@ -75,7 +77,8 @@ export function PRReview() {
         diff = await api.prs.diff(prId, { cycle: cycleNum });
       }
       setDiffData(diff);
-      setSelectedFile(null);
+      setScrollToFile(null);
+      setVisibleFile(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load diff');
     } finally {
@@ -103,6 +106,12 @@ export function PRReview() {
     setSelectedCycle(value);
     fetchDiff(value);
   }, [fetchDiff]);
+
+  const handleFileSelect = useCallback((file: string) => {
+    scrollKeyRef.current++;
+    setScrollToFile(file);
+    setVisibleFile(file);
+  }, []);
 
   const handleAddComment = async (data: { filePath: string; line: number; body: string; severity: string }) => {
     if (!prId) return;
@@ -227,13 +236,15 @@ export function PRReview() {
       <div className="flex flex-1 overflow-hidden">
         <FileTree
           files={diffData.files}
-          selectedFile={selectedFile}
-          onSelectFile={setSelectedFile}
+          selectedFile={visibleFile}
+          onSelectFile={handleFileSelect}
         />
         <DiffViewer
           diff={diffData.diff}
           files={diffData.files}
-          selectedFile={selectedFile}
+          scrollToFile={scrollToFile}
+          scrollKey={scrollKeyRef.current}
+          onVisibleFileChange={setVisibleFile}
           comments={comments}
           onAddComment={handleAddComment}
           onReplyComment={handleReplyComment}

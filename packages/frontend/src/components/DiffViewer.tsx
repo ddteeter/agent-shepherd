@@ -3,12 +3,13 @@ import { CommentForm } from './CommentForm.js';
 import { CommentThread } from './CommentThread.js';
 import type { Comment } from './CommentThread.js';
 import { useHighlighter, getLangFromPath, type TokenizedLine } from '../hooks/useHighlighter.js';
-import { useTheme } from '../hooks/useTheme.js';
 
 interface DiffViewerProps {
   diff: string;
   files: string[];
-  selectedFile: string | null;
+  scrollToFile: string | null;
+  scrollKey: number;
+  onVisibleFileChange?: (file: string) => void;
   comments?: Comment[];
   onAddComment?: (data: { filePath: string; line: number; body: string; severity: string }) => void;
   onReplyComment?: (commentId: string, body: string) => void;
@@ -90,8 +91,10 @@ function HighlightedContent({ content, tokens }: { content: string; tokens: Toke
   );
 }
 
-/** Renders a single file's diff, lazy-mounted via IntersectionObserver */
-function LazyFileDiff({
+const COLLAPSE_THRESHOLD = 200;
+
+/** Renders a single file's diff, with large files collapsed by default */
+function FileDiff({
   file,
   commentsByFileLine,
   repliesByParent,
@@ -102,7 +105,8 @@ function LazyFileDiff({
   onReplyComment,
   onResolveComment,
   tokenizeLine,
-  shikiTheme,
+  themeBg,
+  themeFg,
 }: {
   file: FileDiff;
   commentsByFileLine: Map<string, Comment[]>;
@@ -113,53 +117,66 @@ function LazyFileDiff({
   handleAddComment: (filePath: string, lineNo: number, body: string, severity: string) => void;
   onReplyComment?: DiffViewerProps['onReplyComment'];
   onResolveComment?: DiffViewerProps['onResolveComment'];
-  tokenizeLine: (code: string, lang: string, theme: 'github-dark' | 'github-light') => TokenizedLine | null;
-  shikiTheme: 'github-dark' | 'github-light';
+  tokenizeLine: (code: string, lang: string) => TokenizedLine | null;
+  themeBg?: string;
+  themeFg?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setVisible(true);
-      },
-      { rootMargin: '500px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   const lang = getLangFromPath(file.path);
-  const estimatedHeight = file.lineCount * 20 + file.hunks.length * 28;
+  const isLarge = file.lineCount > COLLAPSE_THRESHOLD;
+  const [expanded, setExpanded] = useState(!isLarge);
+
+  if (!expanded) {
+    return (
+      <div
+        className="font-mono text-sm px-4 py-3 flex items-center justify-between cursor-pointer"
+        style={{ backgroundColor: themeBg, color: themeFg }}
+        onClick={() => setExpanded(true)}
+      >
+        <span style={{ opacity: 0.6 }}>
+          {file.lineCount} lines — click to expand
+        </span>
+        <button
+          className="text-xs px-2 py-1 rounded border"
+          style={{ borderColor: themeFg ? `${themeFg}33` : 'var(--color-border)', color: themeFg }}
+        >
+          Expand
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div ref={ref}>
-      {visible ? (
-        <div className="font-mono text-sm">
-          {file.hunks.map((hunk, hunkIdx) => (
+    <div>
+      <div className="font-mono text-sm" style={{ backgroundColor: themeBg, color: themeFg }}>
+        {isLarge && (
+          <div
+            className="px-4 py-1 text-xs cursor-pointer flex items-center justify-between"
+            style={{ backgroundColor: themeBg, color: themeFg, opacity: 0.6 }}
+            onClick={() => setExpanded(false)}
+          >
+            <span>{file.lineCount} lines</span>
+            <button className="text-xs underline">Collapse</button>
+          </div>
+        )}
+        {file.hunks.map((hunk, hunkIdx) => (
             <div key={hunkIdx}>
-              <div className="px-4 py-1 text-xs opacity-50" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+              <div className="px-4 py-1 text-xs" style={{ backgroundColor: themeBg, color: themeFg, opacity: 0.6 }}>
                 {hunk.header}
               </div>
               {hunk.lines.map((line, lineIdx) => {
                 const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
                 const isFormOpen = commentFormLine?.file === file.path && commentFormLine?.line === lineNo;
                 const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
-                const tokens = tokenizeLine(line.content, lang, shikiTheme);
+                const tokens = tokenizeLine(line.content, lang);
 
                 return (
                   <div key={lineIdx}>
                     <div
                       className="diff-line px-4 py-0 flex relative"
                       style={{
-                        backgroundColor:
-                          line.type === 'add' ? 'rgba(46, 160, 67, 0.15)' :
-                          line.type === 'remove' ? 'rgba(248, 81, 73, 0.15)' :
-                          'transparent',
+                        borderLeft: line.type === 'add' ? '3px solid #3fb950'
+                          : line.type === 'remove' ? '3px solid #f85149'
+                          : '3px solid transparent',
                       }}
                     >
                       {onAddComment && !isFormOpen && (
@@ -172,15 +189,15 @@ function LazyFileDiff({
                           +
                         </button>
                       )}
-                      <span className="w-12 text-right pr-2 select-none opacity-40 shrink-0">
+                      <span className="w-12 text-right pr-2 select-none shrink-0" style={{ color: themeFg, opacity: 0.4 }}>
                         {line.oldLineNo ?? ''}
                       </span>
-                      <span className="w-12 text-right pr-2 select-none opacity-40 shrink-0">
+                      <span className="w-12 text-right pr-2 select-none shrink-0" style={{ color: themeFg, opacity: 0.4 }}>
                         {line.newLineNo ?? ''}
                       </span>
                       <span className="w-4 select-none shrink-0" style={{
-                        color: line.type === 'add' ? 'var(--color-success)' :
-                               line.type === 'remove' ? 'var(--color-danger)' : 'transparent'
+                        color: line.type === 'add' ? '#3fb950' :
+                               line.type === 'remove' ? '#f85149' : 'transparent'
                       }}>
                         {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
                       </span>
@@ -213,22 +230,15 @@ function LazyFileDiff({
             </div>
           ))}
         </div>
-      ) : (
-        <div style={{ height: estimatedHeight }} className="opacity-30 flex items-center justify-center text-sm">
-          {file.lineCount} lines
-        </div>
-      )}
     </div>
   );
 }
 
-export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComment, onReplyComment, onResolveComment }: DiffViewerProps) {
+export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFileChange, comments = [], onAddComment, onReplyComment, onResolveComment }: DiffViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [commentFormLine, setCommentFormLine] = useState<{ file: string; line: number } | null>(null);
-
-  const { resolved: theme } = useTheme();
-  const shikiTheme = theme === 'dark' ? 'github-dark' : 'github-light' as const;
+  const isScrolling = useRef(false);
 
   // Memoize expensive diff parsing
   const parsedFiles = useMemo(() => parseDiff(diff), [diff]);
@@ -237,14 +247,54 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
   const filePaths = useMemo(() => parsedFiles.map(f => f.path), [parsedFiles]);
 
   // Initialize shiki highlighter with languages needed for these files
-  const { tokenizeLine } = useHighlighter(filePaths);
+  const { tokenizeLine, syntaxTheme, setSyntaxTheme, themeBg, themeFg } = useHighlighter(filePaths);
 
-  // Scroll to selected file when it changes
+  // Scroll to file on every click (scrollKey changes each time)
   useEffect(() => {
-    if (selectedFile && fileRefs.current[selectedFile]) {
-      fileRefs.current[selectedFile]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (scrollToFile && fileRefs.current[scrollToFile]) {
+      isScrolling.current = true;
+      fileRefs.current[scrollToFile]?.scrollIntoView({ block: 'start' });
+      // Allow one frame for the scroll to complete before re-enabling tracking
+      requestAnimationFrame(() => { isScrolling.current = false; });
     }
-  }, [selectedFile]);
+  }, [scrollToFile, scrollKey]);
+
+  // Track which file is visible via scroll position and sync sidebar
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!onVisibleFileChange || !container) return;
+
+    let rafId: number;
+    const handleScroll = () => {
+      if (isScrolling.current) return;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const containerTop = container.getBoundingClientRect().top;
+        let closest: string | null = null;
+        let closestDist = Infinity;
+        for (const file of parsedFiles) {
+          const el = fileRefs.current[file.path];
+          if (!el) continue;
+          const rect = el.getBoundingClientRect();
+          // File is visible if its top is above container bottom and bottom is below container top
+          if (rect.bottom > containerTop && rect.top < containerTop + container.clientHeight) {
+            const dist = Math.abs(rect.top - containerTop);
+            if (dist < closestDist) {
+              closestDist = dist;
+              closest = file.path;
+            }
+          }
+        }
+        if (closest) onVisibleFileChange(closest);
+      });
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      cancelAnimationFrame(rafId);
+    };
+  }, [parsedFiles, onVisibleFileChange]);
 
   // Memoize comment grouping
   const { commentsByFileLine, repliesByParent } = useMemo(() => {
@@ -286,6 +336,7 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
         <div
           key={file.path}
           ref={(el) => { fileRefs.current[file.path] = el; }}
+          data-file-path={file.path}
           className="mb-6 border rounded overflow-hidden"
           style={{ borderColor: 'var(--color-border)' }}
         >
@@ -295,7 +346,7 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
           >
             {file.path}
           </div>
-          <LazyFileDiff
+          <FileDiff
             file={file}
             commentsByFileLine={commentsByFileLine}
             repliesByParent={repliesByParent}
@@ -306,7 +357,8 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
             onReplyComment={onReplyComment}
             onResolveComment={onResolveComment}
             tokenizeLine={tokenizeLine}
-            shikiTheme={shikiTheme}
+            themeBg={themeBg}
+            themeFg={themeFg}
           />
         </div>
       ))}

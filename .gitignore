@@ -4,3 +4,6 @@ dist/
 *.db-journal
 .env
 .DS_Store
+.playwright-cli/
+*.db-shm
+*.db-wal
