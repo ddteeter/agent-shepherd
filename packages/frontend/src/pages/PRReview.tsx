@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { FileTree } from '../components/FileTree.js';
 import { DiffViewer } from '../components/DiffViewer.js';
+import { ReviewBar } from '../components/ReviewBar.js';
 import type { Comment } from '../components/CommentThread.js';
 
 export function PRReview() {
@@ -73,9 +74,19 @@ export function PRReview() {
     await fetchComments();
   };
 
+  const handleReview = async (action: 'approve' | 'request-changes') => {
+    if (!prId) return;
+    await api.prs.review(prId, action);
+    // Refresh PR to get updated status
+    const updatedPr = await api.prs.get(prId);
+    setPr(updatedPr);
+  };
+
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
   if (!pr || !diffData) return <div className="p-6">PR not found</div>;
+
+  const topLevelComments = comments.filter((c) => !c.parentCommentId);
 
   return (
     <div className="flex flex-col h-full">
@@ -116,6 +127,14 @@ export function PRReview() {
           onResolveComment={handleResolveComment}
         />
       </div>
+
+      {/* Review submission bar */}
+      <ReviewBar
+        prId={prId || ''}
+        prStatus={pr.status}
+        commentCount={topLevelComments.length}
+        onReview={handleReview}
+      />
     </div>
   );
 }
