@@ -3,6 +3,9 @@ import { Command } from 'commander';
 import { ApiClient } from './api-client.js';
 import { initCommand } from './commands/init.js';
 import { submitCommand } from './commands/submit.js';
+import { batchCommand } from './commands/batch.js';
+import { readyCommand } from './commands/ready.js';
+import { statusCommand } from './commands/status.js';
 
 const program = new Command();
 const client = new ApiClient(process.env.SHEPHERD_URL || 'http://localhost:3847');
@@ -14,5 +17,8 @@ program
 
 initCommand(program, client);
 submitCommand(program, client);
+batchCommand(program, client);
+readyCommand(program, client);
+statusCommand(program, client);
 
 program.parse();
