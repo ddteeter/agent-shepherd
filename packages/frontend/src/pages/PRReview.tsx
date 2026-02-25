@@ -1,16 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { FileTree } from '../components/FileTree.js';
 import { DiffViewer } from '../components/DiffViewer.js';
+import type { Comment } from '../components/CommentThread.js';
 
 export function PRReview() {
   const { prId } = useParams<{ prId: string }>();
   const [pr, setPr] = useState<any>(null);
   const [diffData, setDiffData] = useState<{ diff: string; files: string[] } | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchComments = useCallback(async () => {
+    if (!prId) return;
+    try {
+      const data = await api.comments.list(prId);
+      setComments(data as Comment[]);
+    } catch {
+      // Comments may not exist yet, ignore errors
+    }
+  }, [prId]);
 
   useEffect(() => {
     if (!prId) return;
@@ -23,7 +35,43 @@ export function PRReview() {
     }).catch((err) => {
       setError(err instanceof Error ? err.message : 'Failed to load PR');
     }).finally(() => setLoading(false));
-  }, [prId]);
+
+    fetchComments();
+  }, [prId, fetchComments]);
+
+  const handleAddComment = async (data: { filePath: string; line: number; body: string; severity: string }) => {
+    if (!prId) return;
+    await api.comments.create(prId, {
+      filePath: data.filePath,
+      startLine: data.line,
+      endLine: data.line,
+      body: data.body,
+      severity: data.severity,
+      author: 'human',
+    });
+    await fetchComments();
+  };
+
+  const handleReplyComment = async (commentId: string, body: string) => {
+    if (!prId) return;
+    // Find the parent comment to get its file/line context
+    const parent = comments.find((c) => c.id === commentId);
+    await api.comments.create(prId, {
+      filePath: parent?.filePath || '',
+      startLine: parent?.startLine || 0,
+      endLine: parent?.endLine || 0,
+      body,
+      severity: 'suggestion',
+      author: 'human',
+      parentCommentId: commentId,
+    });
+    await fetchComments();
+  };
+
+  const handleResolveComment = async (commentId: string) => {
+    await api.comments.update(commentId, { resolved: true });
+    await fetchComments();
+  };
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
@@ -62,6 +110,10 @@ export function PRReview() {
           diff={diffData.diff}
           files={diffData.files}
           selectedFile={selectedFile}
+          comments={comments}
+          onAddComment={handleAddComment}
+          onReplyComment={handleReplyComment}
+          onResolveComment={handleResolveComment}
         />
       </div>
     </div>
