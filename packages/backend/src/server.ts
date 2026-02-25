@@ -7,6 +7,7 @@ import { projectRoutes } from './routes/projects.js';
 import { pullRequestRoutes } from './routes/pull-requests.js';
 import { commentRoutes } from './routes/comments.js';
 import { diffRoutes } from './routes/diff.js';
+import { configRoutes } from './routes/config.js';
 import { websocketPlugin, broadcast } from './ws.js';
 import { Orchestrator } from './orchestrator/index.js';
 
@@ -47,6 +48,7 @@ export async function buildServer(opts: ServerOptions = {}) {
   await fastify.register(pullRequestRoutes);
   await fastify.register(commentRoutes);
   await fastify.register(diffRoutes);
+  await fastify.register(configRoutes);
 
   return fastify;
 }
