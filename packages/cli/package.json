@@ -1,0 +1,17 @@
+{
+  "name": "@agent-shepherd/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "shepherd": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agent-shepherd/shared": "*"
+  }
+}
