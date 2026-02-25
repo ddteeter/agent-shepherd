@@ -66,6 +66,9 @@ export async function commentRoutes(fastify: FastifyInstance) {
       .where(eq(schema.comments.id, id))
       .get();
 
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('comment:added', comment);
+
     reply.code(201).send(comment);
   });
 

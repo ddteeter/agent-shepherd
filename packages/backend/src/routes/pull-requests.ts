@@ -58,6 +58,9 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .where(eq(schema.pullRequests.id, prId))
       .get();
 
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('pr:created', pr);
+
     reply.code(201).send(pr);
   });
 
@@ -162,6 +165,9 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           .run();
       }
 
+      const broadcast = (fastify as any).broadcast;
+      if (broadcast) broadcast('review:submitted', { prId: id, action });
+
       return { status: 'approved' };
     } else if (action === 'request-changes') {
       // Set cycle status to changes_requested
@@ -171,6 +177,9 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           .where(eq(schema.reviewCycles.id, latestCycle.id))
           .run();
       }
+
+      const broadcast = (fastify as any).broadcast;
+      if (broadcast) broadcast('review:submitted', { prId: id, action });
 
       return { status: 'changes_requested' };
     }
@@ -230,6 +239,9 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.id, newCycleId))
       .get();
+
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
 
     return newCycle;
   });
