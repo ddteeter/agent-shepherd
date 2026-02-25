@@ -10,6 +10,7 @@ import { diffRoutes } from './routes/diff.js';
 import { configRoutes } from './routes/config.js';
 import { websocketPlugin, broadcast } from './ws.js';
 import { Orchestrator } from './orchestrator/index.js';
+import { NotificationService } from './services/notifications.js';
 
 export interface ServerOptions {
   dbPath?: string;
@@ -33,7 +34,10 @@ export async function buildServer(opts: ServerOptions = {}) {
   fastify.decorate('db', db);
   fastify.decorate('sqlite', sqlite);
 
-  const orchestrator = new Orchestrator({ db, schema, broadcast });
+  const notificationService = new NotificationService();
+  fastify.decorate('notificationService', notificationService);
+
+  const orchestrator = new Orchestrator({ db, schema, broadcast, notificationService });
   fastify.decorate('orchestrator', orchestrator);
 
   fastify.addHook('onClose', () => {

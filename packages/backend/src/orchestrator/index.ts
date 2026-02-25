@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { AgentAdapter } from './types.js';
 import { ClaudeCodeAdapter } from './claude-code-adapter.js';
 import { buildReviewPrompt } from './prompt-builder.js';
+import { NotificationService } from '../services/notifications.js';
 
 export { buildReviewPrompt } from './prompt-builder.js';
 export { ClaudeCodeAdapter } from './claude-code-adapter.js';
@@ -12,6 +13,7 @@ interface OrchestratorDeps {
   schema: any;
   broadcast?: (event: string, data: any) => void;
   adapter?: AgentAdapter;
+  notificationService?: NotificationService;
 }
 
 export class Orchestrator {
@@ -19,12 +21,14 @@ export class Orchestrator {
   private db: any;
   private schema: any;
   private broadcast?: (event: string, data: any) => void;
+  private notificationService: NotificationService;
 
   constructor(deps: OrchestratorDeps) {
     this.adapter = deps.adapter || new ClaudeCodeAdapter();
     this.db = deps.db;
     this.schema = deps.schema;
     this.broadcast = deps.broadcast;
+    this.notificationService = deps.notificationService || new NotificationService();
   }
 
   async handleRequestChanges(prId: string) {
@@ -75,6 +79,7 @@ export class Orchestrator {
 
       session.onComplete(() => {
         this.broadcast?.('agent:completed', { prId });
+        this.notificationService.notifyPRReadyForReview(pr.title, project.name);
       });
 
       session.onError((error) => {

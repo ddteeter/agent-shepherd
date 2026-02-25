@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
+import { NotificationService } from '../services/notifications.js';
 
 export async function pullRequestRoutes(fastify: FastifyInstance) {
   const db = (fastify as any).db;
@@ -250,6 +251,16 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     const broadcast = (fastify as any).broadcast;
     if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
+
+    // Send OS notification that PR is ready for review
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, pr.projectId))
+      .get();
+    const notificationService: NotificationService =
+      (fastify as any).notificationService || new NotificationService();
+    notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
 
     return newCycle;
   });
