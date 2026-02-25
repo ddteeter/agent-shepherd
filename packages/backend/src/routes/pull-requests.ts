@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
 
@@ -108,7 +108,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     db.update(schema.pullRequests)
-      .set({ ...updates, updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19) })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(eq(schema.pullRequests.id, id))
       .run();
 
@@ -145,7 +145,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const latestCycle = cycles.reduce((latest: any, cycle: any) =>
       cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
 
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const now = new Date().toISOString();
 
     if (action === 'approve') {
       // Set PR status to approved
@@ -164,12 +164,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
       return { status: 'approved' };
     } else if (action === 'request-changes') {
-      // Set PR status to changes_requested
-      db.update(schema.pullRequests)
-        .set({ status: 'changes_requested', updatedAt: now })
-        .where(eq(schema.pullRequests.id, id))
-        .run();
-
       // Set cycle status to changes_requested
       if (latestCycle) {
         db.update(schema.reviewCycles)
@@ -209,7 +203,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const latestCycle = cycles.reduce((latest: any, cycle: any) =>
       cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
 
-    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const now = new Date().toISOString();
 
     // Mark current cycle's agentCompletedAt
     if (latestCycle) {
@@ -229,12 +223,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         cycleNumber: newCycleNumber,
         status: 'pending_review',
       })
-      .run();
-
-    // Update PR status to pending_review
-    db.update(schema.pullRequests)
-      .set({ status: 'pending_review', updatedAt: now })
-      .where(eq(schema.pullRequests.id, id))
       .run();
 
     const newCycle = db

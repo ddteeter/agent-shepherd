@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
 
@@ -82,22 +82,9 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
     const cycleIds = cycles.map((c: any) => c.id);
 
-    if (cycleIds.length === 0) {
-      return [];
-    }
+    if (cycleIds.length === 0) return [];
 
-    // Fetch comments for all cycles
-    const allComments: any[] = [];
-    for (const cycleId of cycleIds) {
-      const cycleComments = db
-        .select()
-        .from(schema.comments)
-        .where(eq(schema.comments.reviewCycleId, cycleId))
-        .all();
-      allComments.push(...cycleComments);
-    }
-
-    return allComments;
+    return db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
   });
 
   // PUT /api/comments/:id — Update a comment (body, resolved)
