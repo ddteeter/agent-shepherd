@@ -258,9 +258,11 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))
       .get();
-    const notificationService: NotificationService =
-      (fastify as any).notificationService || new NotificationService();
-    notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
+    const notificationService: NotificationService | undefined =
+      (fastify as any).notificationService;
+    if (notificationService) {
+      notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
+    }
 
     return newCycle;
   });

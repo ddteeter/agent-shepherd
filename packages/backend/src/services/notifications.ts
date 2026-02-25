@@ -11,10 +11,8 @@ export class NotificationService {
         title: 'Agent Shepherd',
         message: `PR ready for review: ${prTitle}\nProject: ${projectName}`,
       });
-    } catch {
-      // Swallow errors — notifications are best-effort.
-      // This keeps the service safe in CI, tests, or environments
-      // where the notification subsystem is unavailable.
+    } catch (err) {
+      console.warn('Failed to send OS notification:', err);
     }
   }
 }
