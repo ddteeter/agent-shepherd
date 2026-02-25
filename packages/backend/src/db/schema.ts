@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const projects = sqliteTable('projects', {
@@ -41,7 +41,7 @@ export const comments = sqliteTable('comments', {
   body: text('body').notNull(),
   severity: text('severity').notNull().default('suggestion'),
   author: text('author').notNull(),
-  parentCommentId: text('parent_comment_id'),
+  parentCommentId: text('parent_comment_id').references((): any => comments.id),
   resolved: integer('resolved', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
 });
@@ -61,4 +61,6 @@ export const projectConfig = sqliteTable('project_config', {
   projectId: text('project_id').notNull().references(() => projects.id),
   key: text('key').notNull(),
   value: text('value').notNull(),
-});
+}, (t) => [
+  primaryKey({ columns: [t.projectId, t.key] }),
+]);
