@@ -2,6 +2,8 @@ import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { CommentForm } from './CommentForm.js';
 import { CommentThread } from './CommentThread.js';
 import type { Comment } from './CommentThread.js';
+import { useHighlighter, getLangFromPath, type TokenizedLine } from '../hooks/useHighlighter.js';
+import { useTheme } from '../hooks/useTheme.js';
 
 interface DiffViewerProps {
   diff: string;
@@ -74,6 +76,20 @@ function parseDiff(rawDiff: string): FileDiff[] {
   return files;
 }
 
+/** Render a line with syntax highlighting tokens, or plain text as fallback */
+function HighlightedContent({ content, tokens }: { content: string; tokens: TokenizedLine | null }) {
+  if (!tokens || tokens.length === 0) {
+    return <span className="whitespace-pre">{content}</span>;
+  }
+  return (
+    <span className="whitespace-pre">
+      {tokens.map((token, i) => (
+        <span key={i} style={{ color: token.color }}>{token.content}</span>
+      ))}
+    </span>
+  );
+}
+
 /** Renders a single file's diff, lazy-mounted via IntersectionObserver */
 function LazyFileDiff({
   file,
@@ -85,6 +101,8 @@ function LazyFileDiff({
   handleAddComment,
   onReplyComment,
   onResolveComment,
+  tokenizeLine,
+  shikiTheme,
 }: {
   file: FileDiff;
   commentsByFileLine: Map<string, Comment[]>;
@@ -95,6 +113,8 @@ function LazyFileDiff({
   handleAddComment: (filePath: string, lineNo: number, body: string, severity: string) => void;
   onReplyComment?: DiffViewerProps['onReplyComment'];
   onResolveComment?: DiffViewerProps['onResolveComment'];
+  tokenizeLine: (code: string, lang: string, theme: 'github-dark' | 'github-light') => TokenizedLine | null;
+  shikiTheme: 'github-dark' | 'github-light';
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -107,14 +127,13 @@ function LazyFileDiff({
       ([entry]) => {
         if (entry.isIntersecting) setVisible(true);
       },
-      // Mount content when within 500px of viewport
       { rootMargin: '500px' }
     );
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  // Estimate height for placeholder: ~20px per diff line + headers
+  const lang = getLangFromPath(file.path);
   const estimatedHeight = file.lineCount * 20 + file.hunks.length * 28;
 
   return (
@@ -130,6 +149,7 @@ function LazyFileDiff({
                 const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
                 const isFormOpen = commentFormLine?.file === file.path && commentFormLine?.line === lineNo;
                 const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
+                const tokens = tokenizeLine(line.content, lang, shikiTheme);
 
                 return (
                   <div key={lineIdx}>
@@ -164,7 +184,7 @@ function LazyFileDiff({
                       }}>
                         {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
                       </span>
-                      <span className="whitespace-pre">{line.content}</span>
+                      <HighlightedContent content={line.content} tokens={tokens} />
                     </div>
 
                     {isFormOpen && onAddComment && (
@@ -194,7 +214,6 @@ function LazyFileDiff({
           ))}
         </div>
       ) : (
-        // Placeholder with estimated height to preserve scroll position
         <div style={{ height: estimatedHeight }} className="opacity-30 flex items-center justify-center text-sm">
           {file.lineCount} lines
         </div>
@@ -208,8 +227,17 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [commentFormLine, setCommentFormLine] = useState<{ file: string; line: number } | null>(null);
 
+  const { resolved: theme } = useTheme();
+  const shikiTheme = theme === 'dark' ? 'github-dark' : 'github-light' as const;
+
   // Memoize expensive diff parsing
   const parsedFiles = useMemo(() => parseDiff(diff), [diff]);
+
+  // Stable file paths list for the highlighter
+  const filePaths = useMemo(() => parsedFiles.map(f => f.path), [parsedFiles]);
+
+  // Initialize shiki highlighter with languages needed for these files
+  const { tokenizeLine } = useHighlighter(filePaths);
 
   // Scroll to selected file when it changes
   useEffect(() => {
@@ -277,6 +305,8 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
             handleAddComment={handleAddComment}
             onReplyComment={onReplyComment}
             onResolveComment={onResolveComment}
+            tokenizeLine={tokenizeLine}
+            shikiTheme={shikiTheme}
           />
         </div>
       ))}
