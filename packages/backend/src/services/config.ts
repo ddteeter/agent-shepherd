@@ -1,12 +1,8 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import yaml from 'js-yaml';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { schema } from '../db/index.js';
-
-type Db = Parameters<typeof schema.globalConfig._.columns.key.mapFromDriverValue> extends never
-  ? any
-  : any;
 
 export type ConfigRecord = Record<string, unknown>;
 
