@@ -1,0 +1,270 @@
+import type { FastifyInstance } from 'fastify';
+import { eq, and } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+import { schema } from '../db/index.js';
+
+export async function pullRequestRoutes(fastify: FastifyInstance) {
+  const db = (fastify as any).db;
+
+  // POST /api/projects/:projectId/prs — Create a PR (also creates first review cycle)
+  fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
+    const { projectId } = request.params as { projectId: string };
+    const { title, description, sourceBranch, baseBranch } = request.body as {
+      title: string;
+      description?: string;
+      sourceBranch: string;
+      baseBranch?: string;
+    };
+
+    // Verify project exists
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, projectId))
+      .get();
+
+    if (!project) {
+      reply.code(404).send({ error: 'Project not found' });
+      return;
+    }
+
+    const prId = randomUUID();
+    db.insert(schema.pullRequests)
+      .values({
+        id: prId,
+        projectId,
+        title,
+        description: description || '',
+        sourceBranch,
+        baseBranch: baseBranch || project.baseBranch || 'main',
+        status: 'open',
+      })
+      .run();
+
+    // Create first review cycle
+    const cycleId = randomUUID();
+    db.insert(schema.reviewCycles)
+      .values({
+        id: cycleId,
+        prId,
+        cycleNumber: 1,
+        status: 'pending_review',
+      })
+      .run();
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, prId))
+      .get();
+
+    reply.code(201).send(pr);
+  });
+
+  // GET /api/projects/:projectId/prs — List PRs for a project
+  fastify.get('/api/projects/:projectId/prs', async (request) => {
+    const { projectId } = request.params as { projectId: string };
+    return db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.projectId, projectId))
+      .all();
+  });
+
+  // GET /api/prs/:id — Get a single PR
+  fastify.get('/api/prs/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+    return pr;
+  });
+
+  // PUT /api/prs/:id — Update a PR
+  fastify.put('/api/prs/:id', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const updates = request.body as Partial<{
+      title: string;
+      description: string;
+      status: string;
+    }>;
+
+    const existing = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!existing) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    db.update(schema.pullRequests)
+      .set({ ...updates, updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19) })
+      .where(eq(schema.pullRequests.id, id))
+      .run();
+
+    return db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+  });
+
+  // POST /api/prs/:id/review — Submit review (approve or request-changes)
+  fastify.post('/api/prs/:id/review', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { action } = request.body as { action: 'approve' | 'request-changes' };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    // Find the latest review cycle for this PR
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, id))
+      .all();
+
+    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
+      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
+
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    if (action === 'approve') {
+      // Set PR status to approved
+      db.update(schema.pullRequests)
+        .set({ status: 'approved', updatedAt: now })
+        .where(eq(schema.pullRequests.id, id))
+        .run();
+
+      // Set cycle status to approved
+      if (latestCycle) {
+        db.update(schema.reviewCycles)
+          .set({ status: 'approved', reviewedAt: now })
+          .where(eq(schema.reviewCycles.id, latestCycle.id))
+          .run();
+      }
+
+      return { status: 'approved' };
+    } else if (action === 'request-changes') {
+      // Set PR status to changes_requested
+      db.update(schema.pullRequests)
+        .set({ status: 'changes_requested', updatedAt: now })
+        .where(eq(schema.pullRequests.id, id))
+        .run();
+
+      // Set cycle status to changes_requested
+      if (latestCycle) {
+        db.update(schema.reviewCycles)
+          .set({ status: 'changes_requested', reviewedAt: now })
+          .where(eq(schema.reviewCycles.id, latestCycle.id))
+          .run();
+      }
+
+      return { status: 'changes_requested' };
+    }
+
+    reply.code(400).send({ error: 'Invalid action' });
+  });
+
+  // POST /api/prs/:id/agent-ready — Agent signals ready for re-review
+  fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    // Find the latest review cycle
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, id))
+      .all();
+
+    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
+      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
+
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    // Mark current cycle's agentCompletedAt
+    if (latestCycle) {
+      db.update(schema.reviewCycles)
+        .set({ agentCompletedAt: now })
+        .where(eq(schema.reviewCycles.id, latestCycle.id))
+        .run();
+    }
+
+    // Create new review cycle with incremented cycleNumber
+    const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
+    const newCycleId = randomUUID();
+    db.insert(schema.reviewCycles)
+      .values({
+        id: newCycleId,
+        prId: id,
+        cycleNumber: newCycleNumber,
+        status: 'pending_review',
+      })
+      .run();
+
+    // Update PR status to pending_review
+    db.update(schema.pullRequests)
+      .set({ status: 'pending_review', updatedAt: now })
+      .where(eq(schema.pullRequests.id, id))
+      .run();
+
+    const newCycle = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.id, newCycleId))
+      .get();
+
+    return newCycle;
+  });
+
+  // GET /api/prs/:id/cycles — List review cycles for a PR
+  fastify.get('/api/prs/:id/cycles', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    return db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, id))
+      .all();
+  });
+}

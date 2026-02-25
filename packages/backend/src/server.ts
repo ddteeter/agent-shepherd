@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { createDb } from './db/index.js';
+import { projectRoutes } from './routes/projects.js';
+import { pullRequestRoutes } from './routes/pull-requests.js';
 
 export interface ServerOptions {
   dbPath?: string;
@@ -27,6 +29,9 @@ export async function buildServer(opts: ServerOptions = {}) {
   fastify.get('/api/health', async () => {
     return { status: 'ok' };
   });
+
+  await fastify.register(projectRoutes);
+  await fastify.register(pullRequestRoutes);
 
   return fastify;
 }
