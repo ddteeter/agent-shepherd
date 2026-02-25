@@ -1,76 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import * as schema from '../schema.js';
+import { createDb, schema } from '../index.js';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import type Database from 'better-sqlite3';
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 
 describe('Database Schema', () => {
   let sqlite: InstanceType<typeof Database>;
-  let db: ReturnType<typeof drizzle>;
+  let db: BetterSQLite3Database<typeof schema>;
 
   beforeEach(() => {
-    sqlite = new Database(':memory:');
-    db = drizzle(sqlite, { schema });
-    // Create tables directly for testing
-    sqlite.exec(`
-      CREATE TABLE projects (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        path TEXT NOT NULL UNIQUE,
-        base_branch TEXT NOT NULL DEFAULT 'main',
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-      CREATE TABLE pull_requests (
-        id TEXT PRIMARY KEY,
-        project_id TEXT NOT NULL REFERENCES projects(id),
-        title TEXT NOT NULL,
-        description TEXT NOT NULL DEFAULT '',
-        source_branch TEXT NOT NULL,
-        base_branch TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'open',
-        agent_context TEXT,
-        agent_session_id TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-      CREATE TABLE review_cycles (
-        id TEXT PRIMARY KEY,
-        pr_id TEXT NOT NULL REFERENCES pull_requests(id),
-        cycle_number INTEGER NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending_review',
-        reviewed_at TEXT,
-        agent_completed_at TEXT
-      );
-      CREATE TABLE comments (
-        id TEXT PRIMARY KEY,
-        review_cycle_id TEXT NOT NULL REFERENCES review_cycles(id),
-        file_path TEXT NOT NULL,
-        start_line INTEGER NOT NULL,
-        end_line INTEGER NOT NULL,
-        body TEXT NOT NULL,
-        severity TEXT NOT NULL DEFAULT 'suggestion',
-        author TEXT NOT NULL,
-        parent_comment_id TEXT REFERENCES comments(id),
-        resolved INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-      CREATE TABLE diff_snapshots (
-        id TEXT PRIMARY KEY,
-        review_cycle_id TEXT NOT NULL REFERENCES review_cycles(id),
-        diff_data TEXT NOT NULL
-      );
-      CREATE TABLE global_config (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-      );
-      CREATE TABLE project_config (
-        project_id TEXT NOT NULL REFERENCES projects(id),
-        key TEXT NOT NULL,
-        value TEXT NOT NULL,
-        PRIMARY KEY (project_id, key)
-      );
-    `);
+    const result = createDb(':memory:');
+    sqlite = result.sqlite;
+    db = result.db;
   });
 
   afterEach(() => {
