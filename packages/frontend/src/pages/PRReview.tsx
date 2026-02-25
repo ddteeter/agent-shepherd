@@ -5,6 +5,7 @@ import { FileTree } from '../components/FileTree.js';
 import { DiffViewer } from '../components/DiffViewer.js';
 import { ReviewBar } from '../components/ReviewBar.js';
 import type { Comment } from '../components/CommentThread.js';
+import { useWebSocket } from '../hooks/useWebSocket.js';
 
 export function PRReview() {
   const { prId } = useParams<{ prId: string }>();
@@ -14,6 +15,17 @@ export function PRReview() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { connected } = useWebSocket((msg) => {
+    // Refresh comments on new comment
+    if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
+      fetchComments();
+    }
+    // Refresh PR on status change
+    if (msg.event === 'review:submitted' || msg.event === 'pr:ready-for-review' || msg.event === 'pr:updated') {
+      if (prId) api.prs.get(prId).then(setPr);
+    }
+  });
 
   const fetchComments = useCallback(async () => {
     if (!prId) return;
