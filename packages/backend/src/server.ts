@@ -2,11 +2,13 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import { createDb } from './db/index.js';
+import { schema } from './db/index.js';
 import { projectRoutes } from './routes/projects.js';
 import { pullRequestRoutes } from './routes/pull-requests.js';
 import { commentRoutes } from './routes/comments.js';
 import { diffRoutes } from './routes/diff.js';
 import { websocketPlugin, broadcast } from './ws.js';
+import { Orchestrator } from './orchestrator/index.js';
 
 export interface ServerOptions {
   dbPath?: string;
@@ -29,6 +31,9 @@ export async function buildServer(opts: ServerOptions = {}) {
 
   fastify.decorate('db', db);
   fastify.decorate('sqlite', sqlite);
+
+  const orchestrator = new Orchestrator({ db, schema, broadcast });
+  fastify.decorate('orchestrator', orchestrator);
 
   fastify.addHook('onClose', () => {
     sqlite.close();

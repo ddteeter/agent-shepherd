@@ -181,6 +181,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       const broadcast = (fastify as any).broadcast;
       if (broadcast) broadcast('review:submitted', { prId: id, action });
 
+      // Fire and forget: kick off the agent orchestrator
+      const orchestrator = (fastify as any).orchestrator;
+      if (orchestrator) {
+        orchestrator.handleRequestChanges(id).catch((err: Error) => {
+          fastify.log.error({ err, prId: id }, 'Orchestrator failed to handle request-changes');
+        });
+      }
+
       return { status: 'changes_requested' };
     }
 
