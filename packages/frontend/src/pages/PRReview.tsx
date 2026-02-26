@@ -1,10 +1,11 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { FileTree } from '../components/FileTree.js';
 import { DiffViewer } from '../components/DiffViewer.js';
 import { ReviewBar } from '../components/ReviewBar.js';
 import type { Comment } from '../components/CommentThread.js';
+import type { FileStatus } from '../components/DiffViewer.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 
 interface ReviewCycle {
@@ -30,6 +31,7 @@ export function PRReview() {
   const [cycles, setCycles] = useState<ReviewCycle[]>([]);
   const [selectedCycle, setSelectedCycle] = useState<string>('current');
   const [diffLoading, setDiffLoading] = useState(false);
+  const [globalCommentForm, setGlobalCommentForm] = useState(false);
 
   const { connected } = useWebSocket((msg) => {
     // Refresh comments on new comment
@@ -113,47 +115,112 @@ export function PRReview() {
     setVisibleFile(file);
   }, []);
 
-  const handleAddComment = async (data: { filePath: string; line: number; body: string; severity: string }) => {
+  const handleAddComment = async (data: { filePath: string | null; startLine: number | null; endLine: number | null; body: string; severity: string }) => {
     if (!prId) return;
-    await api.comments.create(prId, {
-      filePath: data.filePath,
-      startLine: data.line,
-      endLine: data.line,
-      body: data.body,
-      severity: data.severity,
-      author: 'human',
-    });
-    await fetchComments();
+    try {
+      await api.comments.create(prId, {
+        filePath: data.filePath,
+        startLine: data.startLine,
+        endLine: data.endLine,
+        body: data.body,
+        severity: data.severity,
+        author: 'human',
+      });
+      await fetchComments();
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+      alert('Failed to add comment. Check the console for details.');
+    }
   };
 
   const handleReplyComment = async (commentId: string, body: string) => {
     if (!prId) return;
-    // Find the parent comment to get its file/line context
-    const parent = comments.find((c) => c.id === commentId);
-    await api.comments.create(prId, {
-      filePath: parent?.filePath || '',
-      startLine: parent?.startLine || 0,
-      endLine: parent?.endLine || 0,
-      body,
-      severity: 'suggestion',
-      author: 'human',
-      parentCommentId: commentId,
-    });
-    await fetchComments();
+    try {
+      const parent = comments.find((c) => c.id === commentId);
+      await api.comments.create(prId, {
+        filePath: parent?.filePath ?? null,
+        startLine: parent?.startLine ?? null,
+        endLine: parent?.endLine ?? null,
+        body,
+        severity: 'suggestion',
+        author: 'human',
+        parentCommentId: commentId,
+      });
+      await fetchComments();
+    } catch (err) {
+      console.error('Failed to reply:', err);
+      alert('Failed to add reply. Check the console for details.');
+    }
   };
 
   const handleResolveComment = async (commentId: string) => {
-    await api.comments.update(commentId, { resolved: true });
-    await fetchComments();
+    try {
+      await api.comments.update(commentId, { resolved: true });
+      await fetchComments();
+    } catch (err) {
+      console.error('Failed to resolve comment:', err);
+      alert('Failed to resolve comment.');
+    }
   };
 
-  const handleReview = async (action: 'approve' | 'request-changes') => {
+  const handleEditComment = async (commentId: string, body: string) => {
+    try {
+      await api.comments.update(commentId, { body });
+      await fetchComments();
+    } catch (err) {
+      console.error('Failed to edit comment:', err);
+      alert('Failed to edit comment.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await api.comments.delete(commentId);
+      await fetchComments();
+    } catch (err) {
+      console.error('Failed to delete comment:', err);
+      alert('Failed to delete comment.');
+    }
+  };
+
+  const handleReview = async (action: 'approve' | 'request-changes', opts?: { clearSession?: boolean }) => {
     if (!prId) return;
-    await api.prs.review(prId, action);
-    // Refresh PR to get updated status
+    await api.prs.review(prId, action, opts);
     const updatedPr = await api.prs.get(prId);
     setPr(updatedPr);
   };
+
+  const fileStatuses = useMemo(() => {
+    if (!diffData) return {};
+    const statuses: Record<string, FileStatus> = {};
+    const lines = diffData.diff.split('\n');
+    let fromNull = false;
+    let minusPath = '';
+    for (const line of lines) {
+      if (line.startsWith('--- /dev/null')) {
+        fromNull = true;
+      } else if (line.startsWith('--- a/')) {
+        fromNull = false;
+        minusPath = line.slice(6);
+      } else if (line.startsWith('+++ /dev/null')) {
+        statuses[minusPath] = 'removed';
+      } else if (line.startsWith('+++ b/')) {
+        const path = line.slice(6);
+        statuses[path] = fromNull ? 'added' : 'modified';
+      }
+    }
+    return statuses;
+  }, [diffData]);
+
+  const commentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of comments) {
+      if (!c.parentCommentId && c.filePath) {
+        counts[c.filePath] = (counts[c.filePath] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [comments]);
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
@@ -171,7 +238,18 @@ export function PRReview() {
           &larr; Back
         </Link>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{pr.title}</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">{pr.title}</h2>
+            {selectedCycle === 'current' && (
+              <button
+                onClick={() => setGlobalCommentForm(!globalCommentForm)}
+                className="text-xs px-2 py-1 rounded border hover:opacity-80"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+              >
+                Comment on PR
+              </button>
+            )}
+          </div>
           {showCycleSelector && (
             <div className="flex items-center gap-2">
               <label htmlFor="cycle-select" className="text-sm opacity-70">
@@ -238,6 +316,8 @@ export function PRReview() {
           files={diffData.files}
           selectedFile={visibleFile}
           onSelectFile={handleFileSelect}
+          fileStatuses={fileStatuses}
+          commentCounts={commentCounts}
         />
         <DiffViewer
           diff={diffData.diff}
@@ -249,6 +329,11 @@ export function PRReview() {
           onAddComment={handleAddComment}
           onReplyComment={handleReplyComment}
           onResolveComment={handleResolveComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          canEditComments={selectedCycle === 'current'}
+          globalCommentForm={globalCommentForm}
+          onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
         />
       </div>
 
@@ -257,6 +342,7 @@ export function PRReview() {
         prId={prId || ''}
         prStatus={pr.status}
         commentCount={topLevelComments.length}
+        hasAgentSession={!!pr.agentSessionId}
         onReview={handleReview}
       />
     </div>
