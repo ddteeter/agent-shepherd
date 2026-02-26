@@ -5,10 +5,11 @@ interface ReviewBarProps {
   prStatus: string;
   commentCount: number;
   hasAgentSession: boolean;
+  agentWorking: boolean;
   onReview: (action: 'approve' | 'request-changes', opts?: { clearSession?: boolean }) => void;
 }
 
-export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, onReview }: ReviewBarProps) {
+export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, agentWorking, onReview }: ReviewBarProps) {
   const [clearSession, setClearSession] = useState(false);
 
   if (prStatus !== 'open') {
@@ -35,14 +36,16 @@ export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, onRev
         )}
         <button
           onClick={() => onReview('approve')}
-          className="btn-approve px-4 py-1.5 text-sm rounded font-medium"
+          disabled={agentWorking}
+          className="btn-approve px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: 'var(--color-btn-approve-bg)', color: 'var(--color-btn-approve-fg)' }}
         >
           Approve
         </button>
         <button
           onClick={() => onReview('request-changes', clearSession ? { clearSession: true } : undefined)}
-          className="btn-danger px-4 py-1.5 text-sm rounded font-medium"
+          disabled={agentWorking}
+          className="btn-danger px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ backgroundColor: 'var(--color-btn-danger-bg)', color: 'var(--color-btn-danger-fg)' }}
         >
           Request Changes
