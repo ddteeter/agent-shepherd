@@ -23,10 +23,11 @@ describe('Shared Types', () => {
       'pending_review',
       'in_review',
       'changes_requested',
-      'pending_agent',
+      'agent_working',
+      'agent_error',
       'approved',
     ];
-    expect(statuses).toHaveLength(5);
+    expect(statuses).toHaveLength(6);
   });
 
   it('CommentSeverity has correct values', () => {

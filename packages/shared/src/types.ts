@@ -4,7 +4,8 @@ export type ReviewCycleStatus =
   | 'pending_review'
   | 'in_review'
   | 'changes_requested'
-  | 'pending_agent'
+  | 'agent_working'
+  | 'agent_error'
   | 'approved';
 
 export type CommentSeverity = 'suggestion' | 'request' | 'must-fix';
