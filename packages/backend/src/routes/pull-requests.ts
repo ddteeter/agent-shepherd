@@ -291,6 +291,29 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return newCycle;
   });
 
+  // POST /api/prs/:id/cancel-agent — Cancel a running agent
+  fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    const orchestrator = (fastify as any).orchestrator;
+    if (orchestrator) {
+      await orchestrator.cancelAgent(id);
+    }
+
+    return { status: 'cancelled' };
+  });
+
   // GET /api/prs/:id/cycles — List review cycles for a PR
   fastify.get('/api/prs/:id/cycles', async (request, reply) => {
     const { id } = request.params as { id: string };
