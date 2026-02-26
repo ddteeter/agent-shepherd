@@ -32,6 +32,8 @@ export const api = {
       request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
     review: (id: string, action: string, opts?: { clearSession?: boolean }) =>
       request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action, ...opts }) }),
+    cancelAgent: (id: string) =>
+      request<any>(`/prs/${id}/cancel-agent`, { method: 'POST' }),
   },
   comments: {
     list: (prId: string) => request<any[]>(`/prs/${prId}/comments`),
