@@ -32,18 +32,25 @@ export function PRReview() {
   const [selectedCycle, setSelectedCycle] = useState<string>('current');
   const [diffLoading, setDiffLoading] = useState(false);
   const [globalCommentForm, setGlobalCommentForm] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
 
   const { connected } = useWebSocket((msg) => {
-    // Refresh comments on new comment
     if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
       fetchComments();
     }
-    // Refresh PR on status change
     if (msg.event === 'review:submitted' || msg.event === 'pr:ready-for-review' || msg.event === 'pr:updated') {
       if (prId) {
         api.prs.get(prId).then(setPr);
         fetchCycles();
       }
+    }
+    if (msg.event === 'agent:working' || msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
+      setAgentError(null);
+      fetchCycles();
+    }
+    if (msg.event === 'agent:error') {
+      setAgentError(msg.data?.error || 'Unknown error');
+      fetchCycles();
     }
   });
 
@@ -188,6 +195,17 @@ export function PRReview() {
     await api.prs.review(prId, action, opts);
     const updatedPr = await api.prs.get(prId);
     setPr(updatedPr);
+    await fetchCycles();
+  };
+
+  const handleCancelAgent = async () => {
+    if (!prId) return;
+    try {
+      await api.prs.cancelAgent(prId);
+      await fetchCycles();
+    } catch (err) {
+      console.error('Failed to cancel agent:', err);
+    }
   };
 
   const fileStatuses = useMemo(() => {
@@ -221,6 +239,14 @@ export function PRReview() {
     }
     return counts;
   }, [comments]);
+
+  const latestCycle = useMemo(() => {
+    if (cycles.length === 0) return null;
+    return cycles.reduce((latest, c) => c.cycleNumber > latest.cycleNumber ? c : latest, cycles[0]);
+  }, [cycles]);
+
+  const agentWorking = latestCycle?.status === 'agent_working';
+  const agentErrored = latestCycle?.status === 'agent_error';
 
   if (loading) return <div className="p-6">Loading...</div>;
   if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
@@ -308,6 +334,27 @@ export function PRReview() {
             </span>
           )}
         </div>
+        {agentWorking && (
+          <div className="flex items-center gap-2 text-sm mt-1">
+            <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+            <span style={{ color: 'var(--color-warning, #d29922)' }}>Agent working...</span>
+            <button
+              onClick={handleCancelAgent}
+              className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        {agentErrored && (
+          <div className="flex items-center gap-2 text-sm mt-1">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+            <span style={{ color: 'var(--color-danger, #cf222e)' }}>
+              Agent error{agentError ? `: ${agentError}` : ''}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Main content area: file tree + diff viewer */}
@@ -343,6 +390,7 @@ export function PRReview() {
         prStatus={pr.status}
         commentCount={topLevelComments.length}
         hasAgentSession={!!pr.agentSessionId}
+        agentWorking={agentWorking}
         onReview={handleReview}
       />
     </div>
