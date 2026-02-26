@@ -19,7 +19,15 @@ export const api = {
   prs: {
     list: (projectId: string) => request<any[]>(`/projects/${projectId}/prs`),
     get: (id: string) => request<any>(`/prs/${id}`),
-    diff: (id: string) => request<any>(`/prs/${id}/diff`),
+    diff: (id: string, opts?: { cycle?: number }) => {
+      const params = new URLSearchParams();
+      if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
+      const qs = params.toString();
+      return request<any>(`/prs/${id}/diff${qs ? `?${qs}` : ''}`);
+    },
+    cycles: (id: string) => request<any[]>(`/prs/${id}/cycles/details`),
+    snapshotDiff: (id: string) =>
+      request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
     review: (id: string, action: string) =>
       request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }),
   },

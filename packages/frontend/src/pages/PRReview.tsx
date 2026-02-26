@@ -7,6 +7,16 @@ import { ReviewBar } from '../components/ReviewBar.js';
 import type { Comment } from '../components/CommentThread.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 
+interface ReviewCycle {
+  id: string;
+  prId: string;
+  cycleNumber: number;
+  status: string;
+  reviewedAt: string | null;
+  agentCompletedAt: string | null;
+  hasDiffSnapshot: boolean;
+}
+
 export function PRReview() {
   const { prId } = useParams<{ prId: string }>();
   const [pr, setPr] = useState<any>(null);
@@ -15,6 +25,9 @@ export function PRReview() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cycles, setCycles] = useState<ReviewCycle[]>([]);
+  const [selectedCycle, setSelectedCycle] = useState<string>('current');
+  const [diffLoading, setDiffLoading] = useState(false);
 
   const { connected } = useWebSocket((msg) => {
     // Refresh comments on new comment
@@ -23,7 +36,10 @@ export function PRReview() {
     }
     // Refresh PR on status change
     if (msg.event === 'review:submitted' || msg.event === 'pr:ready-for-review' || msg.event === 'pr:updated') {
-      if (prId) api.prs.get(prId).then(setPr);
+      if (prId) {
+        api.prs.get(prId).then(setPr);
+        fetchCycles();
+      }
     }
   });
 
@@ -34,6 +50,36 @@ export function PRReview() {
       setComments(data as Comment[]);
     } catch {
       // Comments may not exist yet, ignore errors
+    }
+  }, [prId]);
+
+  const fetchCycles = useCallback(async () => {
+    if (!prId) return;
+    try {
+      const data = await api.prs.cycles(prId);
+      setCycles(data as ReviewCycle[]);
+    } catch {
+      // Cycles endpoint may fail, ignore
+    }
+  }, [prId]);
+
+  const fetchDiff = useCallback(async (cycleValue: string) => {
+    if (!prId) return;
+    setDiffLoading(true);
+    try {
+      let diff;
+      if (cycleValue === 'current') {
+        diff = await api.prs.diff(prId);
+      } else {
+        const cycleNum = parseInt(cycleValue, 10);
+        diff = await api.prs.diff(prId, { cycle: cycleNum });
+      }
+      setDiffData(diff);
+      setSelectedFile(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load diff');
+    } finally {
+      setDiffLoading(false);
     }
   }, [prId]);
 
@@ -50,7 +96,13 @@ export function PRReview() {
     }).finally(() => setLoading(false));
 
     fetchComments();
-  }, [prId, fetchComments]);
+    fetchCycles();
+  }, [prId, fetchComments, fetchCycles]);
+
+  const handleCycleChange = useCallback((value: string) => {
+    setSelectedCycle(value);
+    fetchDiff(value);
+  }, [fetchDiff]);
 
   const handleAddComment = async (data: { filePath: string; line: number; body: string; severity: string }) => {
     if (!prId) return;
@@ -99,6 +151,8 @@ export function PRReview() {
   if (!pr || !diffData) return <div className="p-6">PR not found</div>;
 
   const topLevelComments = comments.filter((c) => !c.parentCommentId);
+  const cyclesWithSnapshots = cycles.filter((c) => c.hasDiffSnapshot);
+  const showCycleSelector = cyclesWithSnapshots.length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -107,7 +161,43 @@ export function PRReview() {
         <Link to={`/projects/${pr.projectId}`} className="text-sm opacity-70 hover:opacity-100">
           &larr; Back
         </Link>
-        <h2 className="text-lg font-semibold">{pr.title}</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{pr.title}</h2>
+          {showCycleSelector && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="cycle-select" className="text-sm opacity-70">
+                Viewing:
+              </label>
+              <select
+                id="cycle-select"
+                value={selectedCycle}
+                onChange={(e) => handleCycleChange(e.target.value)}
+                disabled={diffLoading}
+                className="text-sm px-2 py-1 rounded border"
+                style={{
+                  backgroundColor: 'var(--color-bg)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text)',
+                }}
+              >
+                <option value="current">Current changes</option>
+                {cyclesWithSnapshots
+                  .sort((a, b) => a.cycleNumber - b.cycleNumber)
+                  .map((cycle) => (
+                    <option key={cycle.id} value={String(cycle.cycleNumber)}>
+                      Cycle {cycle.cycleNumber}
+                      {cycle.status === 'approved' ? ' (approved)' : ''}
+                      {cycle.status === 'changes_requested' ? ' (changes requested)' : ''}
+                    </option>
+                  ))
+                }
+              </select>
+              {diffLoading && (
+                <span className="text-sm opacity-50">Loading...</span>
+              )}
+            </div>
+          )}
+        </div>
         <div className="text-sm opacity-70">
           <span
             className="inline-block px-2 py-0.5 rounded text-xs font-medium mr-2"
@@ -119,6 +209,17 @@ export function PRReview() {
             {pr.status}
           </span>
           {pr.sourceBranch} &rarr; {pr.baseBranch}
+          {selectedCycle !== 'current' && (
+            <span
+              className="ml-2 inline-block px-2 py-0.5 rounded text-xs font-medium"
+              style={{
+                backgroundColor: 'rgba(130, 80, 223, 0.15)',
+                color: 'var(--color-text)',
+              }}
+            >
+              Snapshot from Cycle {selectedCycle}
+            </span>
+          )}
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
+import { GitService } from '../services/git.js';
 import { NotificationService } from '../services/notifications.js';
 
 export async function pullRequestRoutes(fastify: FastifyInstance) {
@@ -249,15 +250,34 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .where(eq(schema.reviewCycles.id, newCycleId))
       .get();
 
-    const broadcast = (fastify as any).broadcast;
-    if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
-
-    // Send OS notification that PR is ready for review
+    // Store a diff snapshot for the new cycle so reviewers can see what changed
     const project = db
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))
       .get();
+
+    if (project) {
+      try {
+        const gitService = new GitService(project.path);
+        const diffData = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
+        db.insert(schema.diffSnapshots)
+          .values({
+            id: randomUUID(),
+            reviewCycleId: newCycleId,
+            diffData,
+          })
+          .run();
+      } catch {
+        // Non-fatal: snapshot storage failure should not block agent-ready
+        fastify.log.warn({ prId: id }, 'Failed to store diff snapshot for new cycle');
+      }
+    }
+
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
+
+    // Send OS notification that PR is ready for review
     const notificationService: NotificationService | undefined =
       (fastify as any).notificationService;
     if (notificationService) {
