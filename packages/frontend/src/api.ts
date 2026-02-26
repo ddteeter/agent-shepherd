@@ -1,8 +1,10 @@
 const BASE = '/api';
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (opts?.body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...opts,
   });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
@@ -28,8 +30,8 @@ export const api = {
     cycles: (id: string) => request<any[]>(`/prs/${id}/cycles/details`),
     snapshotDiff: (id: string) =>
       request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
-    review: (id: string, action: string) =>
-      request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }),
+    review: (id: string, action: string, opts?: { clearSession?: boolean }) =>
+      request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action, ...opts }) }),
   },
   comments: {
     list: (prId: string) => request<any[]>(`/prs/${prId}/comments`),
@@ -37,5 +39,7 @@ export const api = {
       request<any>(`/prs/${prId}/comments`, { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: any) =>
       request<any>(`/comments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/comments/${id}`, { method: 'DELETE' }),
   },
 };

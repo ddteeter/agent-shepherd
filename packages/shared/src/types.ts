@@ -45,9 +45,9 @@ export interface ReviewCycle {
 export interface Comment {
   id: string;
   reviewCycleId: string;
-  filePath: string;
-  startLine: number;
-  endLine: number;
+  filePath: string | null;
+  startLine: number | null;
+  endLine: number | null;
   body: string;
   severity: CommentSeverity;
   author: CommentAuthor;
@@ -64,9 +64,9 @@ export interface DiffSnapshot {
 
 export interface BatchCommentPayload {
   comments?: Array<{
-    filePath: string;
-    startLine: number;
-    endLine: number;
+    filePath?: string | null;
+    startLine?: number | null;
+    endLine?: number | null;
     body: string;
     severity: CommentSeverity;
   }>;
@@ -94,9 +94,9 @@ export interface CreatePRInput {
 
 export interface CreateCommentInput {
   reviewCycleId: string;
-  filePath: string;
-  startLine: number;
-  endLine: number;
+  filePath?: string | null;
+  startLine?: number | null;
+  endLine?: number | null;
   body: string;
   severity: CommentSeverity;
   author: CommentAuthor;
@@ -105,6 +105,7 @@ export interface CreateCommentInput {
 
 export interface SubmitReviewInput {
   action: 'approve' | 'request-changes';
+  clearSession?: boolean;
 }
 
 export interface AgentAdapterConfig {
