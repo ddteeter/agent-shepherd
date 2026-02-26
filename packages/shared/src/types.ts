@@ -63,16 +63,17 @@ export interface DiffSnapshot {
 }
 
 export interface BatchCommentPayload {
-  comments?: Array<{
+  comments: Array<{
     filePath?: string | null;
     startLine?: number | null;
     endLine?: number | null;
     body: string;
-    severity: CommentSeverity;
+    severity?: CommentSeverity;
   }>;
   replies?: Array<{
-    commentId: string;
+    parentCommentId: string;
     body: string;
+    severity?: CommentSeverity;
   }>;
 }
 
@@ -85,7 +86,7 @@ export interface CreateProjectInput {
 export interface CreatePRInput {
   projectId: string;
   title: string;
-  description: string;
+  description?: string;
   sourceBranch: string;
   baseBranch?: string;
   agentContext?: string;
@@ -93,12 +94,11 @@ export interface CreatePRInput {
 }
 
 export interface CreateCommentInput {
-  reviewCycleId: string;
   filePath?: string | null;
   startLine?: number | null;
   endLine?: number | null;
   body: string;
-  severity: CommentSeverity;
+  severity?: CommentSeverity;
   author: CommentAuthor;
   parentCommentId?: string;
 }

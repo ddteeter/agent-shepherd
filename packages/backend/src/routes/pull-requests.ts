@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { CreatePRInput, SubmitReviewInput } from '@agent-shepherd/shared';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
@@ -11,12 +12,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   // POST /api/projects/:projectId/prs — Create a PR (also creates first review cycle)
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
-    const { title, description, sourceBranch, baseBranch } = request.body as {
-      title: string;
-      description?: string;
-      sourceBranch: string;
-      baseBranch?: string;
-    };
+    const { title, description, sourceBranch, baseBranch } = request.body as Omit<CreatePRInput, 'projectId'>;
 
     // Verify project exists
     const project = db
@@ -127,7 +123,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   // POST /api/prs/:id/review — Submit review (approve or request-changes)
   fastify.post('/api/prs/:id/review', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action, clearSession } = request.body as { action: 'approve' | 'request-changes'; clearSession?: boolean };
+    const { action, clearSession } = request.body as SubmitReviewInput;
 
     const pr = db
       .select()

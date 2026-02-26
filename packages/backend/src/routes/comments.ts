@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { CreateCommentInput, BatchCommentPayload } from '@agent-shepherd/shared';
 import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
@@ -29,15 +30,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:prId/comments', async (request, reply) => {
     const { prId } = request.params as { prId: string };
     const { filePath, startLine, endLine, body, severity, author, parentCommentId } =
-      request.body as {
-        filePath: string;
-        startLine: number;
-        endLine: number;
-        body: string;
-        severity?: string;
-        author: string;
-        parentCommentId?: string;
-      };
+      request.body as CreateCommentInput;
 
     const reviewCycleId = getCurrentCycleId(db, prId);
     if (!reviewCycleId) {
@@ -50,9 +43,9 @@ export async function commentRoutes(fastify: FastifyInstance) {
       .values({
         id,
         reviewCycleId,
-        filePath,
-        startLine,
-        endLine,
+        filePath: filePath ?? null,
+        startLine: startLine ?? null,
+        endLine: endLine ?? null,
         body,
         severity: severity || 'suggestion',
         author,
@@ -146,20 +139,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
   // POST /api/prs/:prId/comments/batch — Batch create comments and replies
   fastify.post('/api/prs/:prId/comments/batch', async (request, reply) => {
     const { prId } = request.params as { prId: string };
-    const { comments, replies } = request.body as {
-      comments: Array<{
-        filePath: string;
-        startLine: number;
-        endLine: number;
-        body: string;
-        severity?: string;
-      }>;
-      replies?: Array<{
-        parentCommentId: string;
-        body: string;
-        severity?: string;
-      }>;
-    };
+    const { comments, replies } = request.body as BatchCommentPayload;
 
     const reviewCycleId = getCurrentCycleId(db, prId);
     if (!reviewCycleId) {
@@ -176,9 +156,9 @@ export async function commentRoutes(fastify: FastifyInstance) {
         .values({
           id,
           reviewCycleId,
-          filePath: c.filePath,
-          startLine: c.startLine,
-          endLine: c.endLine,
+          filePath: c.filePath ?? null,
+          startLine: c.startLine ?? null,
+          endLine: c.endLine ?? null,
           body: c.body,
           severity: c.severity || 'suggestion',
           author: 'agent',
@@ -202,9 +182,9 @@ export async function commentRoutes(fastify: FastifyInstance) {
             .values({
               id,
               reviewCycleId,
-              filePath: parent.filePath,
-              startLine: parent.startLine,
-              endLine: parent.endLine,
+              filePath: parent.filePath ?? null,
+              startLine: parent.startLine ?? null,
+              endLine: parent.endLine ?? null,
               body: r.body,
               severity: r.severity || 'suggestion',
               author: 'agent',

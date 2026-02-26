@@ -51,7 +51,7 @@ describe('Shared Types', () => {
         { filePath: 'src/index.ts', startLine: 1, endLine: 1, body: 'test', severity: 'suggestion' },
       ],
       replies: [
-        { commentId: 'abc', body: 'reply' },
+        { parentCommentId: 'abc', body: 'reply' },
       ],
     };
     expect(payload.comments).toHaveLength(1);
