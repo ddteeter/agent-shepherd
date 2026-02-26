@@ -28,6 +28,7 @@ interface DiffLine {
 interface FileDiff {
   path: string;
   hunks: DiffHunk[];
+  lineCount: number;
 }
 
 function parseDiff(rawDiff: string): FileDiff[] {
@@ -41,7 +42,7 @@ function parseDiff(rawDiff: string): FileDiff[] {
   for (const line of lines) {
     if (line.startsWith('diff --git')) {
       if (currentFile) files.push(currentFile);
-      currentFile = { path: '', hunks: [] };
+      currentFile = { path: '', hunks: [], lineCount: 0 };
       currentHunk = null;
     } else if (line.startsWith('+++ b/')) {
       if (currentFile) currentFile.path = line.slice(6);
@@ -55,13 +56,16 @@ function parseDiff(rawDiff: string): FileDiff[] {
       }
       currentHunk = { header: line, lines: [] };
       if (currentFile) currentFile.hunks.push(currentHunk);
-    } else if (currentHunk) {
+    } else if (currentHunk && currentFile) {
       if (line.startsWith('+')) {
         currentHunk.lines.push({ type: 'add', content: line.slice(1), newLineNo: newLine++ });
+        currentFile.lineCount++;
       } else if (line.startsWith('-')) {
         currentHunk.lines.push({ type: 'remove', content: line.slice(1), oldLineNo: oldLine++ });
+        currentFile.lineCount++;
       } else if (line.startsWith(' ')) {
         currentHunk.lines.push({ type: 'context', content: line.slice(1), oldLineNo: oldLine++, newLineNo: newLine++ });
+        currentFile.lineCount++;
       }
     }
   }
@@ -70,35 +74,148 @@ function parseDiff(rawDiff: string): FileDiff[] {
   return files;
 }
 
+/** Renders a single file's diff, lazy-mounted via IntersectionObserver */
+function LazyFileDiff({
+  file,
+  commentsByFileLine,
+  repliesByParent,
+  commentFormLine,
+  setCommentFormLine,
+  onAddComment,
+  handleAddComment,
+  onReplyComment,
+  onResolveComment,
+}: {
+  file: FileDiff;
+  commentsByFileLine: Map<string, Comment[]>;
+  repliesByParent: Map<string, Comment[]>;
+  commentFormLine: { file: string; line: number } | null;
+  setCommentFormLine: (v: { file: string; line: number } | null) => void;
+  onAddComment?: DiffViewerProps['onAddComment'];
+  handleAddComment: (filePath: string, lineNo: number, body: string, severity: string) => void;
+  onReplyComment?: DiffViewerProps['onReplyComment'];
+  onResolveComment?: DiffViewerProps['onResolveComment'];
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(true);
+      },
+      // Mount content when within 500px of viewport
+      { rootMargin: '500px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Estimate height for placeholder: ~20px per diff line + headers
+  const estimatedHeight = file.lineCount * 20 + file.hunks.length * 28;
+
+  return (
+    <div ref={ref}>
+      {visible ? (
+        <div className="font-mono text-sm">
+          {file.hunks.map((hunk, hunkIdx) => (
+            <div key={hunkIdx}>
+              <div className="px-4 py-1 text-xs opacity-50" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
+                {hunk.header}
+              </div>
+              {hunk.lines.map((line, lineIdx) => {
+                const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
+                const isFormOpen = commentFormLine?.file === file.path && commentFormLine?.line === lineNo;
+                const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
+
+                return (
+                  <div key={lineIdx}>
+                    <div
+                      className="diff-line px-4 py-0 flex relative"
+                      style={{
+                        backgroundColor:
+                          line.type === 'add' ? 'rgba(46, 160, 67, 0.15)' :
+                          line.type === 'remove' ? 'rgba(248, 81, 73, 0.15)' :
+                          'transparent',
+                      }}
+                    >
+                      {onAddComment && !isFormOpen && (
+                        <button
+                          className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-white text-xs rounded opacity-0"
+                          style={{ backgroundColor: 'var(--color-accent)', transform: 'translateX(-2px)' }}
+                          onClick={() => setCommentFormLine({ file: file.path, line: lineNo })}
+                          title="Add comment"
+                        >
+                          +
+                        </button>
+                      )}
+                      <span className="w-12 text-right pr-2 select-none opacity-40 shrink-0">
+                        {line.oldLineNo ?? ''}
+                      </span>
+                      <span className="w-12 text-right pr-2 select-none opacity-40 shrink-0">
+                        {line.newLineNo ?? ''}
+                      </span>
+                      <span className="w-4 select-none shrink-0" style={{
+                        color: line.type === 'add' ? 'var(--color-success)' :
+                               line.type === 'remove' ? 'var(--color-danger)' : 'transparent'
+                      }}>
+                        {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+                      </span>
+                      <span className="whitespace-pre">{line.content}</span>
+                    </div>
+
+                    {isFormOpen && onAddComment && (
+                      <div className="mx-4 my-1">
+                        <CommentForm
+                          onSubmit={({ body, severity }) => {
+                            handleAddComment(file.path, lineNo, body, severity || 'suggestion');
+                          }}
+                          onCancel={() => setCommentFormLine(null)}
+                        />
+                      </div>
+                    )}
+
+                    {lineComments.map((comment) => (
+                      <CommentThread
+                        key={comment.id}
+                        comment={comment}
+                        replies={repliesByParent.get(comment.id) || []}
+                        onReply={onReplyComment || (() => {})}
+                        onResolve={onResolveComment || (() => {})}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ) : (
+        // Placeholder with estimated height to preserve scroll position
+        <div style={{ height: estimatedHeight }} className="opacity-30 flex items-center justify-center text-sm">
+          {file.lineCount} lines
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComment, onReplyComment, onResolveComment }: DiffViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [commentFormLine, setCommentFormLine] = useState<{ file: string; line: number } | null>(null);
 
-  // Memoize expensive diff parsing -- only re-parse when diff string changes
+  // Memoize expensive diff parsing
   const parsedFiles = useMemo(() => parseDiff(diff), [diff]);
 
-  // Build a map for quick file lookup
-  const fileMap = useMemo(() => {
-    const map = new Map<string, FileDiff>();
-    for (const file of parsedFiles) {
-      map.set(file.path, file);
-    }
-    return map;
-  }, [parsedFiles]);
-
-  // Determine which files to render: selected file only, or all if none selected
-  const visibleFiles = useMemo(() => {
-    if (selectedFile && fileMap.has(selectedFile)) {
-      return [fileMap.get(selectedFile)!];
-    }
-    // No file selected -- show first file as default, or all if few files
-    if (parsedFiles.length <= 5) return parsedFiles;
-    return parsedFiles.length > 0 ? [parsedFiles[0]] : [];
-  }, [selectedFile, fileMap, parsedFiles]);
-
-  // Scroll to top when selected file changes
+  // Scroll to selected file when it changes
   useEffect(() => {
-    containerRef.current?.scrollTo({ top: 0 });
+    if (selectedFile && fileRefs.current[selectedFile]) {
+      fileRefs.current[selectedFile]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, [selectedFile]);
 
   // Memoize comment grouping
@@ -137,94 +254,30 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
 
   return (
     <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
-      {visibleFiles.map((file) => (
+      {parsedFiles.map((file) => (
         <div
           key={file.path}
+          ref={(el) => { fileRefs.current[file.path] = el; }}
           className="mb-6 border rounded overflow-hidden"
           style={{ borderColor: 'var(--color-border)' }}
         >
           <div
-            className="px-4 py-2 text-sm font-mono font-medium border-b"
+            className="px-4 py-2 text-sm font-mono font-medium border-b sticky top-0 z-10"
             style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}
           >
             {file.path}
           </div>
-          <div className="font-mono text-sm">
-            {file.hunks.map((hunk, hunkIdx) => (
-              <div key={hunkIdx}>
-                <div className="px-4 py-1 text-xs opacity-50" style={{ backgroundColor: 'var(--color-bg-secondary)' }}>
-                  {hunk.header}
-                </div>
-                {hunk.lines.map((line, lineIdx) => {
-                  const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
-                  const isFormOpen = commentFormLine?.file === file.path && commentFormLine?.line === lineNo;
-                  const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
-
-                  return (
-                    <div key={lineIdx}>
-                      <div
-                        className="diff-line px-4 py-0 flex relative"
-                        style={{
-                          backgroundColor:
-                            line.type === 'add' ? 'rgba(46, 160, 67, 0.15)' :
-                            line.type === 'remove' ? 'rgba(248, 81, 73, 0.15)' :
-                            'transparent',
-                        }}
-                      >
-                        {/* Add comment button -- shown via CSS :hover */}
-                        {onAddComment && !isFormOpen && (
-                          <button
-                            className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-white text-xs rounded opacity-0"
-                            style={{ backgroundColor: 'var(--color-accent)', transform: 'translateX(-2px)' }}
-                            onClick={() => setCommentFormLine({ file: file.path, line: lineNo })}
-                            title="Add comment"
-                          >
-                            +
-                          </button>
-                        )}
-                        <span className="w-12 text-right pr-2 select-none opacity-40 shrink-0">
-                          {line.oldLineNo ?? ''}
-                        </span>
-                        <span className="w-12 text-right pr-2 select-none opacity-40 shrink-0">
-                          {line.newLineNo ?? ''}
-                        </span>
-                        <span className="w-4 select-none shrink-0" style={{
-                          color: line.type === 'add' ? 'var(--color-success)' :
-                                 line.type === 'remove' ? 'var(--color-danger)' : 'transparent'
-                        }}>
-                          {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
-                        </span>
-                        <span className="whitespace-pre">{line.content}</span>
-                      </div>
-
-                      {/* Inline comment form */}
-                      {isFormOpen && onAddComment && (
-                        <div className="mx-4 my-1">
-                          <CommentForm
-                            onSubmit={({ body, severity }) => {
-                              handleAddComment(file.path, lineNo, body, severity || 'suggestion');
-                            }}
-                            onCancel={() => setCommentFormLine(null)}
-                          />
-                        </div>
-                      )}
-
-                      {/* Existing comment threads for this line */}
-                      {lineComments.map((comment) => (
-                        <CommentThread
-                          key={comment.id}
-                          comment={comment}
-                          replies={repliesByParent.get(comment.id) || []}
-                          onReply={onReplyComment || (() => {})}
-                          onResolve={onResolveComment || (() => {})}
-                        />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
+          <LazyFileDiff
+            file={file}
+            commentsByFileLine={commentsByFileLine}
+            repliesByParent={repliesByParent}
+            commentFormLine={commentFormLine}
+            setCommentFormLine={setCommentFormLine}
+            onAddComment={onAddComment}
+            handleAddComment={handleAddComment}
+            onReplyComment={onReplyComment}
+            onResolveComment={onResolveComment}
+          />
         </div>
       ))}
     </div>
