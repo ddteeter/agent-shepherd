@@ -36,3 +36,8 @@
   --color-diff-remove-line: #f85149;
   --color-diff-hunk-bg: #121d2f;
 }
+
+/* Diff line hover -- show comment button via CSS instead of React state */
+.diff-line:hover .diff-line-btn {
+  opacity: 1;
+}

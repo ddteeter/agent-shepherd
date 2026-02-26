@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { CommentForm } from './CommentForm.js';
 import { CommentThread } from './CommentThread.js';
 import type { Comment } from './CommentThread.js';
@@ -71,33 +71,61 @@ function parseDiff(rawDiff: string): FileDiff[] {
 }
 
 export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComment, onReplyComment, onResolveComment }: DiffViewerProps) {
-  const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const parsedFiles = parseDiff(diff);
-  const [hoveredLine, setHoveredLine] = useState<{ file: string; line: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [commentFormLine, setCommentFormLine] = useState<{ file: string; line: number } | null>(null);
 
-  useEffect(() => {
-    if (selectedFile && fileRefs.current[selectedFile]) {
-      fileRefs.current[selectedFile]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Memoize expensive diff parsing -- only re-parse when diff string changes
+  const parsedFiles = useMemo(() => parseDiff(diff), [diff]);
+
+  // Build a map for quick file lookup
+  const fileMap = useMemo(() => {
+    const map = new Map<string, FileDiff>();
+    for (const file of parsedFiles) {
+      map.set(file.path, file);
     }
+    return map;
+  }, [parsedFiles]);
+
+  // Determine which files to render: selected file only, or all if none selected
+  const visibleFiles = useMemo(() => {
+    if (selectedFile && fileMap.has(selectedFile)) {
+      return [fileMap.get(selectedFile)!];
+    }
+    // No file selected -- show first file as default, or all if few files
+    if (parsedFiles.length <= 5) return parsedFiles;
+    return parsedFiles.length > 0 ? [parsedFiles[0]] : [];
+  }, [selectedFile, fileMap, parsedFiles]);
+
+  // Scroll to top when selected file changes
+  useEffect(() => {
+    containerRef.current?.scrollTo({ top: 0 });
   }, [selectedFile]);
 
-  // Group comments by file and line (top-level comments only, keyed by newLineNo or startLine)
-  const commentsByFileLine = new Map<string, Comment[]>();
-  const repliesByParent = new Map<string, Comment[]>();
+  // Memoize comment grouping
+  const { commentsByFileLine, repliesByParent } = useMemo(() => {
+    const byFileLine = new Map<string, Comment[]>();
+    const byParent = new Map<string, Comment[]>();
 
-  for (const comment of comments) {
-    if (comment.parentCommentId) {
-      const existing = repliesByParent.get(comment.parentCommentId) || [];
-      existing.push(comment);
-      repliesByParent.set(comment.parentCommentId, existing);
-    } else {
-      const key = `${comment.filePath}:${comment.startLine}`;
-      const existing = commentsByFileLine.get(key) || [];
-      existing.push(comment);
-      commentsByFileLine.set(key, existing);
+    for (const comment of comments) {
+      if (comment.parentCommentId) {
+        const existing = byParent.get(comment.parentCommentId) || [];
+        existing.push(comment);
+        byParent.set(comment.parentCommentId, existing);
+      } else {
+        const key = `${comment.filePath}:${comment.startLine}`;
+        const existing = byFileLine.get(key) || [];
+        existing.push(comment);
+        byFileLine.set(key, existing);
+      }
     }
-  }
+
+    return { commentsByFileLine: byFileLine, repliesByParent: byParent };
+  }, [comments]);
+
+  const handleAddComment = useCallback((filePath: string, lineNo: number, body: string, severity: string) => {
+    onAddComment?.({ filePath, line: lineNo, body, severity });
+    setCommentFormLine(null);
+  }, [onAddComment]);
 
   if (parsedFiles.length === 0) {
     return (
@@ -108,11 +136,10 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
-      {parsedFiles.map((file) => (
+    <div ref={containerRef} className="flex-1 overflow-y-auto p-4">
+      {visibleFiles.map((file) => (
         <div
           key={file.path}
-          ref={(el) => { fileRefs.current[file.path] = el; }}
           className="mb-6 border rounded overflow-hidden"
           style={{ borderColor: 'var(--color-border)' }}
         >
@@ -130,27 +157,24 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
                 </div>
                 {hunk.lines.map((line, lineIdx) => {
                   const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
-                  const isHovered = hoveredLine?.file === file.path && hoveredLine?.line === lineNo;
                   const isFormOpen = commentFormLine?.file === file.path && commentFormLine?.line === lineNo;
                   const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
 
                   return (
                     <div key={lineIdx}>
                       <div
-                        className="px-4 py-0 flex relative group"
+                        className="diff-line px-4 py-0 flex relative"
                         style={{
                           backgroundColor:
                             line.type === 'add' ? 'rgba(46, 160, 67, 0.15)' :
                             line.type === 'remove' ? 'rgba(248, 81, 73, 0.15)' :
                             'transparent',
                         }}
-                        onMouseEnter={() => setHoveredLine({ file: file.path, line: lineNo })}
-                        onMouseLeave={() => setHoveredLine(null)}
                       >
-                        {/* Add comment button on hover */}
-                        {onAddComment && isHovered && !isFormOpen && (
+                        {/* Add comment button -- shown via CSS :hover */}
+                        {onAddComment && !isFormOpen && (
                           <button
-                            className="absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-white text-xs rounded"
+                            className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-white text-xs rounded opacity-0"
                             style={{ backgroundColor: 'var(--color-accent)', transform: 'translateX(-2px)' }}
                             onClick={() => setCommentFormLine({ file: file.path, line: lineNo })}
                             title="Add comment"
@@ -178,8 +202,7 @@ export function DiffViewer({ diff, files, selectedFile, comments = [], onAddComm
                         <div className="mx-4 my-1">
                           <CommentForm
                             onSubmit={({ body, severity }) => {
-                              onAddComment({ filePath: file.path, line: lineNo, body, severity: severity || 'suggestion' });
-                              setCommentFormLine(null);
+                              handleAddComment(file.path, lineNo, body, severity || 'suggestion');
                             }}
                             onCancel={() => setCommentFormLine(null)}
                           />
