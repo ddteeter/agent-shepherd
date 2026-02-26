@@ -127,7 +127,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   // POST /api/prs/:id/review — Submit review (approve or request-changes)
   fastify.post('/api/prs/:id/review', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action } = request.body as { action: 'approve' | 'request-changes' };
+    const { action, clearSession } = request.body as { action: 'approve' | 'request-changes'; clearSession?: boolean };
 
     const pr = db
       .select()
@@ -177,6 +177,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         db.update(schema.reviewCycles)
           .set({ status: 'changes_requested', reviewedAt: now })
           .where(eq(schema.reviewCycles.id, latestCycle.id))
+          .run();
+      }
+
+      // Clear agent session ID if reviewer wants a fresh session
+      if (clearSession) {
+        db.update(schema.pullRequests)
+          .set({ agentSessionId: null, updatedAt: now })
+          .where(eq(schema.pullRequests.id, id))
           .run();
       }
 
