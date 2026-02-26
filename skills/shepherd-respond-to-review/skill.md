@@ -181,4 +181,4 @@ Confirm the PR shows the next cycle number and the status reflects that it is aw
 2. **Not replying to every comment.** The reviewer expects a response on each comment. Silence is ambiguous -- it is unclear whether you missed the comment or chose to ignore it.
 3. **Pushing back without concrete reasoning.** "I think the current approach is fine" is not a pushback. "The current approach avoids an extra database query per request, which matters because this endpoint handles 1000+ req/s" is a pushback.
 4. **Making large unrelated changes.** This makes re-review harder. Stick to what was requested.
-5. **Forgetting to call `shepherd ready`.** Without this signal, the reviewer is not notified that you are done. The PR will sit in `pending_agent` status indefinitely.
+5. **Forgetting to call `shepherd ready`.** Without this signal, the reviewer is not notified that you are done. The PR will sit in `agent_working` status indefinitely.
