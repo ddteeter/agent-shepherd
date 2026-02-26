@@ -14,22 +14,19 @@
   "dependencies": {
     "@agent-shepherd/shared": "*",
     "@fastify/cors": "^11.2.0",
-    "@fastify/static": "^9.0.0",
     "@fastify/websocket": "^11.2.0",
     "better-sqlite3": "^12.6.2",
     "drizzle-orm": "^0.45.1",
     "fastify": "^5.7.4",
     "js-yaml": "^4.1.1",
     "node-notifier": "^10.0.1",
-    "simple-git": "^3.32.2",
-    "uuid": "^13.0.0"
+    "simple-git": "^3.32.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.3.0",
     "@types/node-notifier": "^8.0.5",
-    "@types/uuid": "^10.0.0",
     "drizzle-kit": "^0.31.9",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

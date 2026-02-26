@@ -11,6 +11,8 @@ export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
 
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const connect = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
@@ -19,7 +21,7 @@ export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
     ws.onclose = () => {
       setConnected(false);
       // Auto-reconnect after 3 seconds
-      setTimeout(connect, 3000);
+      reconnectTimer.current = setTimeout(connect, 3000);
     };
     ws.onmessage = (event) => {
       try {
@@ -36,6 +38,7 @@ export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
   useEffect(() => {
     connect();
     return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };
   }, [connect]);

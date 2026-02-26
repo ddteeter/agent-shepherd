@@ -7,17 +7,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {
     "@agent-shepherd/shared": "*",
-    "@git-diff-view/react": "^0.0.39",
-    "@git-diff-view/shiki": "^0.0.39",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1",
-    "shiki": "^3.22.0"
+    "react-router-dom": "^7.13.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",

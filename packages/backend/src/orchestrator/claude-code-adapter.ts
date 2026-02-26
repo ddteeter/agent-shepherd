@@ -23,6 +23,18 @@ export class ClaudeCodeAdapter implements AgentAdapter {
   private wrapProcess(proc: ChildProcess): AgentSession {
     let completeCallback: (() => void) | null = null;
     let errorCallback: ((error: Error) => void) | null = null;
+    let sessionId = proc.pid?.toString() || 'unknown';
+    let stdout = '';
+
+    // Capture stdout to extract the Claude session ID for resume mode.
+    // Claude Code outputs a session ID line like: "Session ID: <uuid>"
+    proc.stdout?.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString();
+      const match = stdout.match(/Session ID:\s*(\S+)/i);
+      if (match) {
+        sessionId = match[1];
+      }
+    });
 
     proc.on('exit', (code) => {
       if (code === 0) {
@@ -37,7 +49,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     });
 
     return {
-      id: proc.pid?.toString() || 'unknown',
+      get id() { return sessionId; },
       onComplete(cb) { completeCallback = cb; },
       onError(cb) { errorCallback = cb; },
       async kill() { proc.kill('SIGTERM'); },
