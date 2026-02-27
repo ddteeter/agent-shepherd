@@ -8,7 +8,7 @@ describe('Comments API', () => {
   let prId: string;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
     const proj = await server.inject({
       method: 'POST',
       url: '/api/projects',

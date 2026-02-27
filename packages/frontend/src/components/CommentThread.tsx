@@ -3,9 +3,9 @@ import { CommentForm } from './CommentForm.js';
 
 interface Comment {
   id: string;
-  filePath: string;
-  startLine: number;
-  endLine: number;
+  filePath: string | null;
+  startLine: number | null;
+  endLine: number | null;
   body: string;
   severity: string;
   author: string;
@@ -19,6 +19,9 @@ interface CommentThreadProps {
   replies: Comment[];
   onReply: (commentId: string, body: string) => void;
   onResolve: (commentId: string) => void;
+  onEdit?: (commentId: string, body: string) => void;
+  onDelete?: (commentId: string) => void;
+  canEdit?: boolean;
 }
 
 const severityColors: Record<string, string> = {
@@ -29,8 +32,12 @@ const severityColors: Record<string, string> = {
 
 export type { Comment };
 
-export function CommentThread({ comment, replies, onReply, onResolve }: CommentThreadProps) {
+export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false }: CommentThreadProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const isEditable = (c: Comment) => canEdit && c.author === 'human' && onEdit;
+  const isDeletable = (c: Comment) => canEdit && c.author === 'human' && onDelete;
 
   return (
     <div className="my-2 mx-4 border rounded text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
@@ -49,11 +56,42 @@ export function CommentThread({ comment, replies, onReply, onResolve }: CommentT
           }}>
             {comment.severity}
           </span>
+          {comment.filePath == null ? (
+            <span className="text-xs px-1.5 py-0.5 rounded font-mono" style={{
+              backgroundColor: 'rgba(130, 80, 223, 0.15)',
+              color: '#8250df',
+            }}>
+              PR
+            </span>
+          ) : comment.startLine == null ? (
+            <span className="text-xs px-1.5 py-0.5 rounded font-mono" style={{
+              backgroundColor: 'rgba(9, 105, 218, 0.15)',
+              color: 'var(--color-accent)',
+            }}>
+              File
+            </span>
+          ) : comment.startLine !== comment.endLine ? (
+            <span className="text-xs opacity-50 font-mono">
+              L{comment.startLine}–L{comment.endLine}
+            </span>
+          ) : null}
           {comment.resolved && (
             <span className="text-xs opacity-50">Resolved</span>
           )}
         </div>
-        <p className="whitespace-pre-wrap">{comment.body}</p>
+        {editingId === comment.id ? (
+          <CommentForm
+            isEditing
+            initialBody={comment.body}
+            onSubmit={({ body }) => {
+              onEdit!(comment.id, body);
+              setEditingId(null);
+            }}
+            onCancel={() => setEditingId(null)}
+          />
+        ) : (
+          <p className="whitespace-pre-wrap">{comment.body}</p>
+        )}
       </div>
 
       {/* Replies */}
@@ -66,8 +104,37 @@ export function CommentThread({ comment, replies, onReply, onResolve }: CommentT
             }}>
               {reply.author}
             </span>
+            {isEditable(reply) && editingId !== reply.id && (
+              <button
+                onClick={() => setEditingId(reply.id)}
+                className="text-xs opacity-50 hover:opacity-100"
+              >
+                Edit
+              </button>
+            )}
+            {isDeletable(reply) && (
+              <button
+                onClick={() => onDelete!(reply.id)}
+                className="text-xs opacity-50 hover:opacity-100"
+                style={{ color: 'var(--color-danger)' }}
+              >
+                Delete
+              </button>
+            )}
           </div>
-          <p className="whitespace-pre-wrap">{reply.body}</p>
+          {editingId === reply.id ? (
+            <CommentForm
+              isEditing
+              initialBody={reply.body}
+              onSubmit={({ body }) => {
+                onEdit!(reply.id, body);
+                setEditingId(null);
+              }}
+              onCancel={() => setEditingId(null)}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap">{reply.body}</p>
+          )}
         </div>
       ))}
 
@@ -79,12 +146,28 @@ export function CommentThread({ comment, replies, onReply, onResolve }: CommentT
         >
           Reply
         </button>
+        {isEditable(comment) && editingId !== comment.id && (
+          <button
+            onClick={() => setEditingId(comment.id)}
+            className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
+          >
+            Edit
+          </button>
+        )}
         {!comment.resolved && (
           <button
             onClick={() => onResolve(comment.id)}
             className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
           >
             Resolve
+          </button>
+        )}
+        {isDeletable(comment) && (
+          <button
+            onClick={() => onDelete!(comment.id)}
+            className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }}
+          >
+            Delete
           </button>
         )}
       </div>

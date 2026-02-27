@@ -35,9 +35,9 @@ export const reviewCycles = sqliteTable('review_cycles', {
 export const comments = sqliteTable('comments', {
   id: text('id').primaryKey(),
   reviewCycleId: text('review_cycle_id').notNull().references(() => reviewCycles.id),
-  filePath: text('file_path').notNull(),
-  startLine: integer('start_line').notNull(),
-  endLine: integer('end_line').notNull(),
+  filePath: text('file_path'),
+  startLine: integer('start_line'),
+  endLine: integer('end_line'),
   body: text('body').notNull(),
   severity: text('severity').notNull().default('suggestion'),
   author: text('author').notNull(),

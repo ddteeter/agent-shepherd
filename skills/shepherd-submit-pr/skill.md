@@ -1,3 +1,8 @@
+---
+name: shepherd-submit-pr
+description: Use when submitting a PR for human review through Agent Shepherd. Guides commit preparation, context file creation, and the agent-agent-shepherd submit workflow.
+---
+
 # Skill: Submit a PR via Agent Shepherd
 
 ## When to Use
@@ -7,7 +12,7 @@ Use this skill after you have finished implementing a feature or completing a ta
 ## Prerequisites
 
 - The Agent Shepherd backend must be running (default: `http://localhost:3847`)
-- The project must already be registered with `shepherd init <path>`
+- The project must already be registered with `agent-shepherd init <path>`
 - You must know the project ID (check with the backend API or your session context)
 
 ## Step-by-Step Workflow
@@ -63,7 +68,7 @@ See the `shepherd-context-guidelines` skill for detailed guidance on what to inc
 ### 3. Submit the PR
 
 ```bash
-shepherd submit \
+agent-shepherd submit \
   --project <project-id> \
   --title "Add user authentication flow" \
   --description "Implements login, logout, and session management with JWT tokens." \
@@ -89,7 +94,7 @@ The command outputs the PR ID, title, and status on success. Save the PR ID -- y
 After submitting, verify the PR was created:
 
 ```bash
-shepherd status <pr-id>
+agent-shepherd status <pr-id>
 ```
 
 This shows the PR title, status (`open`), branch info, and current review cycle.

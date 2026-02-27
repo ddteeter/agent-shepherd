@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createHighlighter, type Highlighter, type ThemedToken, bundledThemes } from 'shiki';
 
 /** Map file extensions to shiki language IDs */
@@ -133,6 +133,7 @@ export function useHighlighter(filePaths: string[]) {
   const [ready, setReady] = useState(false);
   const [syntaxTheme, setSyntaxThemeState] = useState(getStoredSyntaxTheme);
   const loadedThemes = useRef(new Set<string>());
+  const tokenCache = useRef(new Map<string, TokenizedLine | null>());
 
   // Initialize highlighter with the current theme
   useEffect(() => {
@@ -162,6 +163,7 @@ export function useHighlighter(filePaths: string[]) {
 
   // Load a new theme into the existing highlighter when syntaxTheme changes
   useEffect(() => {
+    tokenCache.current.clear();
     if (!highlighter || loadedThemes.current.has(syntaxTheme)) return;
 
     highlighter.loadTheme(syntaxTheme as any).then(() => {
@@ -194,26 +196,22 @@ export function useHighlighter(filePaths: string[]) {
     }
   }, []);
 
-  /** Tokenize a single line of code */
+  /** Tokenize a single line of code (cached) */
   const tokenizeLine = useCallback((code: string, lang: string, _theme?: string): TokenizedLine | null => {
     if (!highlighter || !loadedThemes.current.has(syntaxTheme)) return null;
+    const cacheKey = `${syntaxTheme}\0${lang}\0${code}`;
+    const cached = tokenCache.current.get(cacheKey);
+    if (cached !== undefined) return cached;
     try {
       const result = highlighter.codeToTokens(code, { lang: lang as any, theme: syntaxTheme as any });
-      return result.tokens[0] || [];
+      const tokens = result.tokens[0] || [];
+      tokenCache.current.set(cacheKey, tokens);
+      return tokens;
     } catch {
+      tokenCache.current.set(cacheKey, null);
       return null;
     }
   }, [highlighter, syntaxTheme]);
 
-  /** Get the theme's background and foreground colors so the diff area can match */
-  const { themeBg, themeFg } = useMemo(() => {
-    if (!highlighter || !loadedThemes.current.has(syntaxTheme)) return { themeBg: undefined, themeFg: undefined };
-    try {
-      const t = highlighter.getTheme(syntaxTheme as any);
-      return { themeBg: t.bg, themeFg: t.fg };
-    }
-    catch { return { themeBg: undefined, themeFg: undefined }; }
-  }, [highlighter, syntaxTheme, ready]);
-
-  return { ready, tokenizeLine, syntaxTheme, setSyntaxTheme, themeBg, themeFg };
+  return { ready, tokenizeLine, syntaxTheme, setSyntaxTheme };
 }

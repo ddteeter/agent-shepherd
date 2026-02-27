@@ -5,6 +5,6 @@ export default {
   out: './drizzle',
   dialect: 'sqlite',
   dbCredentials: {
-    url: './shepherd.db',
+    url: './agent-shepherd.db',
   },
 } satisfies Config;

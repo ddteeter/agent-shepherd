@@ -4,6 +4,8 @@ import { api } from '../api.js';
 import { FileTree } from '../components/FileTree.js';
 import { DiffViewer } from '../components/DiffViewer.js';
 import { ReviewBar } from '../components/ReviewBar.js';
+import { AgentActivityPanel } from '../components/AgentActivityPanel.js';
+import type { ActivityEntry } from '../components/AgentActivityPanel.js';
 import type { Comment } from '../components/CommentThread.js';
 import type { FileStatus } from '../components/DiffViewer.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
@@ -33,6 +35,7 @@ export function PRReview() {
   const [diffLoading, setDiffLoading] = useState(false);
   const [globalCommentForm, setGlobalCommentForm] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
+  const [agentActivity, setAgentActivity] = useState<ActivityEntry[]>([]);
 
   const { connected } = useWebSocket((msg) => {
     if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
@@ -46,7 +49,13 @@ export function PRReview() {
     }
     if (msg.event === 'agent:working' || msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
       setAgentError(null);
+      if (msg.event === 'agent:working') {
+        setAgentActivity([]);
+      }
       fetchCycles();
+    }
+    if (msg.event === 'agent:output' && msg.data?.prId === prId && msg.data?.entry) {
+      setAgentActivity((prev) => [...prev.slice(-49), msg.data.entry]);
     }
     if (msg.event === 'agent:error') {
       setAgentError(msg.data?.error || 'Unknown error');
@@ -354,6 +363,9 @@ export function PRReview() {
               Agent error{agentError ? `: ${agentError}` : ''}
             </span>
           </div>
+        )}
+        {(agentWorking || agentActivity.length > 0) && (
+          <AgentActivityPanel entries={agentActivity} />
         )}
       </div>
 

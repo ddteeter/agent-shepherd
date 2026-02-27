@@ -1,8 +1,25 @@
+import { readFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import { eq } from 'drizzle-orm';
 import type { AgentAdapter, AgentSession } from './types.js';
 import { ClaudeCodeAdapter } from './claude-code-adapter.js';
 import { buildReviewPrompt } from './prompt-builder.js';
 import { NotificationService } from '../services/notifications.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function loadSkillContent(): string | undefined {
+  try {
+    // Navigate from packages/backend/src/orchestrator/ to repo root
+    const skillPath = resolve(__dirname, '../../../../skills/shepherd-respond-to-review/skill.md');
+    const content = readFileSync(skillPath, 'utf-8');
+    // Strip YAML frontmatter
+    return content.replace(/^---[\s\S]*?---\n*/, '').trim();
+  } catch {
+    return undefined;
+  }
+}
 
 export { buildReviewPrompt } from './prompt-builder.js';
 export { ClaudeCodeAdapter } from './claude-code-adapter.js';
@@ -74,6 +91,7 @@ export class Orchestrator {
       prTitle: pr.title,
       agentContext: pr.agentContext,
       comments: reviewComments,
+      skillContent: loadSkillContent(),
     });
 
     // Persist agent_working status
@@ -89,6 +107,10 @@ export class Orchestrator {
         : await this.adapter.startSession({ projectPath: project.path, prompt });
 
       this.activeSessions.set(prId, session);
+
+      session.onOutput((entry) => {
+        this.broadcast?.('agent:output', { prId, entry });
+      });
 
       session.onComplete(() => {
         this.activeSessions.delete(prId);

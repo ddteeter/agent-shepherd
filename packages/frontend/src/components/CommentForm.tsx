@@ -4,18 +4,20 @@ interface CommentFormProps {
   onSubmit: (data: { body: string; severity?: string }) => void;
   onCancel: () => void;
   isReply?: boolean;
+  isEditing?: boolean;
+  initialBody?: string;
   defaultSeverity?: string;
 }
 
-export function CommentForm({ onSubmit, onCancel, isReply = false, defaultSeverity = 'suggestion' }: CommentFormProps) {
-  const [body, setBody] = useState('');
+export function CommentForm({ onSubmit, onCancel, isReply = false, isEditing = false, initialBody = '', defaultSeverity = 'suggestion' }: CommentFormProps) {
+  const [body, setBody] = useState(initialBody);
   const [severity, setSeverity] = useState(defaultSeverity);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!body.trim()) return;
-    onSubmit({ body, severity: isReply ? undefined : severity });
-    setBody('');
+    onSubmit({ body, severity: isReply || isEditing ? undefined : severity });
+    if (!isEditing) setBody('');
   };
 
   return (
@@ -28,7 +30,7 @@ export function CommentForm({ onSubmit, onCancel, isReply = false, defaultSeveri
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
         autoFocus
       />
-      {!isReply && (
+      {!isReply && !isEditing && (
         <div className="mt-2">
           <label className="text-xs font-medium mr-2">Severity:</label>
           <select
@@ -45,7 +47,7 @@ export function CommentForm({ onSubmit, onCancel, isReply = false, defaultSeveri
       )}
       <div className="mt-2 flex gap-2">
         <button type="submit" className="px-3 py-1 text-sm rounded text-white" style={{ backgroundColor: 'var(--color-accent)' }}>
-          {isReply ? 'Reply' : 'Add Comment'}
+          {isEditing ? 'Save' : isReply ? 'Reply' : 'Add Comment'}
         </button>
         <button type="button" onClick={onCancel} className="px-3 py-1 text-sm rounded border" style={{ borderColor: 'var(--color-border)' }}>
           Cancel

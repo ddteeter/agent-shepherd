@@ -6,6 +6,7 @@ import { tmpdir } from 'os';
 import { execSync } from 'child_process';
 import type { FastifyInstance } from 'fastify';
 
+
 /**
  * Helper: create a temporary git repository with an initial commit on main
  * and a feature branch with changes for diff testing.
@@ -42,7 +43,7 @@ describe('E2E: Full PR Review Workflow', () => {
 
   beforeEach(async () => {
     repoPath = await createTestRepo();
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
   });
 
   afterEach(async () => {
@@ -336,7 +337,7 @@ describe('E2E: Config System', () => {
 
   beforeEach(async () => {
     repoPath = await createTestRepo();
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
   });
 
   afterEach(async () => {
@@ -394,7 +395,7 @@ describe('E2E: Config System', () => {
 
     // Get project config and verify project DB keys are present
     // Note: getMergedProjectConfig merges global file + project file + project DB.
-    // Since there's no global config file or .shepherd.yml in the test repo,
+    // Since there's no global config file or .agent-shepherd.yml in the test repo,
     // only project DB config will appear.
     const getProjRes = await server.inject({
       method: 'GET',
@@ -427,9 +428,9 @@ describe('E2E: Config System', () => {
     expect(projConfigAfter.json().globalOnlyKey).toBeUndefined();
 
     // Project DB config overrides project file config. To test this,
-    // create a .shepherd.yml in the repo with a key that the project DB
+    // create a .agent-shepherd.yml in the repo with a key that the project DB
     // will override.
-    await writeFile(join(repoPath, '.shepherd.yml'), 'reviewModel: file-model\nfileOnlyKey: from-file\n');
+    await writeFile(join(repoPath, '.agent-shepherd.yml'), 'reviewModel: file-model\nfileOnlyKey: from-file\n');
 
     const projConfigWithFile = await server.inject({
       method: 'GET',
@@ -472,7 +473,7 @@ describe('E2E: Multiple Review Cycles', () => {
 
   beforeEach(async () => {
     repoPath = await createTestRepo();
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
   });
 
   afterEach(async () => {

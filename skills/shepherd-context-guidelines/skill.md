@@ -1,8 +1,13 @@
+---
+name: shepherd-context-guidelines
+description: Use when preparing a context file for agent-shepherd submit. Guides structured context creation for PR submissions including architectural decisions, trade-offs, and notes for future sessions.
+---
+
 # Skill: PR Context Guidelines for Agent Shepherd
 
 ## When to Use
 
-Use this skill whenever you are preparing a context file for `shepherd submit --context-file`. The context you attach to a PR serves two purposes:
+Use this skill whenever you are preparing a context file for `agent-shepherd submit --context-file`. The context you attach to a PR serves two purposes:
 
 1. **For the human reviewer:** It explains your thinking, making the review faster and more productive.
 2. **For future agent sessions:** If the review requires changes and the orchestrator starts a new session (instead of resuming), this context is injected into the prompt so the new session understands what was built and why.

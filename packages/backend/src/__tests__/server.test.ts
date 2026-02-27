@@ -6,7 +6,7 @@ describe('Server', () => {
   let server: FastifyInstance;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
   });
 
   afterEach(async () => {

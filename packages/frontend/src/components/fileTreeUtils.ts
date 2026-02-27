@@ -1,0 +1,115 @@
+export interface TreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: TreeNode[];
+}
+
+interface TrieNode {
+  children: Map<string, TrieNode>;
+  isFile: boolean;
+  fullPath: string;
+}
+
+function buildTrie(files: string[]): TrieNode {
+  const root: TrieNode = { children: new Map(), isFile: false, fullPath: '' };
+
+  for (const file of files) {
+    const segments = file.split('/');
+    let current = root;
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      if (!current.children.has(seg)) {
+        current.children.set(seg, {
+          children: new Map(),
+          isFile: false,
+          fullPath: segments.slice(0, i + 1).join('/'),
+        });
+      }
+      current = current.children.get(seg)!;
+    }
+    current.isFile = true;
+    current.fullPath = file;
+  }
+
+  return root;
+}
+
+function trieToTreeNodes(node: TrieNode): TreeNode[] {
+  const dirs: TreeNode[] = [];
+  const fileNodes: TreeNode[] = [];
+
+  for (const [name, child] of node.children) {
+    if (child.isFile && child.children.size === 0) {
+      fileNodes.push({ name, path: child.fullPath, type: 'file' });
+    } else if (child.isFile) {
+      // File that is also a prefix of other paths (unlikely but handle it)
+      fileNodes.push({ name, path: child.fullPath, type: 'file' });
+      // Children become their own nodes
+      dirs.push(...trieToTreeNodes(child));
+    } else {
+      const children = trieToTreeNodes(child);
+      dirs.push({ name, path: child.fullPath, type: 'directory', children });
+    }
+  }
+
+  dirs.sort((a, b) => a.name.localeCompare(b.name));
+  fileNodes.sort((a, b) => a.name.localeCompare(b.name));
+
+  return [...dirs, ...fileNodes];
+}
+
+function collapseSingleChildDirs(nodes: TreeNode[]): TreeNode[] {
+  return nodes.map((node) => {
+    if (node.type === 'directory' && node.children) {
+      let current = node;
+      while (
+        current.type === 'directory' &&
+        current.children &&
+        current.children.length === 1 &&
+        current.children[0].type === 'directory'
+      ) {
+        const child = current.children[0];
+        current = {
+          name: `${current.name}/${child.name}`,
+          path: child.path,
+          type: 'directory',
+          children: child.children,
+        };
+      }
+      return {
+        ...current,
+        children: current.children
+          ? collapseSingleChildDirs(current.children)
+          : undefined,
+      };
+    }
+    return node;
+  });
+}
+
+export function buildFileTree(files: string[]): TreeNode[] {
+  if (files.length === 0) return [];
+
+  const trie = buildTrie(files);
+  const tree = trieToTreeNodes(trie);
+  return collapseSingleChildDirs(tree);
+}
+
+/** Flatten tree into file paths in display order (depth-first, dirs first) */
+function flattenTree(nodes: TreeNode[]): string[] {
+  const result: string[] = [];
+  for (const node of nodes) {
+    if (node.type === 'file') {
+      result.push(node.path);
+    } else if (node.children) {
+      result.push(...flattenTree(node.children));
+    }
+  }
+  return result;
+}
+
+/** Get file paths in the same order as the file tree displays them */
+export function getFileTreeOrder(files: string[]): string[] {
+  return flattenTree(buildFileTree(files));
+}

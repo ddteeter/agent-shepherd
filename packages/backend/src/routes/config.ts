@@ -7,7 +7,7 @@ import { ConfigService } from '../services/config.js';
 
 export async function configRoutes(fastify: FastifyInstance) {
   const db = (fastify as any).db;
-  const globalConfigPath = join(homedir(), '.shepherd', 'config.yml');
+  const globalConfigPath = join(homedir(), '.agent-shepherd', 'config.yml');
   const configService = new ConfigService(db, globalConfigPath);
 
   // GET /api/config - Get merged global config (file + DB)

@@ -1,3 +1,8 @@
+---
+name: shepherd-respond-to-review
+description: Use when responding to PR review comments from Agent Shepherd. Guides severity handling, batch response format, and the agent-shepherd CLI workflow.
+---
+
 # Skill: Respond to PR Review Comments
 
 ## When to Use
@@ -64,7 +69,7 @@ git commit -m "Address review feedback: fix null check, refactor error handling"
 
 ### 3. Prepare Batch Response
 
-Write a JSON file with all your replies and any new comments. This is more efficient than individual `shepherd reply` calls.
+Write a JSON file with all your replies and any new comments. This is more efficient than individual `agent-shepherd reply` calls.
 
 Create a file (e.g., `review-response.json`):
 
@@ -98,10 +103,10 @@ The `replies` array is for responding to existing review comments. Each reply ne
 
 ### 4. Submit Replies and Signal Ready
 
-Use `shepherd ready` with the `--file` flag to submit your batch response and signal that the PR is ready for re-review in a single command:
+Use `agent-shepherd ready` with the `--file` flag to submit your batch response and signal that the PR is ready for re-review in a single command:
 
 ```bash
-shepherd ready <pr-id> --file review-response.json
+agent-shepherd ready <pr-id> --file review-response.json
 ```
 
 This does two things:
@@ -112,23 +117,23 @@ Alternatively, you can submit the batch separately and then signal ready:
 
 ```bash
 # Submit batch first
-shepherd batch <pr-id> --file review-response.json
+agent-shepherd batch <pr-id> --file review-response.json
 
 # Then signal ready
-shepherd ready <pr-id>
+agent-shepherd ready <pr-id>
 ```
 
 Or pipe JSON directly via stdin:
 
 ```bash
-echo '{"replies":[{"commentId":"abc","body":"Fixed."}]}' | shepherd batch <pr-id> --stdin
-shepherd ready <pr-id>
+echo '{"replies":[{"commentId":"abc","body":"Fixed."}]}' | agent-shepherd batch <pr-id> --stdin
+agent-shepherd ready <pr-id>
 ```
 
 ### 5. Verify Status
 
 ```bash
-shepherd status <pr-id>
+agent-shepherd status <pr-id>
 ```
 
 Confirm the PR shows the next cycle number and the status reflects that it is awaiting review.
@@ -181,4 +186,4 @@ Confirm the PR shows the next cycle number and the status reflects that it is aw
 2. **Not replying to every comment.** The reviewer expects a response on each comment. Silence is ambiguous -- it is unclear whether you missed the comment or chose to ignore it.
 3. **Pushing back without concrete reasoning.** "I think the current approach is fine" is not a pushback. "The current approach avoids an extra database query per request, which matters because this endpoint handles 1000+ req/s" is a pushback.
 4. **Making large unrelated changes.** This makes re-review harder. Stick to what was requested.
-5. **Forgetting to call `shepherd ready`.** Without this signal, the reviewer is not notified that you are done. The PR will sit in `agent_working` status indefinitely.
+5. **Forgetting to call `agent-shepherd ready`.** Without this signal, the reviewer is not notified that you are done. The PR will sit in `agent_working` status indefinitely.

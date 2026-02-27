@@ -24,7 +24,7 @@ describe('Diff API', () => {
     await writeFile(join(repoPath, 'index.ts'), 'const x = 1;\nconst y = 2;\n');
     execSync('git add . && git commit -m "add y"', { cwd: repoPath });
 
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
 
     const proj = await server.inject({
       method: 'POST',

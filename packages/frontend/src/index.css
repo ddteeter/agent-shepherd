@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root,
 [data-theme="light"] {
   --color-bg: #ffffff;
@@ -17,6 +19,19 @@
   --color-diff-remove-bg: #ffebe9;
   --color-diff-remove-line: #cf222e;
   --color-diff-hunk-bg: #ddf4ff;
+
+  /* Button colors */
+  --color-btn-approve-bg: #1a7f37;
+  --color-btn-approve-fg: #ffffff;
+  --color-btn-approve-hover: #22863a;
+  --color-btn-danger-bg: #cf222e;
+  --color-btn-danger-fg: #ffffff;
+  --color-btn-danger-hover: #a40e26;
+
+  /* List / file tree colors */
+  --color-list-hover-bg: #e8eaed;
+  --color-list-active-bg: #dbe4f0;
+  --color-list-active-fg: #1f2328;
 }
 
 [data-theme="dark"] {
@@ -35,9 +50,24 @@
   --color-diff-remove-bg: #2d1214;
   --color-diff-remove-line: #f85149;
   --color-diff-hunk-bg: #121d2f;
+
+  /* Button colors */
+  --color-btn-approve-bg: #176f2c;
+  --color-btn-approve-fg: #dcffe4;
+  --color-btn-approve-hover: #22863a;
+  --color-btn-danger-bg: #da3633;
+  --color-btn-danger-fg: #ffffff;
+  --color-btn-danger-hover: #b62324;
+
+  /* List / file tree colors */
+  --color-list-hover-bg: #1a1f2b;
+  --color-list-active-bg: #1d2d3e;
+  --color-list-active-fg: #e6edf3;
 }
 
-/* Diff line hover -- show comment button via CSS instead of React state */
-.diff-line:hover .diff-line-btn {
-  opacity: 1;
-}
+/* File tree hover state */
+.file-tree-item:hover { background-color: var(--color-list-hover-bg); }
+
+/* Review button hover states */
+.btn-approve:hover { background-color: var(--color-btn-approve-hover) !important; }
+.btn-danger:hover  { background-color: var(--color-btn-danger-hover) !important; }

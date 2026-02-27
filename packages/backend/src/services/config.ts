@@ -13,7 +13,7 @@ export class ConfigService {
   ) {}
 
   /**
-   * Read the global config file (~/.shepherd/config.yml).
+   * Read the global config file (~/.agent-shepherd/config.yml).
    * Returns empty object if the file doesn't exist or can't be parsed.
    */
   readGlobalFileConfig(): ConfigRecord {
@@ -30,12 +30,12 @@ export class ConfigService {
   }
 
   /**
-   * Read the per-project config file (.shepherd.yml in repo root).
+   * Read the per-project config file (.agent-shepherd.yml in repo root).
    * Returns empty object if the file doesn't exist or can't be parsed.
    */
   readProjectFileConfig(projectPath: string): ConfigRecord {
     try {
-      const filePath = join(projectPath, '.shepherd.yml');
+      const filePath = join(projectPath, '.agent-shepherd.yml');
       const content = readFileSync(filePath, 'utf-8');
       const parsed = yaml.load(content);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {

@@ -7,7 +7,7 @@ describe('Pull Requests API', () => {
   let projectId: string;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:' });
+    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
     const res = await server.inject({
       method: 'POST',
       url: '/api/projects',

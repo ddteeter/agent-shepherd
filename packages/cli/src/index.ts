@@ -6,12 +6,14 @@ import { submitCommand } from './commands/submit.js';
 import { batchCommand } from './commands/batch.js';
 import { readyCommand } from './commands/ready.js';
 import { statusCommand } from './commands/status.js';
+import { setupCommand } from './commands/setup.js';
+import { startCommand } from './commands/start.js';
 
 const program = new Command();
 const client = new ApiClient(process.env.SHEPHERD_URL || 'http://localhost:3847');
 
 program
-  .name('shepherd')
+  .name('agent-shepherd')
   .description('Agent Shepherd - Human-in-the-loop PR review for AI agents')
   .version('0.1.0');
 
@@ -20,5 +22,7 @@ submitCommand(program, client);
 batchCommand(program, client);
 readyCommand(program, client);
 statusCommand(program, client);
+setupCommand(program);
+startCommand(program);
 
 program.parse();
