@@ -2,35 +2,35 @@
   "comments": [],
   "replies": [
     {
-      "commentId": "7f2b1be6-62ad-4e5d-83c9-c20097930e2d",
+      "parentCommentId": "7f2b1be6-62ad-4e5d-83c9-c20097930e2d",
       "body": "Drizzle manages this. The schema is defined declaratively in `schema.ts`, then `drizzle-kit generate` produces the migration SQL in `drizzle/0000_minor_william_stryker.sql`. The `migrate()` call in `db/index.ts` applies those generated migrations at startup. The diff shows we removed the old manual `CREATE TABLE IF NOT EXISTS` SQL and replaced it with Drizzle's migration system."
     },
     {
-      "commentId": "bc5d0d91-8b89-42cf-af8b-ea30204e7da9",
+      "parentCommentId": "bc5d0d91-8b89-42cf-af8b-ea30204e7da9",
       "body": "Agreed. Deleted the test. It was just testing Drizzle's insert/select operations. The e2e tests in `e2e-workflow.test.ts` and the route-level tests cover the actual feature workflows with real data patterns, which is more valuable."
     },
     {
-      "commentId": "04153b2a-450a-4b40-8681-73622ac13f9d",
+      "parentCommentId": "04153b2a-450a-4b40-8681-73622ac13f9d",
       "body": "Good call. Updated the prompt-builder to accept optional `skillContent` and the orchestrator now loads `skills/shepherd-respond-to-review/skill.md` at startup, strips the YAML frontmatter, and passes the full skill content into the prompt. The hardcoded guidelines remain as a fallback if the skill file isn't available. This makes the skill the single source of truth for the agent's review workflow."
     },
     {
-      "commentId": "21e5796c-cf94-48fd-b915-b8de0f040827",
+      "parentCommentId": "21e5796c-cf94-48fd-b915-b8de0f040827",
       "body": "Valid concern. Currently using `--permission-mode acceptEdits` which auto-approves file reads/writes but blocks Bash commands. Since the agent runs headlessly (no interactive terminal), any Bash command needing approval would hang indefinitely. The agent needs Bash for `agent-shepherd batch`/`ready` and `git commit`. Options: (1) pass `--allowedTools` to pre-approve specific patterns like `Bash(agent-shepherd*)` and `Bash(git*)`, (2) use a more permissive mode, or (3) restructure so the orchestrator handles git/CLI operations after the agent finishes code changes. Noting this as a follow-up to resolve before the agent can run end-to-end."
     },
     {
-      "commentId": "9d9314af-34cb-4190-89f3-72ee796f9a2b",
+      "parentCommentId": "9d9314af-34cb-4190-89f3-72ee796f9a2b",
       "body": "Correct, one level of depth: top-level human comments with direct agent replies as children. This is intentional. Each review cycle is a discrete round: human leaves comments, then agent responds. When the agent signals ready and a new cycle starts, the next round of human comments are fresh top-level comments in that new cycle. So within a single cycle we only ever need human > agent threading."
     },
     {
-      "commentId": "1dad15de-cca4-457d-97d5-23664efa2508",
+      "parentCommentId": "1dad15de-cca4-457d-97d5-23664efa2508",
       "body": "Already done. Changed from `.shepherd` to `.agent-shepherd` earlier in this branch. The global config path is `~/.agent-shepherd/config.yml` and the per-project config file is `.agent-shepherd.yml` in the repo root."
     },
     {
-      "commentId": "43e382a2-5447-49d1-befc-eb1d62b5e6ba",
+      "parentCommentId": "43e382a2-5447-49d1-befc-eb1d62b5e6ba",
       "body": "Fixed. Moved the default DB path from `./shepherd.db` (relative to CWD) to `~/.agent-shepherd/agent-shepherd.db`. The server now ensures `~/.agent-shepherd/` exists before creating the DB. Tests use `:memory:` so they're unaffected."
     },
     {
-      "commentId": "80e998b0-9e4d-4f4b-a0bb-5dd0878041ca",
+      "parentCommentId": "80e998b0-9e4d-4f4b-a0bb-5dd0878041ca",
       "body": "WebSocket pushes real-time events to the frontend so it updates without polling. Events include: `pr:created`/`pr:updated` for PR lifecycle, `comment:created` for new inline comments, `review:submitted` when the human submits approve/request-changes, and `agent:working`/`agent:completed`/`agent:error`/`agent:cancelled` for agent status. Added a comment documenting this at the top of ws.ts (lines 4-8)."
     }
   ]

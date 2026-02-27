@@ -78,19 +78,19 @@ Create a file (e.g., `review-response.json`):
   "comments": [],
   "replies": [
     {
-      "commentId": "comment-uuid-1",
+      "parentCommentId": "comment-uuid-1",
       "body": "Fixed. Added the null check before accessing `user.email`."
     },
     {
-      "commentId": "comment-uuid-2",
+      "parentCommentId": "comment-uuid-2",
       "body": "Done. Refactored to use a try/catch block as suggested."
     },
     {
-      "commentId": "comment-uuid-3",
+      "parentCommentId": "comment-uuid-3",
       "body": "I'd push back here. The async version is needed because loadConfig() reads from disk. Blocking the event loop during startup would delay server readiness by ~200ms. I've added a code comment explaining this."
     },
     {
-      "commentId": "comment-uuid-4",
+      "parentCommentId": "comment-uuid-4",
       "body": "Good suggestion. Renamed the variable to `activeConnections`."
     }
   ]
@@ -99,7 +99,7 @@ Create a file (e.g., `review-response.json`):
 
 The `comments` array is for new comments you want to leave on the code (e.g., to flag something for the reviewer's attention). Each comment needs `filePath`, `startLine`, `endLine`, `body`, and `severity`.
 
-The `replies` array is for responding to existing review comments. Each reply needs `commentId` and `body`.
+The `replies` array is for responding to existing review comments. Each reply needs `parentCommentId` and `body`.
 
 ### 4. Submit Replies and Signal Ready
 
@@ -126,7 +126,7 @@ agent-shepherd ready <pr-id>
 Or pipe JSON directly via stdin:
 
 ```bash
-echo '{"replies":[{"commentId":"abc","body":"Fixed."}]}' | agent-shepherd batch <pr-id> --stdin
+echo '{"replies":[{"parentCommentId":"abc","body":"Fixed."}]}' | agent-shepherd batch <pr-id> --stdin
 agent-shepherd ready <pr-id>
 ```
 
@@ -169,11 +169,11 @@ Confirm the PR shows the next cycle number and the status reflects that it is aw
   ],
   "replies": [
     {
-      "commentId": "abc123",
+      "parentCommentId": "abc123",
       "body": "Good point, I've updated this."
     },
     {
-      "commentId": "def456",
+      "parentCommentId": "def456",
       "body": "I'd push back here because the Map gives O(1) lookup which matters in the hot path."
     }
   ]
