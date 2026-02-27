@@ -15,7 +15,7 @@ export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, agent
   if (prStatus !== 'open') {
     return (
       <div className="px-6 py-3 border-t text-sm text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
-        PR is {prStatus}
+        This PR has been {prStatus === 'approved' ? 'approved' : 'closed'}
       </div>
     );
   }
