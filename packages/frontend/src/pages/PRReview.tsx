@@ -55,7 +55,7 @@ export function PRReview() {
       fetchCycles();
     }
     if (msg.event === 'agent:output' && msg.data?.prId === prId && msg.data?.entry) {
-      setAgentActivity((prev) => [...prev.slice(-499), msg.data.entry]);
+      setAgentActivity((prev) => [...prev.slice(-49), msg.data.entry]);
     }
     if (msg.event === 'agent:error') {
       setAgentError(msg.data?.error || 'Unknown error');
