@@ -12,7 +12,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 function loadSkillContent(): string | undefined {
   try {
     // Navigate from packages/backend/src/orchestrator/ to repo root
-    const skillPath = resolve(__dirname, '../../../../skills/shepherd-respond-to-review/skill.md');
+    const skillPath = resolve(__dirname, '../../../../skills/agent-shepherd-respond-to-review/SKILL.md');
     const content = readFileSync(skillPath, 'utf-8');
     // Strip YAML frontmatter
     return content.replace(/^---[\s\S]*?---\n*/, '').trim();
@@ -31,6 +31,7 @@ interface OrchestratorDeps {
   broadcast?: (event: string, data: any) => void;
   adapter?: AgentAdapter;
   notificationService?: NotificationService;
+  devMode?: boolean;
 }
 
 export class Orchestrator {
@@ -42,7 +43,7 @@ export class Orchestrator {
   private activeSessions = new Map<string, AgentSession>();
 
   constructor(deps: OrchestratorDeps) {
-    this.adapter = deps.adapter || new ClaudeCodeAdapter();
+    this.adapter = deps.adapter || new ClaudeCodeAdapter({ devMode: deps.devMode });
     this.db = deps.db;
     this.schema = deps.schema;
     this.broadcast = deps.broadcast;
@@ -88,6 +89,7 @@ export class Orchestrator {
     }));
 
     const prompt = buildReviewPrompt({
+      prId,
       prTitle: pr.title,
       agentContext: pr.agentContext,
       comments: reviewComments,

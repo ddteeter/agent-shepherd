@@ -1,5 +1,5 @@
 ---
-name: shepherd-respond-to-review
+name: agent-shepherd:respond-to-review
 description: Use when responding to PR review comments from Agent Shepherd. Guides severity handling, batch response format, and the agent-shepherd CLI workflow.
 ---
 

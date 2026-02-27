@@ -1,5 +1,5 @@
 ---
-name: shepherd-context-guidelines
+name: agent-shepherd:context-guidelines
 description: Use when preparing a context file for agent-shepherd submit. Guides structured context creation for PR submissions including architectural decisions, trade-offs, and notes for future sessions.
 ---
 

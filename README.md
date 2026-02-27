@@ -133,9 +133,9 @@ Agent Shepherd ships three [Claude Code skills](https://github.com/vercel-labs/s
 
 | Skill | Purpose |
 |---|---|
-| `shepherd-respond-to-review` | Guides agents through severity handling, batch response format, and the CLI workflow for addressing review comments |
-| `shepherd-submit-pr` | Guides agents through commit preparation, context file creation, and the submit workflow |
-| `shepherd-context-guidelines` | Guides agents on writing structured context files for PR submissions |
+| `agent-shepherd:respond-to-review` | Guides agents through severity handling, batch response format, and the CLI workflow for addressing review comments |
+| `agent-shepherd:submit-pr` | Guides agents through commit preparation, context file creation, and the submit workflow |
+| `agent-shepherd:context-guidelines` | Guides agents on writing structured context files for PR submissions |
 
 Skills are installed automatically by `agent-shepherd setup` via `npx skills add`. They are installed globally to `~/.claude/skills/` so they are available in all repositories.
 

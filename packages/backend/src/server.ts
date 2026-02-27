@@ -23,6 +23,8 @@ export interface ServerOptions {
   host?: string;
   /** Skip orchestrator registration (useful for tests that don't need agent spawning) */
   disableOrchestrator?: boolean;
+  /** Enable verbose agent output streaming */
+  devMode?: boolean;
 }
 
 export async function buildServer(opts: ServerOptions = {}) {
@@ -51,7 +53,7 @@ export async function buildServer(opts: ServerOptions = {}) {
   fastify.decorate('notificationService', notificationService);
 
   if (!opts.disableOrchestrator) {
-    const orchestrator = new Orchestrator({ db, schema, broadcast, notificationService });
+    const orchestrator = new Orchestrator({ db, schema, broadcast, notificationService, devMode: opts.devMode });
     fastify.decorate('orchestrator', orchestrator);
   }
 

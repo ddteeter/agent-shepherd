@@ -4,6 +4,7 @@ import { buildReviewPrompt } from '../prompt-builder.js';
 describe('PromptBuilder', () => {
   it('groups comments by file', () => {
     const prompt = buildReviewPrompt({
+      prId: 'test-pr-id',
       prTitle: 'Add feature',
       agentContext: '{"summary": "Added auth"}',
       comments: [
@@ -21,6 +22,7 @@ describe('PromptBuilder', () => {
 
   it('includes agent context', () => {
     const prompt = buildReviewPrompt({
+      prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: '{"summary": "Built the auth system"}',
       comments: [],
@@ -30,6 +32,7 @@ describe('PromptBuilder', () => {
 
   it('handles null agent context', () => {
     const prompt = buildReviewPrompt({
+      prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: null,
       comments: [],
@@ -40,6 +43,7 @@ describe('PromptBuilder', () => {
 
   it('includes thread history', () => {
     const prompt = buildReviewPrompt({
+      prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: null,
       comments: [

@@ -1,5 +1,5 @@
 ---
-name: shepherd-submit-pr
+name: agent-shepherd:submit-pr
 description: Use when submitting a PR for human review through Agent Shepherd. Guides commit preparation, context file creation, and the agent-agent-shepherd submit workflow.
 ---
 
@@ -63,7 +63,7 @@ Create a file (e.g., `pr-context.json`):
 }
 ```
 
-See the `shepherd-context-guidelines` skill for detailed guidance on what to include in context.
+See the `agent-shepherd:context-guidelines` skill for detailed guidance on what to include in context.
 
 ### 3. Submit the PR
 

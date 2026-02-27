@@ -2,11 +2,12 @@ import { buildServer } from './server.js';
 
 const port = parseInt(process.env.SHEPHERD_PORT || '3847', 10);
 const host = process.env.SHEPHERD_HOST || '127.0.0.1';
+const devMode = process.env.NODE_ENV === 'development';
 
 async function main() {
-  const server = await buildServer({ port, host });
+  const server = await buildServer({ port, host, devMode });
   await server.listen({ port, host });
-  console.log(`Agent Shepherd running at http://${host}:${port}`);
+  console.log(`Agent Shepherd running at http://${host}:${port}${devMode ? ' (dev mode)' : ''}`);
 }
 
 main().catch((err) => {

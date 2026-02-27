@@ -2,6 +2,7 @@ export interface AgentActivityEntry {
   timestamp: string;
   type: string;
   summary: string;
+  detail?: string;
 }
 
 export interface AgentAdapter {

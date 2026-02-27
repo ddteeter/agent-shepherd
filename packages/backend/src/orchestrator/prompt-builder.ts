@@ -9,18 +9,41 @@ interface ReviewComment {
 }
 
 interface PromptInput {
+  prId: string;
   prTitle: string;
   agentContext: string | null;
   comments: ReviewComment[];
-  /** Full content of the shepherd-respond-to-review skill, if available */
+  /** Full content of the agent-shepherd:respond-to-review skill, if available */
   skillContent?: string;
 }
 
 export function buildReviewPrompt(input: PromptInput): string {
-  const { prTitle, agentContext, comments } = input;
+  const { prId, prTitle, agentContext, comments } = input;
   const sections: string[] = [];
 
   sections.push(`# Code Review Feedback for PR: ${prTitle}\n`);
+
+  sections.push(`## IMPORTANT: Read This First
+
+Everything you need is in this prompt. All review comments, context, and instructions are provided below.
+
+DO NOT:
+- Query the API or curl any endpoints
+- Access the database directly (sqlite3, etc.)
+- Start or restart any servers
+- Explore the codebase to "understand" the review system
+- Dispatch sub-agents to research the review infrastructure
+
+DO:
+1. Read the comments below
+2. Make the requested code changes in the project files
+3. Commit your changes
+4. Write a review-response.json with your replies
+5. Submit via \`agent-shepherd ready ${prId} --file review-response.json\`
+
+Start working on the code changes immediately.\n`);
+
+  sections.push(`## PR Details\n\nPR ID: ${prId}\n`);
 
   if (agentContext) {
     try {
@@ -43,7 +66,7 @@ For each comment, either:
 1. Make the code change and reply confirming what you changed
 2. Reply explaining why you disagree (only for suggestion/request severity)
 
-Refer to the shepherd-respond-to-review skill for the full workflow and batch JSON format.
+Refer to the agent-shepherd:respond-to-review skill for the full workflow and batch JSON format.
 
 Use the agent-shepherd CLI to submit your responses as a batch.`);
   }
