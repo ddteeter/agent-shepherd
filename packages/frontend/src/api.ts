@@ -34,6 +34,10 @@ export const api = {
       request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action, ...opts }) }),
     cancelAgent: (id: string) =>
       request<any>(`/prs/${id}/cancel-agent`, { method: 'POST' }),
+    close: (id: string) =>
+      request<any>(`/prs/${id}/close`, { method: 'POST' }),
+    reopen: (id: string) =>
+      request<any>(`/prs/${id}/reopen`, { method: 'POST' }),
   },
   comments: {
     list: (prId: string) => request<any[]>(`/prs/${prId}/comments`),
