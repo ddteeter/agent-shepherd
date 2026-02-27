@@ -55,7 +55,7 @@ export function PRReview() {
       fetchCycles();
     }
     if (msg.event === 'agent:output' && msg.data?.prId === prId && msg.data?.entry) {
-      setAgentActivity((prev) => [...prev.slice(-49), msg.data.entry]);
+      setAgentActivity((prev) => [...prev.slice(-499), msg.data.entry]);
     }
     if (msg.event === 'agent:error') {
       setAgentError(msg.data?.error || 'Unknown error');
@@ -217,6 +217,28 @@ export function PRReview() {
     }
   };
 
+  const handleClosePr = async () => {
+    if (!prId) return;
+    try {
+      const updated = await api.prs.close(prId);
+      setPr(updated);
+    } catch (err) {
+      console.error('Failed to close PR:', err);
+      alert('Failed to close PR.');
+    }
+  };
+
+  const handleReopenPr = async () => {
+    if (!prId) return;
+    try {
+      const updated = await api.prs.reopen(prId);
+      setPr(updated);
+    } catch (err) {
+      console.error('Failed to reopen PR:', err);
+      alert('Failed to reopen PR.');
+    }
+  };
+
   const fileStatuses = useMemo(() => {
     if (!diffData) return {};
     const statuses: Record<string, FileStatus> = {};
@@ -282,6 +304,24 @@ export function PRReview() {
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
               >
                 Comment on PR
+              </button>
+            )}
+            {pr.status === 'open' && !agentWorking && (
+              <button
+                onClick={handleClosePr}
+                className="text-xs px-2 py-1 rounded border hover:opacity-80"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                Close PR
+              </button>
+            )}
+            {pr.status === 'closed' && (
+              <button
+                onClick={handleReopenPr}
+                className="text-xs px-2 py-1 rounded border hover:opacity-80"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+              >
+                Reopen
               </button>
             )}
           </div>
