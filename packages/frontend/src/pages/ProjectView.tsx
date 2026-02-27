@@ -20,6 +20,26 @@ export function ProjectView() {
     }).finally(() => setLoading(false));
   }, [projectId]);
 
+  const handleClosePr = async (e: React.MouseEvent, prId: string) => {
+    e.preventDefault();
+    try {
+      const updated = await api.prs.close(prId);
+      setPrs((prev) => prev.map((p) => (p.id === prId ? updated : p)));
+    } catch (err) {
+      console.error('Failed to close PR:', err);
+    }
+  };
+
+  const handleReopenPr = async (e: React.MouseEvent, prId: string) => {
+    e.preventDefault();
+    try {
+      const updated = await api.prs.reopen(prId);
+      setPrs((prev) => prev.map((p) => (p.id === prId ? updated : p)));
+    } catch (err) {
+      console.error('Failed to reopen PR:', err);
+    }
+  };
+
   if (loading) return <div className="p-6">Loading...</div>;
 
   const filtered = prs.filter((pr) => pr.status === tab);
@@ -58,7 +78,27 @@ export function ProjectView() {
                 className="block p-4 rounded border hover:border-blue-400 transition-colors"
                 style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
               >
-                <div className="font-medium">{pr.title}</div>
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{pr.title}</div>
+                  {pr.status === 'open' && (
+                    <button
+                      onClick={(e) => handleClosePr(e, pr.id)}
+                      className="text-xs px-2 py-1 rounded border hover:opacity-80"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                    >
+                      Close
+                    </button>
+                  )}
+                  {pr.status === 'closed' && (
+                    <button
+                      onClick={(e) => handleReopenPr(e, pr.id)}
+                      className="text-xs px-2 py-1 rounded border hover:opacity-80"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+                    >
+                      Reopen
+                    </button>
+                  )}
+                </div>
                 <div className="text-sm opacity-70">
                   {pr.sourceBranch} &rarr; {pr.baseBranch}
                 </div>
