@@ -134,4 +134,98 @@ describe('Pull Requests API', () => {
     });
     expect(cycles.json()).toHaveLength(2);
   });
+
+  it('POST /api/prs/:id/close closes an open PR', async () => {
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/prs/${id}/close`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().status).toBe('closed');
+
+    const pr = await server.inject({ method: 'GET', url: `/api/prs/${id}` });
+    expect(pr.json().status).toBe('closed');
+  });
+
+  it('POST /api/prs/:id/close returns 400 for already-closed PR', async () => {
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    const response = await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it('POST /api/prs/:id/close returns 400 for approved PR', async () => {
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    await server.inject({
+      method: 'POST',
+      url: `/api/prs/${id}/review`,
+      payload: { action: 'approve' },
+    });
+
+    const response = await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it('POST /api/prs/:id/close returns 404 for nonexistent PR', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: '/api/prs/nonexistent/close',
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it('POST /api/prs/:id/reopen reopens a closed PR', async () => {
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/prs/${id}/reopen`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().status).toBe('open');
+
+    const pr = await server.inject({ method: 'GET', url: `/api/prs/${id}` });
+    expect(pr.json().status).toBe('open');
+  });
+
+  it('POST /api/prs/:id/reopen returns 400 for non-closed PR', async () => {
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/prs/${id}/reopen`,
+    });
+    expect(response.statusCode).toBe(400);
+  });
 });

@@ -314,6 +314,97 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return { status: 'cancelled' };
   });
 
+  // POST /api/prs/:id/close — Close a PR
+  fastify.post('/api/prs/:id/close', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    if (pr.status !== 'open') {
+      reply.code(400).send({ error: `Cannot close a PR with status '${pr.status}'` });
+      return;
+    }
+
+    // Check if agent is currently working
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, id))
+      .all();
+
+    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
+      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
+
+    if (latestCycle?.status === 'agent_working') {
+      reply.code(409).send({ error: 'Agent is currently working. Cancel the agent first.' });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    db.update(schema.pullRequests)
+      .set({ status: 'closed', updatedAt: now })
+      .where(eq(schema.pullRequests.id, id))
+      .run();
+
+    const updated = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('pr:updated', updated);
+
+    return updated;
+  });
+
+  // POST /api/prs/:id/reopen — Reopen a closed PR
+  fastify.post('/api/prs/:id/reopen', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    if (pr.status !== 'closed') {
+      reply.code(400).send({ error: 'Only closed PRs can be reopened' });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    db.update(schema.pullRequests)
+      .set({ status: 'open', updatedAt: now })
+      .where(eq(schema.pullRequests.id, id))
+      .run();
+
+    const updated = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('pr:updated', updated);
+
+    return updated;
+  });
+
   // GET /api/prs/:id/cycles — List review cycles for a PR
   fastify.get('/api/prs/:id/cycles', async (request, reply) => {
     const { id } = request.params as { id: string };
