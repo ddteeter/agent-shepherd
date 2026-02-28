@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import { eq, inArray } from 'drizzle-orm';
 import type { AgentAdapter, AgentSession } from './types.js';
 import { ClaudeCodeAdapter } from './claude-code-adapter.js';
@@ -90,7 +91,21 @@ export class Orchestrator {
     this.broadcast?.('agent:working', { prId });
 
     try {
-      const session = await this.adapter.startSession({ projectPath: project.path, prompt });
+      // Use the PR's working directory (e.g., worktree path) if available, otherwise fall back to project path
+      const effectivePath = pr.workingDirectory ?? project.path;
+
+      // Verify the working directory exists before spawning agent
+      if (!existsSync(effectivePath)) {
+        const error = new Error(
+          `Working directory does not exist: ${effectivePath}\n` +
+          'The worktree may have been removed. Recreate it and try again.'
+        );
+        this.setCycleStatus(currentCycle.id, 'agent_error');
+        this.broadcast?.('agent:error', { prId, error: error.message });
+        throw error;
+      }
+
+      const session = await this.adapter.startSession({ projectPath: effectivePath, prompt });
 
       this.activeSessions.set(prId, session);
 

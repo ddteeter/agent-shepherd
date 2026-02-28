@@ -196,4 +196,29 @@ describe('Orchestrator cross-cycle comment query', () => {
     expect(prompt).toContain('This still needs work');
     expect(reviewComments).toHaveLength(1);
   });
+
+  it('PR stores workingDirectory for orchestrator use', async () => {
+    const createResp = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: {
+        title: 'Worktree PR',
+        description: '',
+        sourceBranch: 'feat/worktree',
+        workingDirectory: '/repo/.claude/worktrees/task-1',
+      },
+    });
+    const pr = createResp.json();
+    expect(pr.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
+
+    // Verify that both project.path and pr.workingDirectory are available
+    const db = (server as any).db;
+    const project = db.select().from(schema.projects)
+      .where(eq(schema.projects.id, pr.projectId)).get();
+    expect(project.path).toBe('/tmp/test');
+
+    // Orchestrator should prefer pr.workingDirectory over project.path
+    const effectivePath = pr.workingDirectory ?? project.path;
+    expect(effectivePath).toBe('/repo/.claude/worktrees/task-1');
+  });
 });
