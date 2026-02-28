@@ -12,7 +12,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
-    const { title, description, sourceBranch, baseBranch } = request.body as Omit<CreatePRInput, 'projectId'>;
+    const { title, description, sourceBranch, baseBranch, workingDirectory } = request.body as Omit<CreatePRInput, 'projectId'>;
 
     // Verify project exists
     const project = db
@@ -36,6 +36,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         sourceBranch,
         baseBranch: baseBranch || project.baseBranch || 'main',
         status: 'open',
+        workingDirectory: workingDirectory || null,
       })
       .run();
 

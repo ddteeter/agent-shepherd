@@ -228,4 +228,34 @@ describe('Pull Requests API', () => {
     });
     expect(response.statusCode).toBe(400);
   });
+
+  it('POST /api/projects/:id/prs stores workingDirectory when provided', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: {
+        title: 'Worktree PR',
+        description: 'From a worktree',
+        sourceBranch: 'feat/worktree',
+        workingDirectory: '/repo/.claude/worktrees/task-1',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
+  });
+
+  it('POST /api/projects/:id/prs defaults workingDirectory to null', async () => {
+    const response = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: {
+        title: 'Normal PR',
+        description: '',
+        sourceBranch: 'feat/normal',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().workingDirectory).toBeNull();
+  });
 });
