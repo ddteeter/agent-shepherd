@@ -4,6 +4,7 @@ import { CommentThread } from './CommentThread.js';
 import type { Comment } from './CommentThread.js';
 import { useHighlighter, getLangFromPath, type TokenizedLine } from '../hooks/useHighlighter.js';
 import { getFileTreeOrder } from './fileTreeUtils.js';
+import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 
 interface DiffViewerProps {
   diff: string;
@@ -12,6 +13,7 @@ interface DiffViewerProps {
   scrollKey: number;
   onVisibleFileChange?: (file: string) => void;
   comments?: Comment[];
+  threadStatusMap?: Map<string, ThreadStatus>;
   onAddComment?: (data: { filePath: string | null; startLine: number | null; endLine: number | null; body: string; severity: string }) => void;
   onReplyComment?: (commentId: string, body: string) => void;
   onResolveComment?: (commentId: string) => void;
@@ -148,6 +150,7 @@ function FileDiff({
   onToggleFileCommentForm,
   onCancelFileComment,
   handleFileComment,
+  threadStatusMap,
 }: {
   file: FileDiff;
   commentsByFileLine: Map<string, Comment[]>;
@@ -174,6 +177,7 @@ function FileDiff({
   onToggleFileCommentForm: () => void;
   onCancelFileComment: () => void;
   handleFileComment: (filePath: string, body: string, severity: string) => void;
+  threadStatusMap?: Map<string, ThreadStatus>;
 }) {
   const lang = getLangFromPath(file.path);
   const isLarge = file.lineCount > COLLAPSE_THRESHOLD;
@@ -215,6 +219,7 @@ function FileDiff({
               onEdit={onEditComment}
               onDelete={onDeleteComment}
               canEdit={canEditComments}
+              threadStatus={threadStatusMap?.get(comment.id)}
             />
           ))}
           {fileCommentFormOpen && (
@@ -330,6 +335,7 @@ function FileDiff({
                         onEdit={onEditComment}
                         onDelete={onDeleteComment}
                         canEdit={canEditComments}
+                        threadStatus={threadStatusMap?.get(comment.id)}
                       />
                     ))}
                   </div>
@@ -343,7 +349,7 @@ function FileDiff({
   );
 }
 
-export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFileChange, comments = [], onAddComment, onReplyComment, onResolveComment, onEditComment, onDeleteComment, canEditComments, globalCommentForm, onToggleGlobalCommentForm }: DiffViewerProps) {
+export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFileChange, comments = [], threadStatusMap, onAddComment, onReplyComment, onResolveComment, onEditComment, onDeleteComment, canEditComments, globalCommentForm, onToggleGlobalCommentForm }: DiffViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [commentFormLine, setCommentFormLine] = useState<{ file: string; startLine: number; endLine: number } | null>(null);
@@ -641,6 +647,7 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
               onEdit={onEditComment}
               onDelete={onDeleteComment}
               canEdit={canEditComments}
+              threadStatus={threadStatusMap?.get(comment.id)}
             />
           ))}
           {globalCommentForm && (
@@ -715,6 +722,7 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
               onToggleFileCommentForm={() => setFileCommentFormPath(fileCommentFormPath === file.path ? null : file.path)}
               onCancelFileComment={() => setFileCommentFormPath(null)}
               handleFileComment={handleFileComment}
+              threadStatusMap={threadStatusMap}
             />
           ) : (
             <div

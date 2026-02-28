@@ -9,6 +9,10 @@ import type { ActivityEntry } from '../components/AgentActivityPanel.js';
 import type { Comment } from '../components/CommentThread.js';
 import type { FileStatus } from '../components/DiffViewer.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
+import { CommentFilter } from '../components/CommentFilter.js';
+import type { CommentFilterValue } from '../components/CommentFilter.js';
+import { getThreadStatus, groupThreads } from '../utils/commentThreadStatus.js';
+import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 
 interface ReviewCycle {
   id: string;
@@ -36,6 +40,7 @@ export function PRReview() {
   const [globalCommentForm, setGlobalCommentForm] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [agentActivity, setAgentActivity] = useState<ActivityEntry[]>([]);
+  const [commentFilter, setCommentFilter] = useState<CommentFilterValue>('all');
 
   const { connected } = useWebSocket((msg) => {
     if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
@@ -264,20 +269,60 @@ export function PRReview() {
     return statuses;
   }, [diffData]);
 
+  const latestCycle = useMemo(() => {
+    if (cycles.length === 0) return null;
+    return cycles.reduce((latest, c) => c.cycleNumber > latest.cycleNumber ? c : latest, cycles[0]);
+  }, [cycles]);
+
+  const threadStatusMap = useMemo(() => {
+    const map = new Map<string, ThreadStatus>();
+    if (!latestCycle) return map;
+    const threads = groupThreads(comments);
+    for (const thread of threads) {
+      const status = getThreadStatus(thread.comment, thread.replies, latestCycle.id);
+      map.set(thread.comment.id, status);
+    }
+    return map;
+  }, [comments, latestCycle]);
+
+  const filterCounts = useMemo(() => {
+    let all = 0;
+    let needsAttention = 0;
+    let agentReplied = 0;
+    for (const [, status] of threadStatusMap) {
+      all++;
+      if (status === 'needs-attention' || status === 'new') needsAttention++;
+      if (status === 'agent-replied') agentReplied++;
+    }
+    return { all, needsAttention, agentReplied };
+  }, [threadStatusMap]);
+
+  const filteredComments = useMemo(() => {
+    if (commentFilter === 'all') return comments;
+    return comments.filter((c) => {
+      // For replies, include if parent passes filter
+      const parentId = c.parentCommentId || c.id;
+      const status = threadStatusMap.get(parentId);
+      if (!status) return true; // replies whose parent we can't find — include
+      if (commentFilter === 'needs-attention') {
+        return status === 'needs-attention' || status === 'new';
+      }
+      if (commentFilter === 'agent-replied') {
+        return status === 'agent-replied';
+      }
+      return true;
+    });
+  }, [comments, commentFilter, threadStatusMap]);
+
   const commentCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const c of comments) {
+    for (const c of filteredComments) {
       if (c.filePath) {
         counts[c.filePath] = (counts[c.filePath] || 0) + 1;
       }
     }
     return counts;
-  }, [comments]);
-
-  const latestCycle = useMemo(() => {
-    if (cycles.length === 0) return null;
-    return cycles.reduce((latest, c) => c.cycleNumber > latest.cycleNumber ? c : latest, cycles[0]);
-  }, [cycles]);
+  }, [filteredComments]);
 
   const agentWorking = latestCycle?.status === 'agent_working';
   const agentErrored = latestCycle?.status === 'agent_error';
@@ -433,6 +478,13 @@ export function PRReview() {
         {(agentWorking || agentActivity.length > 0) && (
           <AgentActivityPanel entries={agentActivity} />
         )}
+        {cycles.length > 1 && (
+          <CommentFilter
+            activeFilter={commentFilter}
+            onFilterChange={setCommentFilter}
+            counts={filterCounts}
+          />
+        )}
       </div>
 
       {/* Main content area: file tree + diff viewer */}
@@ -450,7 +502,8 @@ export function PRReview() {
           scrollToFile={scrollToFile}
           scrollKey={scrollKeyRef.current}
           onVisibleFileChange={setVisibleFile}
-          comments={comments}
+          comments={filteredComments}
+          threadStatusMap={threadStatusMap}
           onAddComment={handleAddComment}
           onReplyComment={handleReplyComment}
           onResolveComment={handleResolveComment}
