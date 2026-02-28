@@ -1,0 +1,1 @@
+ALTER TABLE `review_cycles` ADD `commit_sha` text;
