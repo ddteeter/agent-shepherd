@@ -6,6 +6,7 @@ import { submitCommand } from './commands/submit.js';
 import { batchCommand } from './commands/batch.js';
 import { readyCommand } from './commands/ready.js';
 import { statusCommand } from './commands/status.js';
+import { listProjectsCommand } from './commands/list-projects.js';
 import { setupCommand } from './commands/setup.js';
 import { startCommand } from './commands/start.js';
 
@@ -22,6 +23,7 @@ submitCommand(program, client);
 batchCommand(program, client);
 readyCommand(program, client);
 statusCommand(program, client);
+listProjectsCommand(program, client);
 setupCommand(program);
 startCommand(program);
 
