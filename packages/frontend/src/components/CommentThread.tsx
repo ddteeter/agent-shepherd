@@ -3,6 +3,7 @@ import { CommentForm } from './CommentForm.js';
 
 interface Comment {
   id: string;
+  reviewCycleId: string;
   filePath: string | null;
   startLine: number | null;
   endLine: number | null;

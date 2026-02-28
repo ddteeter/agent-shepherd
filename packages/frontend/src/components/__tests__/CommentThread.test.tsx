@@ -7,6 +7,7 @@ import type { Comment } from '../CommentThread.js';
 function makeComment(overrides: Partial<Comment> = {}): Comment {
   return {
     id: 'c1',
+    reviewCycleId: 'cycle-1',
     filePath: 'src/index.ts',
     startLine: 10,
     endLine: 10,
