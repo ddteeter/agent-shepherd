@@ -118,6 +118,11 @@ export class Orchestrator {
 
       session.onComplete(() => {
         this.activeSessions.delete(prId);
+        // Update cycle status if agent-ready hasn't already created a new cycle
+        const latestCycle = this.getLatestCycle(prId);
+        if (latestCycle && latestCycle.status === 'agent_working') {
+          this.setCycleStatus(latestCycle.id, 'agent_completed');
+        }
         this.broadcast?.('agent:completed', { prId });
         this.notificationService.notifyPRReadyForReview(pr.title, project.name);
       });
