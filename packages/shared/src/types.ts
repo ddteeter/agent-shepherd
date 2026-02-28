@@ -5,6 +5,7 @@ export type ReviewCycleStatus =
   | 'in_review'
   | 'changes_requested'
   | 'agent_working'
+  | 'agent_completed'
   | 'agent_error'
   | 'approved';
 
