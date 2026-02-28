@@ -1,22 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildServer } from '../../server.js';
 import type { FastifyInstance } from 'fastify';
+import { createTestServer } from '../../__tests__/helpers.js';
 
 describe('Comments API', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let projectId: string;
   let prId: string;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
-    const proj = await server.inject({
+    ({ server, inject } = await createTestServer());
+    const proj = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
     projectId = proj.json().id;
 
-    const pr = await server.inject({
+    const pr = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
@@ -29,7 +30,7 @@ describe('Comments API', () => {
   });
 
   it('POST /api/prs/:id/comments adds a comment', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -46,7 +47,7 @@ describe('Comments API', () => {
   });
 
   it('GET /api/prs/:id/comments lists comments', async () => {
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -59,7 +60,7 @@ describe('Comments API', () => {
       },
     });
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -68,7 +69,7 @@ describe('Comments API', () => {
   });
 
   it('supports threaded replies via parentCommentId', async () => {
-    const parent = await server.inject({
+    const parent = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -82,7 +83,7 @@ describe('Comments API', () => {
     });
     const parentId = parent.json().id;
 
-    const reply = await server.inject({
+    const reply = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -100,7 +101,7 @@ describe('Comments API', () => {
   });
 
   it('PUT /api/comments/:id resolves a comment', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -114,7 +115,7 @@ describe('Comments API', () => {
     });
     const commentId = create.json().id;
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'PUT',
       url: `/api/comments/${commentId}`,
       payload: { resolved: true },
@@ -125,7 +126,7 @@ describe('Comments API', () => {
 
   it('should unresolve parent comment when reply is added', async () => {
     // Create a top-level comment
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -140,14 +141,14 @@ describe('Comments API', () => {
     const parentId = create.json().id;
 
     // Resolve the comment
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: `/api/comments/${parentId}`,
       payload: { resolved: true },
     });
 
     // Add a reply to the resolved comment
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -162,7 +163,7 @@ describe('Comments API', () => {
     });
 
     // Verify parent is now unresolved
-    const comments = await server.inject({
+    const comments = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -172,7 +173,7 @@ describe('Comments API', () => {
 
   it('should unresolve parent comment when batch reply is added', async () => {
     // Create a top-level comment
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -187,14 +188,14 @@ describe('Comments API', () => {
     const parentId = create.json().id;
 
     // Resolve the comment
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: `/api/comments/${parentId}`,
       payload: { resolved: true },
     });
 
     // Batch create a reply
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments/batch`,
       payload: {
@@ -206,7 +207,7 @@ describe('Comments API', () => {
     });
 
     // Verify parent is now unresolved
-    const comments = await server.inject({
+    const comments = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -215,7 +216,7 @@ describe('Comments API', () => {
   });
 
   it('POST /api/prs/:id/comments/batch handles batch comments', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments/batch`,
       payload: {

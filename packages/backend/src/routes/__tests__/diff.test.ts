@@ -1,13 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildServer } from '../../server.js';
 import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
 import type { FastifyInstance } from 'fastify';
+import { createTestServer } from '../../__tests__/helpers.js';
 
 describe('Diff API', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let repoPath: string;
   let projectId: string;
   let prId: string;
@@ -24,16 +25,16 @@ describe('Diff API', () => {
     await writeFile(join(repoPath, 'index.ts'), 'const x = 1;\nconst y = 2;\n');
     execSync('git add . && git commit -m "add y"', { cwd: repoPath });
 
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
+    ({ server, inject } = await createTestServer());
 
-    const proj = await server.inject({
+    const proj = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: repoPath },
     });
     projectId = proj.json().id;
 
-    const pr = await server.inject({
+    const pr = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'Add y', description: '', sourceBranch: 'feat/change' },
@@ -47,7 +48,7 @@ describe('Diff API', () => {
   });
 
   it('GET /api/prs/:id/diff returns the diff', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff`,
     });
@@ -59,7 +60,7 @@ describe('Diff API', () => {
 
   it('GET /api/prs/:id/diff?cycle=N returns stored snapshot', async () => {
     // Create a snapshot for the current (first) cycle
-    const snapshotRes = await server.inject({
+    const snapshotRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
@@ -68,7 +69,7 @@ describe('Diff API', () => {
     expect(snapshot.cycleNumber).toBe(1);
 
     // Fetch the snapshot via cycle query param
-    const diffRes = await server.inject({
+    const diffRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=1`,
     });
@@ -81,7 +82,7 @@ describe('Diff API', () => {
   });
 
   it('GET /api/prs/:id/diff?cycle=N returns 404 for non-existent cycle', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=99`,
     });
@@ -91,7 +92,7 @@ describe('Diff API', () => {
 
   it('GET /api/prs/:id/diff?cycle=N returns 404 when no snapshot exists', async () => {
     // Cycle 1 exists (created with PR) but has no snapshot
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=1`,
     });
@@ -100,7 +101,7 @@ describe('Diff API', () => {
   });
 
   it('GET /api/prs/:id/diff?cycle=invalid returns 400', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=abc`,
     });
@@ -109,7 +110,7 @@ describe('Diff API', () => {
   });
 
   it('POST /api/prs/:id/diff/snapshot stores a snapshot', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
@@ -121,14 +122,14 @@ describe('Diff API', () => {
 
   it('POST /api/prs/:id/diff/snapshot returns existing if already stored', async () => {
     // Store first time
-    const first = await server.inject({
+    const first = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
     expect(first.statusCode).toBe(201);
 
     // Store second time — should return existing
-    const second = await server.inject({
+    const second = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
@@ -139,7 +140,7 @@ describe('Diff API', () => {
   });
 
   it('POST /api/prs/:id/diff/snapshot returns 404 for non-existent PR', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: '/api/prs/nonexistent/diff/snapshot',
     });
@@ -148,7 +149,7 @@ describe('Diff API', () => {
 
   it('GET /api/prs/:id/cycles/details returns cycles with snapshot info', async () => {
     // Before snapshot
-    const beforeRes = await server.inject({
+    const beforeRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles/details`,
     });
@@ -158,13 +159,13 @@ describe('Diff API', () => {
     expect(beforeCycles[0].hasDiffSnapshot).toBe(false);
 
     // Create a snapshot
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
 
     // After snapshot
-    const afterRes = await server.inject({
+    const afterRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles/details`,
     });
@@ -176,14 +177,14 @@ describe('Diff API', () => {
 
   it('agent-ready stores a diff snapshot for the new cycle', async () => {
     // Request changes on cycle 1
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
     });
 
     // Agent signals ready — this should create cycle 2 with a snapshot
-    const readyRes = await server.inject({
+    const readyRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
@@ -191,7 +192,7 @@ describe('Diff API', () => {
     expect(readyRes.json().cycleNumber).toBe(2);
 
     // Verify the snapshot was stored for cycle 2
-    const diffRes = await server.inject({
+    const diffRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=2`,
     });
@@ -201,7 +202,7 @@ describe('Diff API', () => {
   });
 
   it('GET /api/prs/:id/cycles/details returns 404 for non-existent PR', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: '/api/prs/nonexistent/cycles/details',
     });

@@ -1,25 +1,26 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildServer } from '../../server.js';
 import { buildReviewPrompt } from '../index.js';
 import { schema } from '../../db/index.js';
 import { eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
+import { createTestServer } from '../../__tests__/helpers.js';
 
 describe('Orchestrator cross-cycle comment query', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let projectId: string;
   let prId: string;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
-    const proj = await server.inject({
+    ({ server, inject } = await createTestServer());
+    const proj = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
     projectId = proj.json().id;
 
-    const pr = await server.inject({
+    const pr = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'Test PR', description: '', sourceBranch: 'feat/x' },
@@ -35,7 +36,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     const db = (server as any).db;
 
     // Add a comment on cycle 1
-    const c1Resp = await server.inject({
+    const c1Resp = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -61,7 +62,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     // Agent ready: creates cycle 2 via API
     // Note: agent-ready tries to compute a diff which will fail for /tmp/test,
     // but it still creates the new cycle (diff failure is non-fatal)
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
@@ -73,7 +74,7 @@ describe('Orchestrator cross-cycle comment query', () => {
 
     // Add a reply to the cycle 1 comment, attached to cycle 2
     const cycle2 = cycles.find((c: any) => c.cycleNumber === 2);
-    const replyResp = await server.inject({
+    const replyResp = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -127,7 +128,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     const db = (server as any).db;
 
     // Add two comments
-    const c1Resp = await server.inject({
+    const c1Resp = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -141,7 +142,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
     const resolvedCommentId = c1Resp.json().id;
 
-    const c2Resp = await server.inject({
+    const c2Resp = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -155,7 +156,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
 
     // Resolve the first comment
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: `/api/comments/${resolvedCommentId}`,
       payload: { resolved: true },
@@ -198,7 +199,7 @@ describe('Orchestrator cross-cycle comment query', () => {
   });
 
   it('PR stores workingDirectory for orchestrator use', async () => {
-    const createResp = await server.inject({
+    const createResp = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {

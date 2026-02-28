@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildServer } from '../../server.js';
 import type { FastifyInstance } from 'fastify';
+import { createTestServer } from '../../__tests__/helpers.js';
 
 describe('Projects API', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
+    ({ server, inject } = await createTestServer());
   });
 
   afterEach(async () => {
@@ -14,7 +15,7 @@ describe('Projects API', () => {
   });
 
   it('POST /api/projects creates a project', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'my-app', path: '/tmp/my-app', baseBranch: 'main' },
@@ -27,18 +28,18 @@ describe('Projects API', () => {
   });
 
   it('GET /api/projects lists projects', async () => {
-    await server.inject({
+    await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'proj1', path: '/tmp/p1' },
     });
-    await server.inject({
+    await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'proj2', path: '/tmp/p2' },
     });
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: '/api/projects',
     });
@@ -47,14 +48,14 @@ describe('Projects API', () => {
   });
 
   it('GET /api/projects/:id returns a project', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'proj', path: '/tmp/p' },
     });
     const { id } = create.json();
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/projects/${id}`,
     });
@@ -63,7 +64,7 @@ describe('Projects API', () => {
   });
 
   it('GET /api/projects/:id returns 404 for missing project', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: '/api/projects/nonexistent',
     });
@@ -71,20 +72,20 @@ describe('Projects API', () => {
   });
 
   it('DELETE /api/projects/:id removes a project', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'proj', path: '/tmp/p' },
     });
     const { id } = create.json();
 
-    const del = await server.inject({
+    const del = await inject({
       method: 'DELETE',
       url: `/api/projects/${id}`,
     });
     expect(del.statusCode).toBe(204);
 
-    const get = await server.inject({
+    const get = await inject({
       method: 'GET',
       url: `/api/projects/${id}`,
     });

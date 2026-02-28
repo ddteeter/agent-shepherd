@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildServer } from '../server.js';
 import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
 import type { FastifyInstance } from 'fastify';
+import { createTestServer } from './helpers.js';
 
 
 /**
@@ -39,11 +39,12 @@ async function createTestRepo(): Promise<string> {
 
 describe('E2E: Full PR Review Workflow', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let repoPath: string;
 
   beforeEach(async () => {
     repoPath = await createTestRepo();
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
+    ({ server, inject } = await createTestServer());
   });
 
   afterEach(async () => {
@@ -55,7 +56,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 1: Register the project
     // ---------------------------------------------------------------
-    const projectRes = await server.inject({
+    const projectRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'e2e-project', path: repoPath },
@@ -70,7 +71,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 2: Submit a PR from the feature branch
     // ---------------------------------------------------------------
-    const prRes = await server.inject({
+    const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -91,11 +92,11 @@ describe('E2E: Full PR Review Workflow', () => {
     // Step 3: Verify the PR was created with status 'open' and has a
     //         first review cycle
     // ---------------------------------------------------------------
-    const prGetRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}` });
+    const prGetRes = await inject({ method: 'GET', url: `/api/prs/${prId}` });
     expect(prGetRes.statusCode).toBe(200);
     expect(prGetRes.json().status).toBe('open');
 
-    const cyclesRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    const cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
     expect(cyclesRes.statusCode).toBe(200);
     const cycles = cyclesRes.json();
     expect(cycles).toHaveLength(1);
@@ -105,7 +106,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 4: Get the diff and verify it contains expected changes
     // ---------------------------------------------------------------
-    const diffRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}/diff` });
+    const diffRes = await inject({ method: 'GET', url: `/api/prs/${prId}/diff` });
     expect(diffRes.statusCode).toBe(200);
     const diff = diffRes.json();
     expect(diff.diff).toContain('+export function multiply');
@@ -118,7 +119,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // Step 5: Add inline comments (human reviewer) with different
     //         severities
     // ---------------------------------------------------------------
-    const comment1Res = await server.inject({
+    const comment1Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -135,7 +136,7 @@ describe('E2E: Full PR Review Workflow', () => {
     expect(comment1.severity).toBe('must-fix');
     expect(comment1.author).toBe('human');
 
-    const comment2Res = await server.inject({
+    const comment2Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -150,7 +151,7 @@ describe('E2E: Full PR Review Workflow', () => {
     expect(comment2Res.statusCode).toBe(201);
     expect(comment2Res.json().severity).toBe('suggestion');
 
-    const comment3Res = await server.inject({
+    const comment3Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -168,7 +169,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 6: Verify comments were stored
     // ---------------------------------------------------------------
-    const commentsRes = await server.inject({
+    const commentsRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -181,7 +182,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 7: Submit review with 'request-changes'
     // ---------------------------------------------------------------
-    const reviewRes = await server.inject({
+    const reviewRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
@@ -193,12 +194,12 @@ describe('E2E: Full PR Review Workflow', () => {
     // Step 8: Verify PR is still 'open' and cycle status is
     //         'changes_requested'
     // ---------------------------------------------------------------
-    const prAfterReviewRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}` });
+    const prAfterReviewRes = await inject({ method: 'GET', url: `/api/prs/${prId}` });
     expect(prAfterReviewRes.statusCode).toBe(200);
     // PR status remains 'open' (only 'approve' changes it to 'approved')
     expect(prAfterReviewRes.json().status).toBe('open');
 
-    const cyclesAfterReviewRes = await server.inject({
+    const cyclesAfterReviewRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles`,
     });
@@ -211,7 +212,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // Step 9: Simulate agent responding: batch comments (replies +
     //         new comments as 'agent')
     // ---------------------------------------------------------------
-    const batchRes = await server.inject({
+    const batchRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments/batch`,
       payload: {
@@ -241,7 +242,7 @@ describe('E2E: Full PR Review Workflow', () => {
     expect(batchRes.json().created).toBe(3);
 
     // Verify total comments now (3 original + 3 batch = 6)
-    const commentsAfterBatchRes = await server.inject({
+    const commentsAfterBatchRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -250,7 +251,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 10: Signal agent-ready
     // ---------------------------------------------------------------
-    const agentReadyRes = await server.inject({
+    const agentReadyRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
@@ -262,7 +263,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 11: Verify new cycle was created (cycle 2)
     // ---------------------------------------------------------------
-    const cyclesAfterReadyRes = await server.inject({
+    const cyclesAfterReadyRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles`,
     });
@@ -278,7 +279,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 12: Verify diff snapshot was stored for cycle 2
     // ---------------------------------------------------------------
-    const snapshotDiffRes = await server.inject({
+    const snapshotDiffRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=2`,
     });
@@ -290,7 +291,7 @@ describe('E2E: Full PR Review Workflow', () => {
     expect(snapshotDiff.files).toContain('src/utils.ts');
 
     // Also verify via cycles/details endpoint
-    const cycleDetailsRes = await server.inject({
+    const cycleDetailsRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles/details`,
     });
@@ -303,7 +304,7 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 13: Add an approval review
     // ---------------------------------------------------------------
-    const approveRes = await server.inject({
+    const approveRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'approve' },
@@ -314,12 +315,12 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 14: Verify PR status is 'approved'
     // ---------------------------------------------------------------
-    const prFinalRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}` });
+    const prFinalRes = await inject({ method: 'GET', url: `/api/prs/${prId}` });
     expect(prFinalRes.statusCode).toBe(200);
     expect(prFinalRes.json().status).toBe('approved');
 
     // Verify the latest cycle is also approved
-    const finalCyclesRes = await server.inject({
+    const finalCyclesRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles`,
     });
@@ -333,11 +334,12 @@ describe('E2E: Full PR Review Workflow', () => {
 
 describe('E2E: Config System', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let repoPath: string;
 
   beforeEach(async () => {
     repoPath = await createTestRepo();
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
+    ({ server, inject } = await createTestServer());
   });
 
   afterEach(async () => {
@@ -347,14 +349,14 @@ describe('E2E: Config System', () => {
 
   it('sets and retrieves global config values via the API', async () => {
     // Set global config values
-    const set1Res = await server.inject({
+    const set1Res = await inject({
       method: 'PUT',
       url: '/api/config',
       payload: { key: 'reviewModel', value: 'claude-opus-4' },
     });
     expect(set1Res.statusCode).toBe(200);
 
-    const set2Res = await server.inject({
+    const set2Res = await inject({
       method: 'PUT',
       url: '/api/config',
       payload: { key: 'maxRetries', value: '5' },
@@ -362,7 +364,7 @@ describe('E2E: Config System', () => {
     expect(set2Res.statusCode).toBe(200);
 
     // Get global config and verify both keys are present
-    const getRes = await server.inject({ method: 'GET', url: '/api/config' });
+    const getRes = await inject({ method: 'GET', url: '/api/config' });
     expect(getRes.statusCode).toBe(200);
     const config = getRes.json();
     expect(config.reviewModel).toBe('claude-opus-4');
@@ -371,7 +373,7 @@ describe('E2E: Config System', () => {
 
   it('sets and retrieves project config values with merge precedence', async () => {
     // Register a project first
-    const projRes = await server.inject({
+    const projRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'config-test', path: repoPath },
@@ -380,14 +382,14 @@ describe('E2E: Config System', () => {
     const projectId = projRes.json().id;
 
     // Set project config values via PUT /api/projects/:id/config
-    const setProjRes = await server.inject({
+    const setProjRes = await inject({
       method: 'PUT',
       url: `/api/projects/${projectId}/config`,
       payload: { key: 'reviewModel', value: 'project-model' },
     });
     expect(setProjRes.statusCode).toBe(200);
 
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: `/api/projects/${projectId}/config`,
       payload: { key: 'baseBranch', value: 'develop' },
@@ -397,7 +399,7 @@ describe('E2E: Config System', () => {
     // Note: getMergedProjectConfig merges global file + project file + project DB.
     // Since there's no global config file or .agent-shepherd.yml in the test repo,
     // only project DB config will appear.
-    const getProjRes = await server.inject({
+    const getProjRes = await inject({
       method: 'GET',
       url: `/api/projects/${projectId}/config`,
     });
@@ -409,19 +411,19 @@ describe('E2E: Config System', () => {
 
     // Verify that global DB config is separate from project config
     // Set a global config key
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: '/api/config',
       payload: { key: 'globalOnlyKey', value: 'global-value' },
     });
 
     // Global config should have it
-    const globalRes = await server.inject({ method: 'GET', url: '/api/config' });
+    const globalRes = await inject({ method: 'GET', url: '/api/config' });
     expect(globalRes.json().globalOnlyKey).toBe('global-value');
 
     // Project config merge (global file + project file + project DB) does not
     // include global DB entries. So globalOnlyKey is NOT in project config.
-    const projConfigAfter = await server.inject({
+    const projConfigAfter = await inject({
       method: 'GET',
       url: `/api/projects/${projectId}/config`,
     });
@@ -432,7 +434,7 @@ describe('E2E: Config System', () => {
     // will override.
     await writeFile(join(repoPath, '.agent-shepherd.yml'), 'reviewModel: file-model\nfileOnlyKey: from-file\n');
 
-    const projConfigWithFile = await server.inject({
+    const projConfigWithFile = await inject({
       method: 'GET',
       url: `/api/projects/${projectId}/config`,
     });
@@ -448,32 +450,33 @@ describe('E2E: Config System', () => {
 
   it('updates existing config values', async () => {
     // Set initial value
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: '/api/config',
       payload: { key: 'theme', value: 'light' },
     });
 
     // Update value
-    await server.inject({
+    await inject({
       method: 'PUT',
       url: '/api/config',
       payload: { key: 'theme', value: 'dark' },
     });
 
     // Verify update
-    const getRes = await server.inject({ method: 'GET', url: '/api/config' });
+    const getRes = await inject({ method: 'GET', url: '/api/config' });
     expect(getRes.json().theme).toBe('dark');
   });
 });
 
 describe('E2E: Multiple Review Cycles', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let repoPath: string;
 
   beforeEach(async () => {
     repoPath = await createTestRepo();
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
+    ({ server, inject } = await createTestServer());
   });
 
   afterEach(async () => {
@@ -483,14 +486,14 @@ describe('E2E: Multiple Review Cycles', () => {
 
   it('goes through 3 review cycles and verifies cycle history and diff snapshots', async () => {
     // Register project and create PR
-    const projRes = await server.inject({
+    const projRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'multi-cycle', path: repoPath },
     });
     const projectId = projRes.json().id;
 
-    const prRes = await server.inject({
+    const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -502,13 +505,13 @@ describe('E2E: Multiple Review Cycles', () => {
     const prId = prRes.json().id;
 
     // Verify cycle 1 exists
-    let cyclesRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    let cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
     expect(cyclesRes.json()).toHaveLength(1);
     expect(cyclesRes.json()[0].cycleNumber).toBe(1);
     expect(cyclesRes.json()[0].status).toBe('pending_review');
 
     // --- Cycle 1: request-changes ---
-    const review1Res = await server.inject({
+    const review1Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
@@ -516,7 +519,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(review1Res.json().status).toBe('changes_requested');
 
     // Agent signals ready -> creates cycle 2
-    const ready1Res = await server.inject({
+    const ready1Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
@@ -524,11 +527,11 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(ready1Res.json().status).toBe('pending_review');
 
     // Verify 2 cycles
-    cyclesRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
     expect(cyclesRes.json()).toHaveLength(2);
 
     // --- Cycle 2: request-changes ---
-    const review2Res = await server.inject({
+    const review2Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
@@ -536,7 +539,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(review2Res.json().status).toBe('changes_requested');
 
     // Agent signals ready -> creates cycle 3
-    const ready2Res = await server.inject({
+    const ready2Res = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
@@ -544,11 +547,11 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(ready2Res.json().status).toBe('pending_review');
 
     // Verify 3 cycles
-    cyclesRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
     expect(cyclesRes.json()).toHaveLength(3);
 
     // --- Cycle 3: approve ---
-    const approveRes = await server.inject({
+    const approveRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'approve' },
@@ -558,7 +561,7 @@ describe('E2E: Multiple Review Cycles', () => {
     // ---------------------------------------------------------------
     // Verify all cycles exist with correct numbers and statuses
     // ---------------------------------------------------------------
-    cyclesRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
     const allCycles = cyclesRes.json();
     expect(allCycles).toHaveLength(3);
 
@@ -579,7 +582,7 @@ describe('E2E: Multiple Review Cycles', () => {
     // Verify diff snapshots exist for cycles created via agent-ready
     // (cycles 2 and 3)
     // ---------------------------------------------------------------
-    const detailsRes = await server.inject({
+    const detailsRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles/details`,
     });
@@ -596,7 +599,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(detailsSorted[2].hasDiffSnapshot).toBe(true);
 
     // Verify snapshot content for cycle 2
-    const snap2Res = await server.inject({
+    const snap2Res = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=2`,
     });
@@ -605,7 +608,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(snap2Res.json().diff).toContain('+export function multiply');
 
     // Verify snapshot content for cycle 3
-    const snap3Res = await server.inject({
+    const snap3Res = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=3`,
     });
@@ -614,7 +617,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(snap3Res.json().diff).toContain('+export function multiply');
 
     // Cycle 1 should have no snapshot
-    const snap1Res = await server.inject({
+    const snap1Res = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=1`,
     });
@@ -624,20 +627,20 @@ describe('E2E: Multiple Review Cycles', () => {
     // ---------------------------------------------------------------
     // Verify final PR status is approved
     // ---------------------------------------------------------------
-    const finalPrRes = await server.inject({ method: 'GET', url: `/api/prs/${prId}` });
+    const finalPrRes = await inject({ method: 'GET', url: `/api/prs/${prId}` });
     expect(finalPrRes.json().status).toBe('approved');
   });
 
   it('adds comments in different cycles and retrieves them all', async () => {
     // Setup
-    const projRes = await server.inject({
+    const projRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'comment-cycles', path: repoPath },
     });
     const projectId = projRes.json().id;
 
-    const prRes = await server.inject({
+    const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -649,7 +652,7 @@ describe('E2E: Multiple Review Cycles', () => {
     const prId = prRes.json().id;
 
     // Cycle 1: add 2 human comments
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -661,7 +664,7 @@ describe('E2E: Multiple Review Cycles', () => {
         author: 'human',
       },
     });
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -675,18 +678,18 @@ describe('E2E: Multiple Review Cycles', () => {
     });
 
     // Request changes and advance to cycle 2
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
     });
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
 
     // Cycle 2: add 1 human comment
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -700,7 +703,7 @@ describe('E2E: Multiple Review Cycles', () => {
     });
 
     // GET /api/prs/:prId/comments returns all comments across all cycles
-    const allCommentsRes = await server.inject({
+    const allCommentsRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -718,14 +721,14 @@ describe('E2E: Multiple Review Cycles', () => {
 
   it('supports threaded replies within batch comments', async () => {
     // Setup
-    const projRes = await server.inject({
+    const projRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'thread-test', path: repoPath },
     });
     const projectId = projRes.json().id;
 
-    const prRes = await server.inject({
+    const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -737,7 +740,7 @@ describe('E2E: Multiple Review Cycles', () => {
     const prId = prRes.json().id;
 
     // Human adds a comment
-    const humanRes = await server.inject({
+    const humanRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -752,7 +755,7 @@ describe('E2E: Multiple Review Cycles', () => {
     const humanCommentId = humanRes.json().id;
 
     // Agent responds via batch with a reply
-    const batchRes = await server.inject({
+    const batchRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments/batch`,
       payload: {
@@ -769,7 +772,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(batchRes.json().created).toBe(1);
 
     // Fetch all comments and verify thread relationship
-    const allRes = await server.inject({
+    const allRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -788,14 +791,14 @@ describe('E2E: Multiple Review Cycles', () => {
 
   it('resolves comments during the review flow', async () => {
     // Setup
-    const projRes = await server.inject({
+    const projRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'resolve-test', path: repoPath },
     });
     const projectId = projRes.json().id;
 
-    const prRes = await server.inject({
+    const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -807,7 +810,7 @@ describe('E2E: Multiple Review Cycles', () => {
     const prId = prRes.json().id;
 
     // Add a comment
-    const commentRes = await server.inject({
+    const commentRes = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -823,7 +826,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(commentRes.json().resolved).toBe(false);
 
     // Resolve the comment
-    const resolveRes = await server.inject({
+    const resolveRes = await inject({
       method: 'PUT',
       url: `/api/comments/${commentId}`,
       payload: { resolved: true },
@@ -832,7 +835,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(resolveRes.json().resolved).toBe(true);
 
     // Verify it persists
-    const allRes = await server.inject({
+    const allRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
@@ -841,14 +844,14 @@ describe('E2E: Multiple Review Cycles', () => {
   });
 
   it('returns inter-cycle diff showing only changes between cycles', async () => {
-    const projRes = await server.inject({
+    const projRes = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'inter-diff', path: repoPath },
     });
     const projectId = projRes.json().id;
 
-    const prRes = await server.inject({
+    const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -860,7 +863,7 @@ describe('E2E: Multiple Review Cycles', () => {
     const prId = prRes.json().id;
 
     // Request changes to advance workflow
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
@@ -873,13 +876,13 @@ describe('E2E: Multiple Review Cycles', () => {
     );
     execSync('git add . && git commit -m "add subtract function"', { cwd: repoPath, stdio: 'pipe' });
 
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
     });
 
     // Now request inter-cycle diff
-    const interDiffRes = await server.inject({
+    const interDiffRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?from=1&to=2`,
     });

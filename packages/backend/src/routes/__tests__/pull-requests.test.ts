@@ -1,14 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { buildServer } from '../../server.js';
 import type { FastifyInstance } from 'fastify';
+import { createTestServer } from '../../__tests__/helpers.js';
 
 describe('Pull Requests API', () => {
   let server: FastifyInstance;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
   let projectId: string;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
-    const res = await server.inject({
+    ({ server, inject } = await createTestServer());
+    const res = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
@@ -21,7 +22,7 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/projects/:id/prs creates a PR with review cycle', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -37,13 +38,13 @@ describe('Pull Requests API', () => {
   });
 
   it('GET /api/projects/:id/prs lists PRs', async () => {
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR1', description: '', sourceBranch: 'feat/1' },
     });
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/projects/${projectId}/prs`,
     });
@@ -52,14 +53,14 @@ describe('Pull Requests API', () => {
   });
 
   it('GET /api/prs/:id returns a PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: 'desc', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'GET',
       url: `/api/prs/${id}`,
     });
@@ -68,33 +69,33 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/prs/:id/review approves a PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${id}/review`,
       payload: { action: 'approve' },
     });
     expect(response.statusCode).toBe(200);
 
-    const pr = await server.inject({ method: 'GET', url: `/api/prs/${id}` });
+    const pr = await inject({ method: 'GET', url: `/api/prs/${id}` });
     expect(pr.json().status).toBe('approved');
   });
 
   it('POST /api/prs/:id/review requests changes', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${id}/review`,
       payload: { action: 'request-changes' },
@@ -104,7 +105,7 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/prs/:id/agent-ready creates new review cycle', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
@@ -112,14 +113,14 @@ describe('Pull Requests API', () => {
     const { id } = create.json();
 
     // Request changes first
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${id}/review`,
       payload: { action: 'request-changes' },
     });
 
     // Agent signals ready
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${id}/agent-ready`,
     });
@@ -128,7 +129,7 @@ describe('Pull Requests API', () => {
     expect(response.json().status).toBe('pending_review');
 
     // Check cycles
-    const cycles = await server.inject({
+    const cycles = await inject({
       method: 'GET',
       url: `/api/prs/${id}/cycles`,
     });
@@ -136,57 +137,57 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/prs/:id/close closes an open PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${id}/close`,
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().status).toBe('closed');
 
-    const pr = await server.inject({ method: 'GET', url: `/api/prs/${id}` });
+    const pr = await inject({ method: 'GET', url: `/api/prs/${id}` });
     expect(pr.json().status).toBe('closed');
   });
 
   it('POST /api/prs/:id/close returns 400 for already-closed PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
-    const response = await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    await inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    const response = await inject({ method: 'POST', url: `/api/prs/${id}/close` });
     expect(response.statusCode).toBe(400);
   });
 
   it('POST /api/prs/:id/close returns 400 for approved PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    await server.inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${id}/review`,
       payload: { action: 'approve' },
     });
 
-    const response = await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    const response = await inject({ method: 'POST', url: `/api/prs/${id}/close` });
     expect(response.statusCode).toBe(400);
   });
 
   it('POST /api/prs/:id/close returns 404 for nonexistent PR', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: '/api/prs/nonexistent/close',
     });
@@ -194,35 +195,35 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/prs/:id/reopen reopens a closed PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    await inject({ method: 'POST', url: `/api/prs/${id}/close` });
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${id}/reopen`,
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().status).toBe('open');
 
-    const pr = await server.inject({ method: 'GET', url: `/api/prs/${id}` });
+    const pr = await inject({ method: 'GET', url: `/api/prs/${id}` });
     expect(pr.json().status).toBe('open');
   });
 
   it('POST /api/prs/:id/reopen returns 400 for non-closed PR', async () => {
-    const create = await server.inject({
+    const create = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
     const { id } = create.json();
 
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/prs/${id}/reopen`,
     });
@@ -230,7 +231,7 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/projects/:id/prs stores workingDirectory when provided', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
@@ -246,7 +247,7 @@ describe('Pull Requests API', () => {
   });
 
   it('POST /api/projects/:id/prs defaults workingDirectory to null', async () => {
-    const response = await server.inject({
+    const response = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: {
