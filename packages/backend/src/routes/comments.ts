@@ -62,6 +62,22 @@ export async function commentRoutes(fastify: FastifyInstance) {
     const broadcast = (fastify as any).broadcast;
     if (broadcast) broadcast('comment:added', comment);
 
+    // Auto-unresolve parent if it was resolved
+    if (parentCommentId) {
+      const parent = db.select().from(schema.comments)
+        .where(eq(schema.comments.id, parentCommentId)).get();
+      if (parent && parent.resolved) {
+        db.update(schema.comments)
+          .set({ resolved: false })
+          .where(eq(schema.comments.id, parentCommentId))
+          .run();
+        const updatedParent = db.select().from(schema.comments)
+          .where(eq(schema.comments.id, parentCommentId)).get();
+        const broadcast = (fastify as any).broadcast;
+        if (broadcast) broadcast('comment:updated', updatedParent);
+      }
+    }
+
     reply.code(201).send(comment);
   });
 
@@ -192,6 +208,16 @@ export async function commentRoutes(fastify: FastifyInstance) {
             })
             .run();
           created++;
+
+          // Auto-unresolve parent if resolved
+          if (parent.resolved) {
+            db.update(schema.comments)
+              .set({ resolved: false })
+              .where(eq(schema.comments.id, r.parentCommentId))
+              .run();
+            const broadcast = (fastify as any).broadcast;
+            if (broadcast) broadcast('comment:updated', { ...parent, resolved: false });
+          }
         }
       }
     }

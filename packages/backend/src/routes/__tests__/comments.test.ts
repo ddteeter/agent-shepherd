@@ -123,6 +123,97 @@ describe('Comments API', () => {
     expect(response.json().resolved).toBe(true);
   });
 
+  it('should unresolve parent comment when reply is added', async () => {
+    // Create a top-level comment
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'Fix this',
+        severity: 'must-fix',
+        author: 'human',
+      },
+    });
+    const parentId = create.json().id;
+
+    // Resolve the comment
+    await server.inject({
+      method: 'PUT',
+      url: `/api/comments/${parentId}`,
+      payload: { resolved: true },
+    });
+
+    // Add a reply to the resolved comment
+    await server.inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'Actually, this still needs work',
+        severity: 'suggestion',
+        author: 'human',
+        parentCommentId: parentId,
+      },
+    });
+
+    // Verify parent is now unresolved
+    const comments = await server.inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/comments`,
+    });
+    const parentComment = comments.json().find((c: any) => c.id === parentId);
+    expect(parentComment.resolved).toBeFalsy();
+  });
+
+  it('should unresolve parent comment when batch reply is added', async () => {
+    // Create a top-level comment
+    const create = await server.inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 10,
+        body: 'Needs refactoring',
+        severity: 'request',
+        author: 'human',
+      },
+    });
+    const parentId = create.json().id;
+
+    // Resolve the comment
+    await server.inject({
+      method: 'PUT',
+      url: `/api/comments/${parentId}`,
+      payload: { resolved: true },
+    });
+
+    // Batch create a reply
+    await server.inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments/batch`,
+      payload: {
+        comments: [],
+        replies: [
+          { parentCommentId: parentId, body: 'Done with changes', severity: 'suggestion' },
+        ],
+      },
+    });
+
+    // Verify parent is now unresolved
+    const comments = await server.inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/comments`,
+    });
+    const parentComment = comments.json().find((c: any) => c.id === parentId);
+    expect(parentComment.resolved).toBeFalsy();
+  });
+
   it('POST /api/prs/:id/comments/batch handles batch comments', async () => {
     const response = await server.inject({
       method: 'POST',
