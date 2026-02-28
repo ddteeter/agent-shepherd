@@ -32,6 +32,12 @@ git commit -m "Implement feature X: brief description"
 
 Do NOT use `git add .` blindly. Review what you are staging. Avoid committing generated files, secrets, or `.env` files.
 
+### 1b. Verify You're in the Correct Working Directory
+
+The `submit` command automatically captures your current working directory (`cwd`). This is used by the orchestrator to re-dispatch agents to the correct location during multi-cycle reviews.
+
+If you're working in a git worktree, make sure you run `shepherd submit` from inside the worktree directory, not the main repository checkout. The working directory is captured automatically — no flag needed.
+
 ### 2. Find Your Project ID
 
 If you do not already know the project ID, list registered projects:
@@ -111,6 +117,7 @@ agent-shepherd submit \
 | `-d, --description <desc>` | No | Short PR description |
 | `-s, --source-branch <branch>` | No | Source branch (auto-detected from HEAD if omitted) |
 | `-c, --context-file <path>` | No | Path to JSON file with structured agent context |
+| (auto) | — | Working directory is automatically captured from `cwd` |
 
 The command outputs the PR ID, title, and status on success. Save the PR ID -- you will need it if responding to review comments later.
 
