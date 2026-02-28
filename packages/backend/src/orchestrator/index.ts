@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import type { AgentAdapter, AgentSession } from './types.js';
 import { ClaudeCodeAdapter } from './claude-code-adapter.js';
 import { buildReviewPrompt } from './prompt-builder.js';
@@ -72,10 +72,17 @@ export class Orchestrator {
     const currentCycle = this.getLatestCycle(prId);
     if (!currentCycle) throw new Error(`No review cycle found for PR: ${prId}`);
 
-    // Get current cycle's comments with threads
-    const allComments = this.db.select().from(this.schema.comments).where(eq(this.schema.comments.reviewCycleId, currentCycle.id)).all();
+    // Get all cycles for this PR
+    const allCycles = this.db.select().from(this.schema.reviewCycles)
+      .where(eq(this.schema.reviewCycles.prId, prId)).all();
+    const cycleIds = allCycles.map((c: any) => c.id);
 
-    const topLevel = allComments.filter((c: any) => !c.parentCommentId);
+    // Get ALL comments across all cycles (not just current cycle)
+    const allComments = this.db.select().from(this.schema.comments)
+      .where(inArray(this.schema.comments.reviewCycleId, cycleIds)).all();
+
+    // Filter to unresolved top-level comments
+    const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
     const reviewComments = topLevel.map((c: any) => ({
       id: c.id,
       filePath: c.filePath,
