@@ -47,4 +47,21 @@ describe('GitService', () => {
     const files = await gitService.getChangedFiles('main', 'feat/test2');
     expect(files).toContain('new-file.txt');
   });
+
+  it('gets HEAD SHA for a branch', async () => {
+    const sha = await gitService.getHeadSha('main');
+    expect(sha).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it('gets diff between two commits', async () => {
+    execSync('git checkout -b feat/inter', { cwd: repoPath });
+    await writeFile(join(repoPath, 'file.txt'), 'hello\nworld\n');
+    execSync('git add . && git commit -m "add world"', { cwd: repoPath });
+
+    const sha1 = await gitService.getHeadSha('main');
+    const sha2 = await gitService.getHeadSha('feat/inter');
+
+    const diff = await gitService.getDiffBetweenCommits(sha1, sha2);
+    expect(diff).toContain('+world');
+  });
 });

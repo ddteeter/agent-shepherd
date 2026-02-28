@@ -30,4 +30,14 @@ export class GitService {
   async log(baseBranch: string, sourceBranch: string) {
     return this.git.log({ from: baseBranch, to: sourceBranch });
   }
+
+  async getHeadSha(branch: string): Promise<string> {
+    const result = await this.git.revparse([branch]);
+    return result.trim();
+  }
+
+  async getDiffBetweenCommits(sha1: string, sha2: string): Promise<string> {
+    const result = await this.git.diff([`${sha1}..${sha2}`]);
+    return result;
+  }
 }
