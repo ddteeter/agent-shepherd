@@ -78,6 +78,23 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
           {comment.resolved && (
             <span className="text-xs opacity-50">Resolved</span>
           )}
+          {isEditable(comment) && editingId !== comment.id && (
+            <button
+              onClick={() => setEditingId(comment.id)}
+              className="text-xs opacity-50 hover:opacity-100"
+            >
+              Edit
+            </button>
+          )}
+          {isDeletable(comment) && (
+            <button
+              onClick={() => onDelete!(comment.id)}
+              className="text-xs opacity-50 hover:opacity-100"
+              style={{ color: 'var(--color-danger)' }}
+            >
+              Delete
+            </button>
+          )}
         </div>
         {editingId === comment.id ? (
           <CommentForm
@@ -146,28 +163,12 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
         >
           Reply
         </button>
-        {isEditable(comment) && editingId !== comment.id && (
-          <button
-            onClick={() => setEditingId(comment.id)}
-            className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
-          >
-            Edit
-          </button>
-        )}
         {!comment.resolved && (
           <button
             onClick={() => onResolve(comment.id)}
             className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
           >
             Resolve
-          </button>
-        )}
-        {isDeletable(comment) && (
-          <button
-            onClick={() => onDelete!(comment.id)}
-            className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)', color: 'var(--color-danger)' }}
-          >
-            Delete
           </button>
         )}
       </div>
