@@ -7,3 +7,4 @@ dist/
 .playwright-cli/
 *.db-shm
 *.db-wal
+*.tsbuildinfo
