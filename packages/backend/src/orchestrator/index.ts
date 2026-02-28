@@ -100,13 +100,8 @@ export class Orchestrator {
     this.setCycleStatus(currentCycle.id, 'agent_working');
     this.broadcast?.('agent:working', { prId });
 
-    // Start or resume agent session
-    const sessionMode = pr.agentSessionId ? 'resume' : 'new';
-
     try {
-      const session = sessionMode === 'resume' && pr.agentSessionId
-        ? await this.adapter.resumeSession({ sessionId: pr.agentSessionId, projectPath: project.path, prompt })
-        : await this.adapter.startSession({ projectPath: project.path, prompt });
+      const session = await this.adapter.startSession({ projectPath: project.path, prompt });
 
       this.activeSessions.set(prId, session);
 

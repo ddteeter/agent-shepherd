@@ -38,7 +38,7 @@ A local human-in-the-loop PR review application for AI coding agents. Agent Shep
                             | spawns agent     |
                             +--------+--------+
                                      |
-                            claude --resume <id>
+                            spawns new claude session
                                      |
                                      v
                             +--------+--------+
@@ -218,14 +218,9 @@ Comments have three severity levels that guide agent behavior:
 When a human requests changes, the orchestrator:
 1. Collects all comments from the current review cycle
 2. Builds a structured prompt grouped by file with severity instructions
-3. Spawns the agent in **resume mode** (preserving context) or **new session mode** (clean slate)
+3. Spawns a new agent session with the full context (PR metadata, comments, agent context file)
 4. The agent works, posts replies via the CLI, and signals ready
 5. A new review cycle begins
-
-### Session Modes
-
-- **Resume (default):** `claude --resume <sessionId>` -- agent retains full context. Best for natural iteration.
-- **New session:** Clean context with PR metadata injected. Better for long-lived PRs with many rounds.
 
 ## Data Model
 

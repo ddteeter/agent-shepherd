@@ -1,0 +1,1 @@
+ALTER TABLE `pull_requests` DROP COLUMN `agent_session_id`;

@@ -72,8 +72,7 @@ agent-shepherd submit \
   --project <project-id> \
   --title "Add user authentication flow" \
   --description "Implements login, logout, and session management with JWT tokens." \
-  --context-file pr-context.json \
-  --session-id <your-session-id>
+  --context-file pr-context.json
 ```
 
 **Flags:**
@@ -85,7 +84,6 @@ agent-shepherd submit \
 | `-d, --description <desc>` | No | Short PR description |
 | `-s, --source-branch <branch>` | No | Source branch (auto-detected from HEAD if omitted) |
 | `-c, --context-file <path>` | No | Path to JSON file with structured agent context |
-| `--session-id <id>` | No | Your agent session ID, used for resume mode in future review cycles |
 
 The command outputs the PR ID, title, and status on success. Save the PR ID -- you will need it if responding to review comments later.
 
@@ -120,4 +118,3 @@ The description appears in the review UI alongside the diff. Keep it concise but
 2. **Using the default title.** "Agent PR" tells the reviewer nothing. Always provide a descriptive title.
 3. **Skipping the context file.** If the review requires changes (which it often does), the context file is critical for maintaining continuity across review cycles. Always provide one.
 4. **Committing secrets or .env files.** Review your staged files before committing.
-5. **Not providing a session ID.** Without a session ID, the orchestrator cannot resume your session and must start fresh, losing all your in-memory context.

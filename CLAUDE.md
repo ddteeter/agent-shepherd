@@ -47,7 +47,7 @@ SQLite via better-sqlite3 + Drizzle ORM. Tables: `projects`, `pull_requests`, `r
 1. Agent submits PR via `shepherd submit` (creates PR + first ReviewCycle + DiffSnapshot)
 2. Human reviews in web UI, adds inline comments with severity (`must-fix` / `request` / `suggestion`)
 3. Human submits review: "Approve" or "Request Changes"
-4. On request changes: orchestrator builds prompt from comments, spawns agent (resume or new session)
+4. On request changes: orchestrator builds prompt from comments, spawns new agent session
 5. Agent makes changes, replies via `shepherd batch`, calls `shepherd ready`
 6. New ReviewCycle + DiffSnapshot created, human re-reviews
 
@@ -77,8 +77,7 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 
 The orchestrator (`packages/backend/src/orchestrator/`) manages the AI agent lifecycle:
 - `prompt-builder.ts` constructs structured prompts from review comments (grouped by file, includes severity and threading)
-- `claude-code-adapter.ts` spawns Claude Code CLI as subprocess
-- Supports **resume mode** (`claude --resume <sessionId>`) and **new session mode**
+- `claude-code-adapter.ts` spawns Claude Code CLI as subprocess (always starts a new session)
 - `AgentAdapter` interface allows future adapters (Cursor, Aider, etc.)
 
 ## Current Status

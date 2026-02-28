@@ -199,9 +199,9 @@ export function PRReview() {
     }
   };
 
-  const handleReview = async (action: 'approve' | 'request-changes', opts?: { clearSession?: boolean }) => {
+  const handleReview = async (action: 'approve' | 'request-changes') => {
     if (!prId) return;
-    await api.prs.review(prId, action, opts);
+    await api.prs.review(prId, action);
     const updatedPr = await api.prs.get(prId);
     setPr(updatedPr);
     await fetchCycles();
@@ -441,7 +441,6 @@ export function PRReview() {
         prId={prId || ''}
         prStatus={pr.status}
         commentCount={topLevelComments.length}
-        hasAgentSession={!!pr.agentSessionId}
         agentWorking={agentWorking}
         onReview={handleReview}
       />

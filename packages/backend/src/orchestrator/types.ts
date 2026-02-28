@@ -8,7 +8,6 @@ export interface AgentActivityEntry {
 export interface AgentAdapter {
   name: string;
   startSession(opts: { projectPath: string; prompt: string }): Promise<AgentSession>;
-  resumeSession(opts: { sessionId: string; projectPath: string; prompt: string }): Promise<AgentSession>;
 }
 
 export interface AgentSession {

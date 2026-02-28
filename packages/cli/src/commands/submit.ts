@@ -11,7 +11,6 @@ export function submitCommand(program: Command, client: ApiClient) {
     .option('-d, --description <desc>', 'PR description', '')
     .option('-s, --source-branch <branch>', 'Source branch (auto-detected if omitted)')
     .option('-c, --context-file <path>', 'Path to JSON file with agent context')
-    .option('--session-id <id>', 'Agent session ID for resume mode')
     .action(async (opts) => {
       let agentContext: string | undefined;
       if (opts.contextFile) {
@@ -23,7 +22,6 @@ export function submitCommand(program: Command, client: ApiClient) {
         description: opts.description,
         sourceBranch: opts.sourceBranch || 'HEAD',
         agentContext,
-        agentSessionId: opts.sessionId,
       });
 
       console.log(`PR created: ${(pr as any).id}`);

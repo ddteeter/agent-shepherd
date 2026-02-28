@@ -29,7 +29,6 @@ export interface PullRequest {
   baseBranch: string;
   status: PRStatus;
   agentContext: string | null;
-  agentSessionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,7 +90,6 @@ export interface CreatePRInput {
   sourceBranch: string;
   baseBranch?: string;
   agentContext?: string;
-  agentSessionId?: string;
 }
 
 export interface CreateCommentInput {
@@ -106,10 +104,4 @@ export interface CreateCommentInput {
 
 export interface SubmitReviewInput {
   action: 'approve' | 'request-changes';
-  clearSession?: boolean;
-}
-
-export interface AgentAdapterConfig {
-  name: string;
-  sessionMode: 'resume' | 'new';
 }

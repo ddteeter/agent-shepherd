@@ -41,15 +41,6 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     return this.wrapProcess(proc, this.devMode);
   }
 
-  async resumeSession(opts: { sessionId: string; projectPath: string; prompt: string }): Promise<AgentSession> {
-    const proc = spawn('claude', ['--resume', opts.sessionId, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash(agent-shepherd:*)', 'Bash(git:*)', '-p'], {
-      cwd: opts.projectPath,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    proc.stdin?.end(opts.prompt);
-    return this.wrapProcess(proc, this.devMode);
-  }
-
   private wrapProcess(proc: ChildProcess, devMode: boolean): AgentSession {
     let completeCallback: (() => void) | null = null;
     let errorCallback: ((error: Error) => void) | null = null;

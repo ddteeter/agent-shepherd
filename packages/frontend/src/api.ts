@@ -30,8 +30,8 @@ export const api = {
     cycles: (id: string) => request<any[]>(`/prs/${id}/cycles/details`),
     snapshotDiff: (id: string) =>
       request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
-    review: (id: string, action: string, opts?: { clearSession?: boolean }) =>
-      request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action, ...opts }) }),
+    review: (id: string, action: string) =>
+      request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }),
     cancelAgent: (id: string) =>
       request<any>(`/prs/${id}/cancel-agent`, { method: 'POST' }),
     close: (id: string) =>
