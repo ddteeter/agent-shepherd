@@ -442,6 +442,15 @@ export function PRReview() {
             {pr.status}
           </span>
           {pr.sourceBranch} &rarr; {pr.baseBranch}
+          {pr.workingDirectory && (
+            <span
+              className="ml-2 inline-block px-2 py-0.5 rounded text-xs"
+              style={{ backgroundColor: 'rgba(130, 130, 130, 0.1)' }}
+              title={pr.workingDirectory}
+            >
+              {pr.workingDirectory.split('/').slice(-2).join('/')}
+            </span>
+          )}
           {selectedCycle !== 'current' && (
             <span
               className="ml-2 inline-block px-2 py-0.5 rounded text-xs font-medium"
