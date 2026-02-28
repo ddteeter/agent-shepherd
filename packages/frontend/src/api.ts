@@ -21,9 +21,11 @@ export const api = {
   prs: {
     list: (projectId: string) => request<any[]>(`/projects/${projectId}/prs`),
     get: (id: string) => request<any>(`/prs/${id}`),
-    diff: (id: string, opts?: { cycle?: number }) => {
+    diff: (id: string, opts?: { cycle?: number; from?: number; to?: number }) => {
       const params = new URLSearchParams();
       if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
+      if (opts?.from !== undefined) params.set('from', String(opts.from));
+      if (opts?.to !== undefined) params.set('to', String(opts.to));
       const qs = params.toString();
       return request<any>(`/prs/${id}/diff${qs ? `?${qs}` : ''}`);
     },

@@ -90,6 +90,9 @@ export function PRReview() {
       let diff;
       if (cycleValue === 'current') {
         diff = await api.prs.diff(prId);
+      } else if (cycleValue.startsWith('inter:')) {
+        const [, fromStr, toStr] = cycleValue.split(':');
+        diff = await api.prs.diff(prId, { from: parseInt(fromStr, 10), to: parseInt(toStr, 10) });
       } else {
         const cycleNum = parseInt(cycleValue, 10);
         diff = await api.prs.diff(prId, { cycle: cycleNum });
@@ -353,6 +356,29 @@ export function PRReview() {
                     </option>
                   ))
                 }
+                {cyclesWithSnapshots.length >= 2 && (
+                  <>
+                    <option disabled>───────────</option>
+                    {cyclesWithSnapshots
+                      .sort((a, b) => a.cycleNumber - b.cycleNumber)
+                      .slice(1)
+                      .map((cycle) => {
+                        const prevCycle = cyclesWithSnapshots.find(
+                          (c) => c.cycleNumber === cycle.cycleNumber - 1
+                        );
+                        if (!prevCycle) return null;
+                        return (
+                          <option
+                            key={`inter-${prevCycle.cycleNumber}-${cycle.cycleNumber}`}
+                            value={`inter:${prevCycle.cycleNumber}:${cycle.cycleNumber}`}
+                          >
+                            Changes: Cycle {prevCycle.cycleNumber} → {cycle.cycleNumber}
+                          </option>
+                        );
+                      })
+                    }
+                  </>
+                )}
               </select>
               {diffLoading && (
                 <span className="text-sm opacity-50">Loading...</span>
