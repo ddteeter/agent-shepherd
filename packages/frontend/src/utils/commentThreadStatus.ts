@@ -2,7 +2,7 @@ import type { Comment } from '../components/CommentThread.js';
 
 export type ThreadStatus = 'resolved' | 'agent-replied' | 'needs-attention' | 'new';
 
-export interface CommentThread {
+export interface ThreadGroup {
   comment: Comment;
   replies: Comment[];
   status: ThreadStatus;
@@ -26,7 +26,7 @@ export function getThreadStatus(
   return 'needs-attention';
 }
 
-export function groupThreads(comments: Comment[]): CommentThread[] {
+export function groupThreads(comments: Comment[]): ThreadGroup[] {
   const topLevel: Comment[] = [];
   const repliesByParent = new Map<string, Comment[]>();
 

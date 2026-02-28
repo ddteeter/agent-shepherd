@@ -38,7 +38,8 @@ export type { Comment };
 export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false, threadStatus }: CommentThreadProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(threadStatus === 'resolved');
+  const [userToggled, setUserToggled] = useState(false);
+  const collapsed = threadStatus === 'resolved' && !userToggled;
 
   const isEditable = (c: Comment) => canEdit && c.author === 'human' && onEdit;
   const isDeletable = (c: Comment) => canEdit && c.author === 'human' && onDelete;
@@ -49,7 +50,7 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
       <div
         className="p-3"
         style={{ cursor: threadStatus === 'resolved' ? 'pointer' : undefined }}
-        onClick={threadStatus === 'resolved' ? () => setCollapsed((c) => !c) : undefined}
+        onClick={threadStatus === 'resolved' ? () => setUserToggled((t) => !t) : undefined}
       >
         <div className="flex items-center gap-2 mb-1">
           {threadStatus === 'resolved' && (
