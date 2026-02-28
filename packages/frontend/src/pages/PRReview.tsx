@@ -267,7 +267,7 @@ export function PRReview() {
   const commentCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const c of comments) {
-      if (!c.parentCommentId && c.filePath) {
+      if (c.filePath) {
         counts[c.filePath] = (counts[c.filePath] || 0) + 1;
       }
     }
@@ -466,7 +466,7 @@ export function PRReview() {
       <ReviewBar
         prId={prId || ''}
         prStatus={pr.status}
-        commentCount={topLevelComments.length}
+        commentCount={comments.length}
         agentWorking={agentWorking}
         onReview={handleReview}
       />
