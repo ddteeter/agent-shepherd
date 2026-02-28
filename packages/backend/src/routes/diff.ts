@@ -14,12 +14,58 @@ export async function diffRoutes(fastify: FastifyInstance) {
   //   ?cycle=N  — stored diff snapshot for cycle N
   fastify.get('/api/prs/:id/diff', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { cycle } = request.query as { cycle?: string };
+    const { cycle, from, to } = request.query as { cycle?: string; from?: string; to?: string };
 
     const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
     if (!pr) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
+    }
+
+    // Inter-cycle diff: from=N&to=M
+    if (from !== undefined && to !== undefined) {
+      const fromNum = parseInt(from, 10);
+      const toNum = parseInt(to, 10);
+      if (isNaN(fromNum) || isNaN(toNum) || fromNum < 1 || toNum < 1) {
+        reply.code(400).send({ error: 'Invalid from/to cycle numbers' });
+        return;
+      }
+
+      const fromCycle = db
+        .select()
+        .from(schema.reviewCycles)
+        .where(and(eq(schema.reviewCycles.prId, id), eq(schema.reviewCycles.cycleNumber, fromNum)))
+        .get();
+      const toCycle = db
+        .select()
+        .from(schema.reviewCycles)
+        .where(and(eq(schema.reviewCycles.prId, id), eq(schema.reviewCycles.cycleNumber, toNum)))
+        .get();
+
+      if (!fromCycle) {
+        reply.code(404).send({ error: `Review cycle ${fromNum} not found` });
+        return;
+      }
+      if (!toCycle) {
+        reply.code(404).send({ error: `Review cycle ${toNum} not found` });
+        return;
+      }
+
+      if (!fromCycle.commitSha || !toCycle.commitSha) {
+        reply.code(400).send({ error: 'Commit SHAs not available for these cycles' });
+        return;
+      }
+
+      const project = db.select().from(schema.projects).where(eq(schema.projects.id, pr.projectId)).get();
+      if (!project) {
+        reply.code(404).send({ error: 'Project not found' });
+        return;
+      }
+
+      const gitService = new GitService(project.path);
+      const diff = await gitService.getDiffBetweenCommits(fromCycle.commitSha, toCycle.commitSha);
+      const files = extractFilesFromDiff(diff);
+      return { diff, files, fromCycle: fromNum, toCycle: toNum, isInterCycleDiff: true };
     }
 
     // If cycle param is provided, return stored snapshot

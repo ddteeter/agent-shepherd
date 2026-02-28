@@ -839,4 +839,53 @@ describe('E2E: Multiple Review Cycles', () => {
     const resolved = allRes.json().find((c: any) => c.id === commentId);
     expect(resolved.resolved).toBe(true);
   });
+
+  it('returns inter-cycle diff showing only changes between cycles', async () => {
+    const projRes = await server.inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'inter-diff', path: repoPath },
+    });
+    const projectId = projRes.json().id;
+
+    const prRes = await server.inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: {
+        title: 'Inter-diff test',
+        description: '',
+        sourceBranch: 'feat/add-multiply',
+      },
+    });
+    const prId = prRes.json().id;
+
+    // Request changes to advance workflow
+    await server.inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/review`,
+      payload: { action: 'request-changes' },
+    });
+
+    // Make a new commit on the feature branch before signaling ready
+    execSync('git checkout feat/add-multiply', { cwd: repoPath, stdio: 'pipe' });
+    await writeFile(join(repoPath, 'src', 'utils.ts'),
+      'export function add(a: number, b: number) {\n  return a + b;\n}\n\nexport function multiply(a: number, b: number) {\n  return a * b;\n}\n\nexport function subtract(a: number, b: number) {\n  return a - b;\n}\n'
+    );
+    execSync('git add . && git commit -m "add subtract function"', { cwd: repoPath, stdio: 'pipe' });
+
+    await server.inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/agent-ready`,
+    });
+
+    // Now request inter-cycle diff
+    const interDiffRes = await server.inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff?from=1&to=2`,
+    });
+    expect(interDiffRes.statusCode).toBe(200);
+    const interDiff = interDiffRes.json();
+    expect(interDiff.diff).toContain('+export function subtract');
+    expect(interDiff.isInterCycleDiff).toBe(true);
+  });
 });
