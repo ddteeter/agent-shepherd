@@ -4,7 +4,7 @@ import { createTestServer, TEST_TOKEN } from './helpers.js';
 
 describe('Server', () => {
   let server: FastifyInstance;
-  let inject: ReturnType<typeof createTestServer> extends Promise<infer T> ? T['inject'] : never;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
@@ -26,7 +26,7 @@ describe('Server', () => {
 
 describe('Session token auth', () => {
   let server: FastifyInstance;
-  let inject: ReturnType<typeof createTestServer> extends Promise<infer T> ? T['inject'] : never;
+  let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
