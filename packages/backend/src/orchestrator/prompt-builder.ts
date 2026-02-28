@@ -27,6 +27,8 @@ export function buildReviewPrompt(input: PromptInput): string {
 
 Everything you need is in this prompt. All review comments, context, and instructions are provided below.
 
+You are a peer of the person providing this feedback. You are equals -- it is appropriate to push back on suggestions you disagree with, ask clarifying questions, or propose alternative approaches. Use your technical judgment.
+
 DO NOT:
 - Query the API or curl any endpoints
 - Access the database directly (sqlite3, etc.)

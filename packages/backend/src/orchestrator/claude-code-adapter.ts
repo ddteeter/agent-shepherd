@@ -49,6 +49,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     let stderr = '';
     let lineBuffer = '';
     let lastStopReason: string | null = null;
+    let lastAssistantText: string | null = null;
 
     proc.stdout?.on('data', (chunk: Buffer) => {
       lineBuffer += chunk.toString();
@@ -71,9 +72,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
             lastStopReason = msg.message.stop_reason;
           }
 
-          // Extract tool uses and text from assistant messages
+          // Extract tool uses, text, and result messages from assistant messages
           if (msg.type === 'assistant' && msg.message?.content) {
             for (const block of msg.message.content) {
+              if (block.type === 'text' && block.text) {
+                lastAssistantText = String(block.text);
+              }
               if (block.type === 'tool_use') {
                 const entry: AgentActivityEntry = {
                   timestamp: new Date().toISOString(),
@@ -119,7 +123,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     proc.on('exit', (code) => {
       if (code === 0) {
         if (lastStopReason === 'end_turn') {
-          errorCallback?.(new Error('Agent stopped waiting for input (end_turn) — it may not have had the information or permissions needed to complete the task'));
+          const lastMsg = lastAssistantText ? `. Last message: ${lastAssistantText.slice(0, 200)}` : '';
+          errorCallback?.(new Error(`Agent stopped waiting for input (end_turn) — it may not have had the information or permissions needed to complete the task${lastMsg}`));
         } else {
           completeCallback?.();
         }

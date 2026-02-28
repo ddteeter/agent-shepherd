@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
+import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 
 export async function diffRoutes(fastify: FastifyInstance) {
@@ -88,15 +89,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    // Find latest review cycle
-    const cycles = db
-      .select()
-      .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, id))
-      .all();
-
-    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
-      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
+    const latestCycle = getLatestCycle(db, id);
 
     if (!latestCycle) {
       reply.code(404).send({ error: 'No review cycle found' });

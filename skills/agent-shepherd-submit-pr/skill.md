@@ -1,6 +1,6 @@
 ---
 name: agent-shepherd:submit-pr
-description: Use when submitting a PR for human review through Agent Shepherd. Guides commit preparation, context file creation, and the agent-agent-shepherd submit workflow.
+description: Use when submitting a PR for human review through Agent Shepherd. Guides commit preparation, context file creation, and the agent-shepherd submit workflow.
 ---
 
 # Skill: Submit a PR via Agent Shepherd
@@ -13,7 +13,7 @@ Use this skill after you have finished implementing a feature or completing a ta
 
 - The Agent Shepherd backend must be running (default: `http://localhost:3847`)
 - The project must already be registered with `agent-shepherd init <path>`
-- You must know the project ID (check with the backend API or your session context)
+- You must know the project ID (run `agent-shepherd list-projects` to see registered projects and their IDs)
 
 ## Step-by-Step Workflow
 
@@ -32,7 +32,17 @@ git commit -m "Implement feature X: brief description"
 
 Do NOT use `git add .` blindly. Review what you are staging. Avoid committing generated files, secrets, or `.env` files.
 
-### 2. Write a Context File
+### 2. Find Your Project ID
+
+If you do not already know the project ID, list registered projects:
+
+```bash
+agent-shepherd list-projects
+```
+
+This outputs a table of projects with their IDs, names, and paths. Use the ID for the project whose repository you are working in.
+
+### 3. Write a Context File
 
 Create a JSON file that captures structured context about what you built. This context is stored with the PR and will be injected into future agent sessions if the review requires multiple rounds.
 
@@ -63,9 +73,26 @@ Create a file (e.g., `pr-context.json`):
 }
 ```
 
-See the `agent-shepherd:context-guidelines` skill for detailed guidance on what to include in context.
+#### Context File Guidance
 
-### 3. Submit the PR
+The context you attach to a PR serves two purposes:
+
+1. **For the human reviewer:** It explains your thinking, making the review faster and more productive.
+2. **For future agent sessions:** If the review requires changes and the orchestrator starts a new session, this context is injected into the prompt so the new session understands what was built and why.
+
+**`summary`** — State WHAT you built, WHY, and HOW at a high level. 2-4 sentences.
+
+**`architecturalDecisions`** — List significant design choices where alternatives existed. Each entry should state the decision AND the reasoning. Skip trivial decisions.
+
+**`tradeOffs`** — Explicitly call out trade-offs: what you gained, what you gave up, why it is acceptable, and under what conditions it should be revisited. Every non-trivial system has trade-offs.
+
+**`planReference`** — A file path or identifier pointing to the plan or spec you were implementing. Include the specific task/section if the plan covers multiple features.
+
+**`knownLimitations`** — Things not implemented, unhandled edge cases, or constraints the reviewer should know. Be honest -- hiding limitations wastes review cycles.
+
+**`notesForFutureSessions`** — Key files and their roles, main abstractions and how to extend them, where tests live, and anything non-obvious discovered during implementation. Think of this as a handoff document for a colleague who has never seen the code.
+
+### 4. Submit the PR
 
 ```bash
 agent-shepherd submit \
@@ -87,7 +114,7 @@ agent-shepherd submit \
 
 The command outputs the PR ID, title, and status on success. Save the PR ID -- you will need it if responding to review comments later.
 
-### 4. Verify Submission
+### 5. Verify Submission
 
 After submitting, verify the PR was created:
 

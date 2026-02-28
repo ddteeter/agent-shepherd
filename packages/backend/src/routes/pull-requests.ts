@@ -3,13 +3,13 @@ import type { CreatePRInput, SubmitReviewInput } from '@agent-shepherd/shared';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
+import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 import { NotificationService } from '../services/notifications.js';
 
 export async function pullRequestRoutes(fastify: FastifyInstance) {
   const db = (fastify as any).db;
 
-  // POST /api/projects/:projectId/prs — Create a PR (also creates first review cycle)
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
     const { title, description, sourceBranch, baseBranch } = request.body as Omit<CreatePRInput, 'projectId'>;
@@ -62,7 +62,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     reply.code(201).send(pr);
   });
 
-  // GET /api/projects/:projectId/prs — List PRs for a project
   fastify.get('/api/projects/:projectId/prs', async (request) => {
     const { projectId } = request.params as { projectId: string };
     return db
@@ -72,7 +71,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .all();
   });
 
-  // GET /api/prs/:id — Get a single PR
   fastify.get('/api/prs/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const pr = db
@@ -88,7 +86,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return pr;
   });
 
-  // PUT /api/prs/:id — Update a PR
   fastify.put('/api/prs/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     const updates = request.body as Partial<{
@@ -120,7 +117,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
   });
 
-  // POST /api/prs/:id/review — Submit review (approve or request-changes)
   fastify.post('/api/prs/:id/review', async (request, reply) => {
     const { id } = request.params as { id: string };
     const { action } = request.body as SubmitReviewInput;
@@ -136,16 +132,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    // Find the latest review cycle for this PR
-    const cycles = db
-      .select()
-      .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, id))
-      .all();
-
-    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
-      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
-
+    const latestCycle = getLatestCycle(db, id);
     const now = new Date().toISOString();
 
     if (action === 'approve') {
@@ -193,7 +180,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     reply.code(400).send({ error: 'Invalid action' });
   });
 
-  // POST /api/prs/:id/agent-ready — Agent signals ready for re-review
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -208,16 +194,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    // Find the latest review cycle
-    const cycles = db
-      .select()
-      .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, id))
-      .all();
-
-    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
-      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
-
+    const latestCycle = getLatestCycle(db, id);
     const now = new Date().toISOString();
 
     // Mark current cycle's agentCompletedAt
@@ -283,7 +260,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return newCycle;
   });
 
-  // POST /api/prs/:id/cancel-agent — Cancel a running agent
   fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -306,7 +282,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return { status: 'cancelled' };
   });
 
-  // POST /api/prs/:id/close — Close a PR
   fastify.post('/api/prs/:id/close', async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -326,15 +301,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    // Check if agent is currently working
-    const cycles = db
-      .select()
-      .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, id))
-      .all();
-
-    const latestCycle = cycles.reduce((latest: any, cycle: any) =>
-      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
+    const latestCycle = getLatestCycle(db, id);
 
     if (latestCycle?.status === 'agent_working') {
       reply.code(409).send({ error: 'Agent is currently working. Cancel the agent first.' });
@@ -359,7 +326,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return updated;
   });
 
-  // POST /api/prs/:id/reopen — Reopen a closed PR
   fastify.post('/api/prs/:id/reopen', async (request, reply) => {
     const { id } = request.params as { id: string };
 
@@ -397,7 +363,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return updated;
   });
 
-  // GET /api/prs/:id/cycles — List review cycles for a PR
   fastify.get('/api/prs/:id/cycles', async (request, reply) => {
     const { id } = request.params as { id: string };
 

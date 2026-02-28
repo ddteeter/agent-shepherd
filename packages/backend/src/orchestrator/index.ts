@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import type { AgentAdapter, AgentSession } from './types.js';
 import { ClaudeCodeAdapter } from './claude-code-adapter.js';
 import { buildReviewPrompt } from './prompt-builder.js';
+import { getLatestCycle } from '../db/queries.js';
 import { NotificationService } from '../services/notifications.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,8 +52,7 @@ export class Orchestrator {
   }
 
   private getLatestCycle(prId: string) {
-    const cycles = this.db.select().from(this.schema.reviewCycles).where(eq(this.schema.reviewCycles.prId, prId)).all();
-    return cycles.reduce((latest: any, c: any) => (!latest || c.cycleNumber > latest.cycleNumber) ? c : latest, null);
+    return getLatestCycle(this.db, prId);
   }
 
   private setCycleStatus(cycleId: string, status: string) {

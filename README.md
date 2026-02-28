@@ -129,13 +129,12 @@ agent-shepherd start [--port 3847]             # Start the server
 
 ## Skills
 
-Agent Shepherd ships three [Claude Code skills](https://github.com/vercel-labs/skills) that teach agents how to interact with the review workflow:
+Agent Shepherd ships two [Claude Code skills](https://github.com/vercel-labs/skills) that teach agents how to interact with the review workflow:
 
 | Skill | Purpose |
 |---|---|
 | `agent-shepherd:respond-to-review` | Guides agents through severity handling, batch response format, and the CLI workflow for addressing review comments |
 | `agent-shepherd:submit-pr` | Guides agents through commit preparation, context file creation, and the submit workflow |
-| `agent-shepherd:context-guidelines` | Guides agents on writing structured context files for PR submissions |
 
 Skills are installed automatically by `agent-shepherd setup` via `npx skills add`. They are installed globally to `~/.claude/skills/` so they are available in all repositories.
 
@@ -196,12 +195,24 @@ This unlinks the CLI from PATH and removes the skill symlinks from `~/.claude/sk
 
 ## Core Concepts
 
-### Review Cycle
+### Review Cycles
 
-Each PR goes through numbered review cycles. A cycle captures:
-- The diff snapshot at that point in time
-- All comments (with severity levels and threading)
-- The human's review decision (approve or request changes)
+Each PR goes through numbered review cycles. A cycle represents one round of human review and agent response.
+
+**Cycle lifecycle:**
+
+1. **Cycle N created** — When a PR is first submitted (cycle 1) or when the agent signals ready after addressing feedback (cycle N+1).
+2. **Human reviews** — The reviewer reads the diff snapshot for this cycle, leaves inline comments with severity levels (`must-fix`, `request`, `suggestion`), and threads replies on existing comments.
+3. **Human submits decision** — Either "Approve" (PR is done) or "Request Changes" (triggers the orchestrator).
+4. **Agent works** — The orchestrator collects all comments from this cycle, builds a prompt, and spawns a new agent session to address them.
+5. **Agent signals ready** — A new cycle (N+1) is created with a fresh diff snapshot, and the human reviews again.
+
+**Comments across cycles:**
+
+- Comments belong to the cycle in which they were created.
+- Each cycle has its own diff snapshot, preserving the exact state of the code at that point.
+- When the agent responds to review comments, it uses the `agent-shepherd batch` command to post replies (threaded under the original comment) and any new comments.
+- The reviewer can see all cycles and their associated comments in the UI, providing a full history of the review conversation.
 
 ### Comment Severity
 

@@ -42,6 +42,12 @@ npm run test                                 # Run tests (Vitest)
 
 SQLite via better-sqlite3 + Drizzle ORM. Tables: `projects`, `pull_requests`, `review_cycles`, `comments`, `diff_snapshots`, `global_config`, `project_config`. Schema defined in `packages/backend/src/db/schema.ts`.
 
+When generating migrations, always use `--name` to give them a logical name:
+```bash
+npx drizzle-kit generate --name <descriptive_name>
+# Example: npx drizzle-kit generate --name add_user_preferences
+```
+
 ## Review Flow
 
 1. Agent submits PR via `shepherd submit` (creates PR + first ReviewCycle + DiffSnapshot)
