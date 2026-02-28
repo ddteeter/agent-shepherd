@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CommentForm } from './CommentForm.js';
+import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 
 interface Comment {
   id: string;
@@ -23,6 +24,7 @@ interface CommentThreadProps {
   onEdit?: (commentId: string, body: string) => void;
   onDelete?: (commentId: string) => void;
   canEdit?: boolean;
+  threadStatus?: ThreadStatus;
 }
 
 const severityColors: Record<string, string> = {
@@ -33,7 +35,7 @@ const severityColors: Record<string, string> = {
 
 export type { Comment };
 
-export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false }: CommentThreadProps) {
+export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false, threadStatus }: CommentThreadProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
   const isDeletable = (c: Comment) => canEdit && c.author === 'human' && onDelete;
 
   return (
-    <div className="my-2 mx-4 border rounded text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+    <div className="my-2 mx-4 border rounded text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)', opacity: threadStatus === 'resolved' ? 0.5 : 1 }}>
       {/* Main comment */}
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1">
@@ -78,6 +80,22 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
           ) : null}
           {comment.resolved && (
             <span className="text-xs opacity-50">Resolved</span>
+          )}
+          {threadStatus === 'agent-replied' && (
+            <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{
+              backgroundColor: 'rgba(9, 105, 218, 0.15)',
+              color: 'var(--color-accent)',
+            }}>
+              Agent Replied
+            </span>
+          )}
+          {threadStatus === 'needs-attention' && (
+            <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{
+              backgroundColor: 'rgba(210, 153, 34, 0.15)',
+              color: 'var(--color-warning, #d29922)',
+            }}>
+              Unaddressed
+            </span>
           )}
           {isEditable(comment) && editingId !== comment.id && (
             <button

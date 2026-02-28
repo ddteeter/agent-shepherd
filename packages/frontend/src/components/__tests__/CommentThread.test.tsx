@@ -234,3 +234,59 @@ describe('CommentThread — editing', () => {
     expect(screen.getByText('Original')).toBeInTheDocument();
   });
 });
+
+describe('CommentThread — status badges', () => {
+  it('shows "Agent Replied" badge when status is agent-replied', () => {
+    render(
+      <CommentThread
+        comment={makeComment()}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        threadStatus="agent-replied"
+      />,
+    );
+    expect(screen.getByText('Agent Replied')).toBeInTheDocument();
+  });
+
+  it('shows "Unaddressed" badge when status is needs-attention', () => {
+    render(
+      <CommentThread
+        comment={makeComment()}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        threadStatus="needs-attention"
+      />,
+    );
+    expect(screen.getByText('Unaddressed')).toBeInTheDocument();
+  });
+
+  it('does not show a badge when status is new', () => {
+    render(
+      <CommentThread
+        comment={makeComment()}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        threadStatus="new"
+      />,
+    );
+    expect(screen.queryByText('Agent Replied')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unaddressed')).not.toBeInTheDocument();
+  });
+
+  it('dims the thread when status is resolved', () => {
+    const { container } = render(
+      <CommentThread
+        comment={makeComment({ resolved: true })}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        threadStatus="resolved"
+      />,
+    );
+    const wrapper = container.firstChild as HTMLElement;
+    expect(wrapper.style.opacity).toBe('0.5');
+  });
+});
