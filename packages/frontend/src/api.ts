@@ -1,7 +1,11 @@
+import { getSessionToken } from './session-token.js';
+
 const BASE = '/api';
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    'X-Session-Token': getSessionToken(),
+  };
   if (opts?.body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${BASE}${path}`, {
     headers,
