@@ -18,6 +18,7 @@ export const pullRequests = sqliteTable('pull_requests', {
   baseBranch: text('base_branch').notNull(),
   status: text('status').notNull().default('open'),
   agentContext: text('agent_context'),
+  workingDirectory: text('working_directory'),
   createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
   updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
 });
