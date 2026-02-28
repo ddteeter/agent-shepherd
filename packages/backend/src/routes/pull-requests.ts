@@ -39,6 +39,15 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       })
       .run();
 
+    // Try to capture commit SHA for the initial cycle
+    let commitSha: string | null = null;
+    try {
+      const gitService = new GitService(project.path);
+      commitSha = await gitService.getHeadSha(sourceBranch);
+    } catch {
+      // Non-fatal: SHA capture may fail if branch doesn't exist locally
+    }
+
     // Create first review cycle
     const cycleId = randomUUID();
     db.insert(schema.reviewCycles)
@@ -47,6 +56,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         prId,
         cycleNumber: 1,
         status: 'pending_review',
+        commitSha,
       })
       .run();
 
@@ -205,6 +215,24 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         .run();
     }
 
+    // Look up project for git operations (SHA capture + diff snapshot)
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, pr.projectId))
+      .get();
+
+    // Capture commit SHA for the new cycle
+    let commitSha: string | null = null;
+    if (project) {
+      try {
+        const gitService = new GitService(project.path);
+        commitSha = await gitService.getHeadSha(pr.sourceBranch);
+      } catch {
+        // Non-fatal
+      }
+    }
+
     // Create new review cycle with incremented cycleNumber
     const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
     const newCycleId = randomUUID();
@@ -214,6 +242,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         prId: id,
         cycleNumber: newCycleNumber,
         status: 'pending_review',
+        commitSha,
       })
       .run();
 
@@ -221,13 +250,6 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.id, newCycleId))
-      .get();
-
-    // Store a diff snapshot for the new cycle so reviewers can see what changed
-    const project = db
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId))
       .get();
 
     if (project) {
