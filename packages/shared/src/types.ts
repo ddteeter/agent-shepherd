@@ -30,6 +30,7 @@ export interface PullRequest {
   baseBranch: string;
   status: PRStatus;
   agentContext: string | null;
+  workingDirectory: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -91,6 +92,7 @@ export interface CreatePRInput {
   sourceBranch: string;
   baseBranch?: string;
   agentContext?: string;
+  workingDirectory?: string;
 }
 
 export interface CreateCommentInput {
