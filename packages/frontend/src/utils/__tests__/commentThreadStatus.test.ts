@@ -61,6 +61,12 @@ describe('getThreadStatus', () => {
     const replies = [makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1' })];
     expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('needs-attention');
   });
+
+  it('returns "new" for agent-authored top-level comments (informational)', () => {
+    const comment = makeComment({ author: 'agent', reviewCycleId: 'cycle-1' });
+    const replies: Comment[] = [];
+    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('new');
+  });
 });
 
 describe('groupThreads', () => {

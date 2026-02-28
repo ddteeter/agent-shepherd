@@ -15,6 +15,9 @@ export function getThreadStatus(
 ): ThreadStatus {
   if (comment.resolved) return 'resolved';
 
+  // Agent-authored top-level comments are informational — no status badge
+  if (comment.author === 'agent') return 'new';
+
   const hasAgentReply = replies.some((r) => r.author === 'agent');
   if (hasAgentReply) return 'agent-replied';
 

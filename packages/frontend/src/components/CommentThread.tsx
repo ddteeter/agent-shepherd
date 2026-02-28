@@ -38,6 +38,7 @@ export type { Comment };
 export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false, threadStatus }: CommentThreadProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(threadStatus === 'resolved');
 
   const isEditable = (c: Comment) => canEdit && c.author === 'human' && onEdit;
   const isDeletable = (c: Comment) => canEdit && c.author === 'human' && onDelete;
@@ -45,8 +46,15 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
   return (
     <div className="my-2 mx-4 border rounded text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)', opacity: threadStatus === 'resolved' ? 0.5 : 1 }}>
       {/* Main comment */}
-      <div className="p-3">
+      <div
+        className="p-3"
+        style={{ cursor: threadStatus === 'resolved' ? 'pointer' : undefined }}
+        onClick={threadStatus === 'resolved' ? () => setCollapsed((c) => !c) : undefined}
+      >
         <div className="flex items-center gap-2 mb-1">
+          {threadStatus === 'resolved' && (
+            <span className="text-xs opacity-50">{collapsed ? '\u25B8' : '\u25BE'}</span>
+          )}
           <span className="font-medium text-xs px-1.5 py-0.5 rounded" style={{
             backgroundColor: comment.author === 'human' ? 'rgba(9, 105, 218, 0.15)' : 'rgba(130, 80, 223, 0.15)',
             color: comment.author === 'human' ? 'var(--color-accent)' : '#8250df',
@@ -131,7 +139,7 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
       </div>
 
       {/* Replies */}
-      {replies.map((reply) => (
+      {!collapsed && replies.map((reply) => (
         <div key={reply.id} className="p-3 border-t ml-4" style={{ borderColor: 'var(--color-border)' }}>
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-xs px-1.5 py-0.5 rounded" style={{
@@ -175,24 +183,26 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
       ))}
 
       {/* Actions */}
-      <div className="px-3 py-2 border-t flex gap-2" style={{ borderColor: 'var(--color-border)' }}>
-        <button
-          onClick={() => setShowReplyForm(!showReplyForm)}
-          className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
-        >
-          Reply
-        </button>
-        {!comment.resolved && (
+      {!collapsed && (
+        <div className="px-3 py-2 border-t flex gap-2" style={{ borderColor: 'var(--color-border)' }}>
           <button
-            onClick={() => onResolve(comment.id)}
+            onClick={() => setShowReplyForm(!showReplyForm)}
             className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
           >
-            Resolve
+            Reply
           </button>
-        )}
-      </div>
+          {!comment.resolved && (
+            <button
+              onClick={() => onResolve(comment.id)}
+              className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
+            >
+              Resolve
+            </button>
+          )}
+        </div>
+      )}
 
-      {showReplyForm && (
+      {!collapsed && showReplyForm && (
         <div className="px-3 pb-3">
           <CommentForm
             isReply

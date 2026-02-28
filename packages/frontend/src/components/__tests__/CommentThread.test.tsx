@@ -289,4 +289,20 @@ describe('CommentThread — status badges', () => {
     const wrapper = container.firstChild as HTMLElement;
     expect(wrapper.style.opacity).toBe('0.5');
   });
+
+  it('collapses replies and actions when status is resolved', () => {
+    render(
+      <CommentThread
+        comment={makeComment({ resolved: true })}
+        replies={[makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1', body: 'Agent reply' })]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        threadStatus="resolved"
+      />,
+    );
+    // Reply should be hidden
+    expect(screen.queryByText('Agent reply')).not.toBeInTheDocument();
+    // Action buttons should be hidden
+    expect(screen.queryByText('Reply')).not.toBeInTheDocument();
+  });
 });
