@@ -11,6 +11,13 @@ async function main() {
   await server.listen({ port, host });
   console.log(`Agent Shepherd running at http://${host}:${port}${devMode ? ' (dev mode)' : ''}`);
   console.log(`Session token written to ${join(homedir(), '.agent-shepherd', 'session-token')}`);
+
+  const shutdown = async () => {
+    await server.close();
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 main().catch((err) => {
