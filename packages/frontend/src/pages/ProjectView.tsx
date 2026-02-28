@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api.js';
+import { useWebSocket } from '../hooks/useWebSocket.js';
 
 export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -8,6 +9,20 @@ export function ProjectView() {
   const [prs, setPrs] = useState<any[]>([]);
   const [tab, setTab] = useState<'open' | 'approved' | 'closed'>('open');
   const [loading, setLoading] = useState(true);
+
+  useWebSocket((msg) => {
+    if (
+      msg.event === 'pr:created' ||
+      msg.event === 'pr:updated' ||
+      msg.event === 'review:submitted' ||
+      msg.event === 'agent:completed' ||
+      msg.event === 'agent:error'
+    ) {
+      if (projectId) {
+        api.prs.list(projectId).then(setPrs);
+      }
+    }
+  });
 
   useEffect(() => {
     if (!projectId) return;
