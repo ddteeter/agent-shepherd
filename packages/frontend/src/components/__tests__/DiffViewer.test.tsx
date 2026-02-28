@@ -148,6 +148,7 @@ describe('DiffViewer — multi-line comment support', () => {
   it('shows existing multi-line comment range label in CommentThread', () => {
     const multiLineComment = {
       id: 'c1',
+      reviewCycleId: 'cycle-1',
       filePath: 'src/app.ts',
       startLine: 1,
       endLine: 3,
