@@ -22,6 +22,7 @@ export function submitCommand(program: Command, client: ApiClient) {
         description: opts.description,
         sourceBranch: opts.sourceBranch || 'HEAD',
         agentContext,
+        workingDirectory: process.cwd(),
       });
 
       console.log(`PR created: ${(pr as any).id}`);
