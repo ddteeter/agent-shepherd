@@ -252,6 +252,12 @@ REST endpoints under `/api/`:
 
 WebSocket events: `pr:*`, `comment:*`, `review:submitted`, `agent:*`
 
+## Security
+
+Agent Shepherd is designed to run locally on a developer's machine. The server binds to `127.0.0.1` by default and uses session tokens + CORS restrictions to prevent malicious websites from accessing the local API.
+
+**Do not bind the server to `0.0.0.0` or expose it on a network.** Agent Shepherd has no user authentication system -- it assumes the only user is the developer on the local machine. Binding to `0.0.0.0` would expose your project files, git operations, and the ability to spawn agent sessions to anyone on the network.
+
 ## Design Documents
 
 - [Architecture & Design](docs/plans/2026-02-24-agent-shepherd-design.md)

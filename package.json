@@ -1,6 +1,16 @@
 {
   "name": "agent-shepherd",
   "version": "0.1.0",
+  "description": "Human-in-the-loop PR review tool for AI coding agents",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/ddteeter/agent-shepherd.git"
+  },
+  "homepage": "https://github.com/ddteeter/agent-shepherd",
+  "bugs": {
+    "url": "https://github.com/ddteeter/agent-shepherd/issues"
+  },
   "type": "module",
   "bin": {
     "agent-shepherd": "packages/cli/dist/index.js"
