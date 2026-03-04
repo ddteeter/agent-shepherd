@@ -516,7 +516,7 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
         byFilePath.set(key, existing);
       } else {
         // Line-level comment
-        const key = `${comment.filePath}:${comment.startLine}`;
+        const key = `${comment.filePath}:${comment.endLine ?? comment.startLine}`;
         const existing = byFileLine.get(key) || [];
         existing.push(comment);
         byFileLine.set(key, existing);
