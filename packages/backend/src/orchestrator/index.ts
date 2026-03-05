@@ -61,29 +61,39 @@ export class Orchestrator {
       .where(eq(this.schema.reviewCycles.prId, prId)).all();
     const cycleIds = allCycles.map((c: any) => c.id);
 
-    // Get ALL comments across all cycles (not just current cycle)
+    // Get ALL comments across all cycles
     const allComments = this.db.select().from(this.schema.comments)
       .where(inArray(this.schema.comments.reviewCycleId, cycleIds)).all();
 
-    // Filter to unresolved top-level comments
+    // Build summary from unresolved top-level comments
     const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
-    const reviewComments = topLevel.map((c: any) => ({
-      id: c.id,
-      filePath: c.filePath,
-      startLine: c.startLine,
-      endLine: c.endLine,
-      body: c.body,
-      severity: c.severity,
-      thread: allComments
-        .filter((r: any) => r.parentCommentId === c.id)
-        .map((r: any) => ({ author: r.author, body: r.body })),
-    }));
+
+    const bySeverity: Record<string, number> = {};
+    const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+    let generalCount = 0;
+
+    for (const c of topLevel) {
+      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
+      if (!c.filePath) {
+        generalCount++;
+      } else {
+        const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
+        entry.count++;
+        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
+        fileMap.set(c.filePath, entry);
+      }
+    }
 
     const prompt = buildReviewPrompt({
       prId,
       prTitle: pr.title,
       agentContext: pr.agentContext,
-      comments: reviewComments,
+      commentSummary: {
+        total: topLevel.length,
+        bySeverity,
+        files: [...fileMap.entries()].map(([path, data]) => ({ path, ...data })),
+        generalCount,
+      },
     });
 
     // Persist agent_working status

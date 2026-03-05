@@ -32,99 +32,63 @@ describe('Orchestrator cross-cycle comment query', () => {
     await server.close();
   });
 
-  it('includes unresolved comments from all cycles in the prompt', async () => {
+  it('includes comment summary in the prompt', async () => {
     const db = (server as any).db;
 
-    // Add a comment on cycle 1
-    const c1Resp = await inject({
-      method: 'POST',
-      url: `/api/prs/${prId}/comments`,
-      payload: {
-        filePath: 'src/index.ts',
-        startLine: 10,
-        endLine: 10,
-        body: 'Fix the null check here',
-        severity: 'must-fix',
-        author: 'human',
-      },
-    });
-    expect(c1Resp.statusCode).toBe(201);
-    const cycle1CommentId = c1Resp.json().id;
-
-    // Request changes on cycle 1 (without orchestrator, just update status)
-    const cycle1 = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all()[0];
-    db.update(schema.reviewCycles)
-      .set({ status: 'changes_requested', reviewedAt: new Date().toISOString() })
-      .where(eq(schema.reviewCycles.id, cycle1.id))
-      .run();
-
-    // Agent ready: creates cycle 2 via API
-    // Note: agent-ready tries to compute a diff which will fail for /tmp/test,
-    // but it still creates the new cycle (diff failure is non-fatal)
+    // Add comments on cycle 1
     await inject({
       method: 'POST',
-      url: `/api/prs/${prId}/agent-ready`,
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/index.ts', startLine: 10, endLine: 10, body: 'Fix the null check', severity: 'must-fix', author: 'human' },
     });
-
-    // Verify cycle 2 was created
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
-    expect(cycles).toHaveLength(2);
-
-    // Add a reply to the cycle 1 comment, attached to cycle 2
-    const cycle2 = cycles.find((c: any) => c.cycleNumber === 2);
-    const replyResp = await inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: {
-        filePath: 'src/index.ts',
-        startLine: 10,
-        endLine: 10,
-        body: 'I fixed it by adding a guard clause',
-        severity: 'suggestion',
-        author: 'agent',
-        parentCommentId: cycle1CommentId,
-      },
+      payload: { filePath: 'src/auth.ts', startLine: 5, endLine: 5, body: 'Add validation', severity: 'request', author: 'human' },
     });
-    expect(replyResp.statusCode).toBe(201);
 
-    // Now query ALL comments across ALL cycles (the fixed logic)
-    const allCycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
+    // Build summary the way the orchestrator would
+    const allCycles = db.select().from(schema.reviewCycles).where(eq(schema.reviewCycles.prId, prId)).all();
     const cycleIds = allCycles.map((c: any) => c.id);
-
-    const allComments = db.select().from(schema.comments)
-      .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
-
+    const allComments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
     const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
-    const reviewComments = topLevel.map((c: any) => ({
-      id: c.id,
-      filePath: c.filePath,
-      startLine: c.startLine,
-      endLine: c.endLine,
-      body: c.body,
-      severity: c.severity,
-      thread: allComments
-        .filter((r: any) => r.parentCommentId === c.id)
-        .map((r: any) => ({ author: r.author, body: r.body })),
-    }));
 
-    // Build prompt and verify it includes the cycle 1 comment and the cycle 2 reply
+    const bySeverity: Record<string, number> = {};
+    const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+    let generalCount = 0;
+    for (const c of topLevel) {
+      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
+      if (!c.filePath) {
+        generalCount++;
+      } else {
+        const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
+        entry.count++;
+        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
+        fileMap.set(c.filePath, entry);
+      }
+    }
+
     const prompt = buildReviewPrompt({
       prId,
       prTitle: 'Test PR',
       agentContext: null,
-      comments: reviewComments,
+      commentSummary: {
+        total: topLevel.length,
+        bySeverity,
+        files: [...fileMap.entries()].map(([path, data]) => ({ path, ...data })),
+        generalCount,
+      },
     });
 
-    expect(prompt).toContain('Fix the null check here');
-    expect(prompt).toContain('I fixed it by adding a guard clause');
-    expect(reviewComments).toHaveLength(1);
-    expect(reviewComments[0].thread).toHaveLength(1);
+    expect(prompt).toContain('2 comments');
+    expect(prompt).toContain('src/index.ts');
+    expect(prompt).toContain('src/auth.ts');
+    expect(prompt).toContain('shepherd review');
+    // Should NOT contain the actual comment body text
+    expect(prompt).not.toContain('Fix the null check');
   });
 
-  it('excludes resolved comments from the prompt', async () => {
+  it('excludes resolved comments from the summary', async () => {
     const db = (server as any).db;
 
     // Add two comments
@@ -142,7 +106,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
     const resolvedCommentId = c1Resp.json().id;
 
-    const c2Resp = await inject({
+    await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
       payload: {
@@ -162,7 +126,7 @@ describe('Orchestrator cross-cycle comment query', () => {
       payload: { resolved: true },
     });
 
-    // Query all comments across all cycles (same logic as the fix)
+    // Build summary (same logic as orchestrator)
     const allCycles = db.select().from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId)).all();
     const cycleIds = allCycles.map((c: any) => c.id);
@@ -171,31 +135,41 @@ describe('Orchestrator cross-cycle comment query', () => {
       .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
 
     const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
-    const reviewComments = topLevel.map((c: any) => ({
-      id: c.id,
-      filePath: c.filePath,
-      startLine: c.startLine,
-      endLine: c.endLine,
-      body: c.body,
-      severity: c.severity,
-      thread: allComments
-        .filter((r: any) => r.parentCommentId === c.id)
-        .map((r: any) => ({ author: r.author, body: r.body })),
-    }));
 
-    // Build prompt
+    const bySeverity: Record<string, number> = {};
+    const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+    let generalCount = 0;
+    for (const c of topLevel) {
+      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
+      if (!c.filePath) {
+        generalCount++;
+      } else {
+        const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
+        entry.count++;
+        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
+        fileMap.set(c.filePath, entry);
+      }
+    }
+
     const prompt = buildReviewPrompt({
       prId,
       prTitle: 'Test PR',
       agentContext: null,
-      comments: reviewComments,
+      commentSummary: {
+        total: topLevel.length,
+        bySeverity,
+        files: [...fileMap.entries()].map(([path, data]) => ({ path, ...data })),
+        generalCount,
+      },
     });
 
-    // Resolved comment should be excluded
+    // Summary should show 1 comment (the resolved one is excluded)
+    expect(prompt).toContain('1 comments');
+    expect(prompt).toContain('1 must-fix');
+    // Should NOT contain the actual comment body text
     expect(prompt).not.toContain('This is resolved already');
-    // Unresolved comment should be included
-    expect(prompt).toContain('This still needs work');
-    expect(reviewComments).toHaveLength(1);
+    expect(prompt).not.toContain('This still needs work');
+    expect(topLevel).toHaveLength(1);
   });
 
   it('PR stores workingDirectory for orchestrator use', async () => {
