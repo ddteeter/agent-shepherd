@@ -60,7 +60,9 @@ function parseDiff(rawDiff: string): FileDiff[] {
   for (const line of lines) {
     if (line.startsWith('diff --git')) {
       if (currentFile) files.push(currentFile);
-      currentFile = { path: '', hunks: [], lineCount: 0, additions: 0, deletions: 0, status: 'modified' };
+      // Extract path from "diff --git a/path b/path" as fallback for binary files
+      const gitPathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
+      currentFile = { path: gitPathMatch?.[1] ?? '', hunks: [], lineCount: 0, additions: 0, deletions: 0, status: 'modified' };
       currentHunk = null;
       fromNull = false;
       minusPath = '';
@@ -151,6 +153,7 @@ function FileDiff({
   onCancelFileComment,
   handleFileComment,
   threadStatusMap,
+  orphanedComments,
 }: {
   file: FileDiff;
   commentsByFileLine: Map<string, Comment[]>;
@@ -178,6 +181,7 @@ function FileDiff({
   onCancelFileComment: () => void;
   handleFileComment: (filePath: string, body: string, severity: string) => void;
   threadStatusMap?: Map<string, ThreadStatus>;
+  orphanedComments: Comment[];
 }) {
   const lang = getLangFromPath(file.path);
   const isLarge = file.lineCount > COLLAPSE_THRESHOLD;
@@ -345,6 +349,34 @@ function FileDiff({
           ))}
         </div>
         </div>
+      {orphanedComments.length > 0 && (
+        <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="px-4 py-2 text-xs" style={{ opacity: 0.6, backgroundColor: 'var(--color-bg-secondary)' }}>
+            Comments on lines no longer in this diff
+          </div>
+          {orphanedComments.map((comment) => (
+            <div key={comment.id} className="px-4 py-1">
+              {comment.startLine != null && (
+              <div className="text-xs mb-1" style={{ opacity: 0.5 }}>
+                Line{comment.startLine !== comment.endLine && comment.endLine != null
+                  ? `s ${comment.startLine}–${comment.endLine}`
+                  : ` ${comment.startLine}`}
+              </div>
+              )}
+              <CommentThread
+                comment={comment}
+                replies={repliesByParent.get(comment.id) || []}
+                onReply={onReplyComment || (() => {})}
+                onResolve={onResolveComment || (() => {})}
+                onEdit={onEditComment}
+                onDelete={onDeleteComment}
+                canEdit={canEditComments}
+                threadStatus={threadStatusMap?.get(comment.id)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -493,12 +525,26 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
     };
   }, [parsedFiles, onVisibleFileChange]);
 
-  // Memoize comment grouping: line comments, file comments, global comments
-  const { commentsByFileLine, fileCommentsByPath, globalComments, repliesByParent, commentRangeLines } = useMemo(() => {
+  // Memoize comment grouping: line comments, file comments, global comments, orphaned comments
+  const { commentsByFileLine, fileCommentsByPath, globalComments, repliesByParent, commentRangeLines, orphanedByFile } = useMemo(() => {
     const byFileLine = new Map<string, Comment[]>();
     const byFilePath = new Map<string, Comment[]>();
     const globals: Comment[] = [];
     const byParent = new Map<string, Comment[]>();
+    const orphaned = new Map<string, Comment[]>();
+
+    // Build a set of valid line keys from parsed diff
+    const validLineKeys = new Set<string>();
+    const diffFilePaths = new Set<string>();
+    for (const file of parsedFiles) {
+      diffFilePaths.add(file.path);
+      for (const hunk of file.hunks) {
+        for (const line of hunk.lines) {
+          const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
+          validLineKeys.add(`${file.path}:${lineNo}`);
+        }
+      }
+    }
 
     for (const comment of comments) {
       if (comment.parentCommentId) {
@@ -510,16 +556,30 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
         globals.push(comment);
       } else if (comment.startLine == null) {
         // File-level comment
-        const key = `file:${comment.filePath}`;
-        const existing = byFilePath.get(key) || [];
-        existing.push(comment);
-        byFilePath.set(key, existing);
+        if (diffFilePaths.has(comment.filePath)) {
+          const key = `file:${comment.filePath}`;
+          const existing = byFilePath.get(key) || [];
+          existing.push(comment);
+          byFilePath.set(key, existing);
+        } else {
+          // File not in current diff — treat as orphaned
+          const arr = orphaned.get(comment.filePath) || [];
+          arr.push(comment);
+          orphaned.set(comment.filePath, arr);
+        }
       } else {
-        // Line-level comment
+        // Line-level comment — check if its line exists in the diff
         const key = `${comment.filePath}:${comment.endLine ?? comment.startLine}`;
-        const existing = byFileLine.get(key) || [];
-        existing.push(comment);
-        byFileLine.set(key, existing);
+        if (validLineKeys.has(key)) {
+          const existing = byFileLine.get(key) || [];
+          existing.push(comment);
+          byFileLine.set(key, existing);
+        } else {
+          // Orphaned: line no longer in this diff
+          const arr = orphaned.get(comment.filePath) || [];
+          arr.push(comment);
+          orphaned.set(comment.filePath, arr);
+        }
       }
     }
 
@@ -532,8 +592,8 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
       }
     }
 
-    return { commentsByFileLine: byFileLine, fileCommentsByPath: byFilePath, globalComments: globals, repliesByParent: byParent, commentRangeLines: rangeLines };
-  }, [comments]);
+    return { commentsByFileLine: byFileLine, fileCommentsByPath: byFilePath, globalComments: globals, repliesByParent: byParent, commentRangeLines: rangeLines, orphanedByFile: orphaned };
+  }, [comments, parsedFiles]);
 
   const handleLineClick = useCallback((filePath: string, lineNo: number, shiftKey: boolean) => {
     // Skip if a real drag just occurred (mousedown + move to different line)
@@ -723,6 +783,7 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
               onCancelFileComment={() => setFileCommentFormPath(null)}
               handleFileComment={handleFileComment}
               threadStatusMap={threadStatusMap}
+              orphanedComments={orphanedByFile.get(file.path) || []}
             />
           ) : (
             <div
@@ -741,6 +802,52 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
           )}
         </div>
       ))}
+
+      {/* Orphaned comments on files no longer in the diff */}
+      {Array.from(orphanedByFile.entries())
+        .filter(([filePath]) => !parsedFiles.some(f => f.path === filePath))
+        .map(([filePath, orphanedComments]) => (
+          <div
+            key={`orphaned-${filePath}`}
+            className="mb-6 border rounded overflow-hidden"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            <div
+              className="px-4 py-2 text-sm font-mono font-medium border-b"
+              style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}
+            >
+              <span className="truncate">{filePath}</span>
+              <span className="ml-2 text-xs" style={{ opacity: 0.6 }}>(not in current diff)</span>
+            </div>
+            <div className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+              <div className="px-4 py-2 text-xs" style={{ opacity: 0.6, backgroundColor: 'var(--color-bg-secondary)' }}>
+                Comments on lines no longer in this diff
+              </div>
+              {orphanedComments.map((comment) => (
+                <div key={comment.id} className="px-4 py-1">
+                  {comment.startLine != null && (
+                  <div className="text-xs mb-1" style={{ opacity: 0.5 }}>
+                    Line{comment.startLine !== comment.endLine && comment.endLine != null
+                      ? `s ${comment.startLine}–${comment.endLine}`
+                      : ` ${comment.startLine}`}
+                  </div>
+                  )}
+                  <CommentThread
+                    comment={comment}
+                    replies={repliesByParent.get(comment.id) || []}
+                    onReply={onReplyComment || (() => {})}
+                    onResolve={onResolveComment || (() => {})}
+                    onEdit={onEditComment}
+                    onDelete={onDeleteComment}
+                    canEdit={canEditComments}
+                    threadStatus={threadStatusMap?.get(comment.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      }
     </div>
   );
 }
