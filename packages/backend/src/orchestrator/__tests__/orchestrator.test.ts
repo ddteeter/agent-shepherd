@@ -164,7 +164,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
 
     // Summary should show 1 comment (the resolved one is excluded)
-    expect(prompt).toContain('1 comments');
+    expect(prompt).toContain('1 comment');
     expect(prompt).toContain('1 must-fix');
     // Should NOT contain the actual comment body text
     expect(prompt).not.toContain('This is resolved already');

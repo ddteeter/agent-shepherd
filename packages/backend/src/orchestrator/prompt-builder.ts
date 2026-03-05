@@ -61,7 +61,7 @@ Start working on the code changes immediately.\n`);
     const fileCount = commentSummary.files.length;
     sections.push(`## Comment Summary
 
-${commentSummary.total} comments (${severityParts}) across ${fileCount} file${fileCount !== 1 ? 's' : ''}
+${commentSummary.total} comment${commentSummary.total !== 1 ? 's' : ''} (${severityParts}) across ${fileCount} file${fileCount !== 1 ? 's' : ''}
 `);
 
     if (commentSummary.generalCount > 0) {
