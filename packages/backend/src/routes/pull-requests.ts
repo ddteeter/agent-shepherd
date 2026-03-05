@@ -61,6 +61,23 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       })
       .run();
 
+    // Store diff snapshot for cycle 1
+    if (project) {
+      try {
+        const gitService = new GitService(project.path);
+        const diffData = await gitService.getDiff(baseBranch || project.baseBranch || 'main', sourceBranch);
+        db.insert(schema.diffSnapshots)
+          .values({
+            id: randomUUID(),
+            reviewCycleId: cycleId,
+            diffData,
+          })
+          .run();
+      } catch {
+        // Non-fatal: snapshot storage failure should not block PR creation
+      }
+    }
+
     const pr = db
       .select()
       .from(schema.pullRequests)

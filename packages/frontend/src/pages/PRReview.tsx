@@ -390,7 +390,7 @@ export function PRReview() {
                   color: 'var(--color-text)',
                 }}
               >
-                <option value="current">Current changes</option>
+                <option value="current">Latest (live)</option>
                 {cyclesWithSnapshots
                   .sort((a, b) => a.cycleNumber - b.cycleNumber)
                   .map((cycle) => (

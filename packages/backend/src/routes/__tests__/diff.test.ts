@@ -59,16 +59,7 @@ describe('Diff API', () => {
   });
 
   it('GET /api/prs/:id/diff?cycle=N returns stored snapshot', async () => {
-    // Create a snapshot for the current (first) cycle
-    const snapshotRes = await inject({
-      method: 'POST',
-      url: `/api/prs/${prId}/diff/snapshot`,
-    });
-    expect(snapshotRes.statusCode).toBe(201);
-    const snapshot = snapshotRes.json();
-    expect(snapshot.cycleNumber).toBe(1);
-
-    // Fetch the snapshot via cycle query param
+    // Cycle 1 snapshot is now created at PR submission time
     const diffRes = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=1`,
@@ -90,14 +81,15 @@ describe('Diff API', () => {
     expect(response.json().error).toContain('Review cycle 99 not found');
   });
 
-  it('GET /api/prs/:id/diff?cycle=N returns 404 when no snapshot exists', async () => {
-    // Cycle 1 exists (created with PR) but has no snapshot
+  it('GET /api/prs/:id/diff?cycle=1 returns snapshot created at PR submission', async () => {
+    // Cycle 1 snapshot is created automatically at PR submission
     const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=1`,
     });
-    expect(response.statusCode).toBe(404);
-    expect(response.json().error).toContain('No diff snapshot found');
+    expect(response.statusCode).toBe(200);
+    expect(response.json().isSnapshot).toBe(true);
+    expect(response.json().diff).toContain('+const y = 2;');
   });
 
   it('GET /api/prs/:id/diff?cycle=invalid returns 400', async () => {
@@ -109,26 +101,29 @@ describe('Diff API', () => {
     expect(response.json().error).toContain('Invalid cycle number');
   });
 
-  it('POST /api/prs/:id/diff/snapshot stores a snapshot', async () => {
+  it('POST /api/prs/:id/diff/snapshot returns existing snapshot for cycle 1', async () => {
+    // Cycle 1 already has a snapshot from PR creation
     const response = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
-    expect(response.statusCode).toBe(201);
+    expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.id).toBeDefined();
+    expect(body.alreadyExists).toBe(true);
     expect(body.cycleNumber).toBe(1);
   });
 
   it('POST /api/prs/:id/diff/snapshot returns existing if already stored', async () => {
-    // Store first time
+    // Cycle 1 already has a snapshot from PR creation — both calls return existing
     const first = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
     });
-    expect(first.statusCode).toBe(201);
+    expect(first.statusCode).toBe(200);
+    expect(first.json().alreadyExists).toBe(true);
 
-    // Store second time — should return existing
+    // Second call — should also return existing with same id
     const second = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/diff/snapshot`,
@@ -148,31 +143,16 @@ describe('Diff API', () => {
   });
 
   it('GET /api/prs/:id/cycles/details returns cycles with snapshot info', async () => {
-    // Before snapshot
-    const beforeRes = await inject({
+    // Cycle 1 now has a snapshot from PR creation
+    const res = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/cycles/details`,
     });
-    expect(beforeRes.statusCode).toBe(200);
-    const beforeCycles = beforeRes.json();
-    expect(beforeCycles).toHaveLength(1);
-    expect(beforeCycles[0].hasDiffSnapshot).toBe(false);
-
-    // Create a snapshot
-    await inject({
-      method: 'POST',
-      url: `/api/prs/${prId}/diff/snapshot`,
-    });
-
-    // After snapshot
-    const afterRes = await inject({
-      method: 'GET',
-      url: `/api/prs/${prId}/cycles/details`,
-    });
-    const afterCycles = afterRes.json();
-    expect(afterCycles).toHaveLength(1);
-    expect(afterCycles[0].hasDiffSnapshot).toBe(true);
-    expect(afterCycles[0].cycleNumber).toBe(1);
+    expect(res.statusCode).toBe(200);
+    const cycles = res.json();
+    expect(cycles).toHaveLength(1);
+    expect(cycles[0].hasDiffSnapshot).toBe(true);
+    expect(cycles[0].cycleNumber).toBe(1);
   });
 
   it('agent-ready stores a diff snapshot for the new cycle', async () => {

@@ -591,8 +591,8 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(details).toHaveLength(3);
 
     const detailsSorted = details.sort((a: any, b: any) => a.cycleNumber - b.cycleNumber);
-    // Cycle 1: no snapshot (was created with the PR, not via agent-ready)
-    expect(detailsSorted[0].hasDiffSnapshot).toBe(false);
+    // Cycle 1: has snapshot (created at PR submission)
+    expect(detailsSorted[0].hasDiffSnapshot).toBe(true);
     // Cycle 2: has snapshot (created via agent-ready)
     expect(detailsSorted[1].hasDiffSnapshot).toBe(true);
     // Cycle 3: has snapshot (created via agent-ready)
@@ -616,13 +616,13 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(snap3Res.json().isSnapshot).toBe(true);
     expect(snap3Res.json().diff).toContain('+export function multiply');
 
-    // Cycle 1 should have no snapshot
+    // Cycle 1 now has a snapshot (created at PR submission)
     const snap1Res = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?cycle=1`,
     });
-    expect(snap1Res.statusCode).toBe(404);
-    expect(snap1Res.json().error).toContain('No diff snapshot found');
+    expect(snap1Res.statusCode).toBe(200);
+    expect(snap1Res.json().isSnapshot).toBe(true);
 
     // ---------------------------------------------------------------
     // Verify final PR status is approved
