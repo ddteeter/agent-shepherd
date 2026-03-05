@@ -215,6 +215,40 @@ describe('Comments API', () => {
     expect(parentComment.resolved).toBeFalsy();
   });
 
+  it('GET /api/prs/:id/comments filters by filePath', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'fix auth', severity: 'must-fix', author: 'human' },
+    });
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/db.ts', startLine: 5, endLine: 5, body: 'fix db', severity: 'suggestion', author: 'human' },
+    });
+
+    const filtered = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?filePath=src/auth.ts` });
+    expect(filtered.json()).toHaveLength(1);
+    expect(filtered.json()[0].body).toBe('fix auth');
+  });
+
+  it('GET /api/prs/:id/comments filters by severity', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'must fix this', severity: 'must-fix', author: 'human' },
+    });
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/b.ts', startLine: 1, endLine: 1, body: 'suggestion', severity: 'suggestion', author: 'human' },
+    });
+
+    const filtered = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?severity=must-fix` });
+    expect(filtered.json()).toHaveLength(1);
+    expect(filtered.json()[0].severity).toBe('must-fix');
+  });
+
   it('POST /api/prs/:id/comments/batch handles batch comments', async () => {
     const response = await inject({
       method: 'POST',

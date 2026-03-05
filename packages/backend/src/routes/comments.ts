@@ -84,6 +84,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
   // GET /api/prs/:prId/comments — List all comments across all cycles for a PR
   fastify.get('/api/prs/:prId/comments', async (request) => {
     const { prId } = request.params as { prId: string };
+    const { filePath, severity } = request.query as { filePath?: string; severity?: string };
 
     // Get all review cycle IDs for this PR
     const cycles = db
@@ -96,7 +97,16 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
     if (cycleIds.length === 0) return [];
 
-    return db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+    let comments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+
+    if (filePath) {
+      comments = comments.filter((c: any) => c.filePath === filePath);
+    }
+    if (severity) {
+      comments = comments.filter((c: any) => c.severity === severity);
+    }
+
+    return comments;
   });
 
   // PUT /api/comments/:id — Update a comment (body, resolved)
