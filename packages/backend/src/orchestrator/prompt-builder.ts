@@ -1,29 +1,26 @@
-interface ReviewComment {
-  id: string;
-  filePath: string | null;
-  startLine: number | null;
-  endLine: number | null;
-  body: string;
-  severity: string;
-  thread: Array<{ author: string; body: string }>;
+export interface CommentSummary {
+  total: number;
+  bySeverity: Record<string, number>;
+  files: Array<{ path: string; count: number; bySeverity: Record<string, number> }>;
+  generalCount: number;
 }
 
 interface PromptInput {
   prId: string;
   prTitle: string;
   agentContext: string | null;
-  comments: ReviewComment[];
+  commentSummary: CommentSummary;
 }
 
 export function buildReviewPrompt(input: PromptInput): string {
-  const { prId, prTitle, agentContext, comments } = input;
+  const { prId, prTitle, agentContext, commentSummary } = input;
   const sections: string[] = [];
 
   sections.push(`# Code Review Feedback for PR: ${prTitle}\n`);
 
   sections.push(`## IMPORTANT: Read This First
 
-Everything you need is in this prompt. All review comments, context, and instructions are provided below.
+You are responding to review feedback on a pull request. The comment summary below tells you how many comments exist and which files they affect. You will fetch the actual comment details incrementally using the CLI commands described in the workflow.
 
 You are a peer of the person providing this feedback. You are equals -- it is appropriate to push back on suggestions you disagree with, ask clarifying questions, or propose alternative approaches. Use your technical judgment.
 
@@ -35,11 +32,12 @@ DO NOT:
 - Dispatch sub-agents to research the review infrastructure
 
 DO:
-1. Read the comments below
-2. Make the requested code changes in the project files
-3. Commit your changes
-4. Write a review-response.json with your replies
-5. Submit via \`agent-shepherd ready ${prId} --file review-response.json\`
+1. Fetch comments using the CLI commands described below
+2. Work through files top-to-bottom as listed in the summary
+3. Make the requested code changes in the project files
+4. Reply to comments as you finish each file (don't wait until the end)
+5. Commit your changes
+6. Submit via \`shepherd ready ${prId}\`
 
 Start working on the code changes immediately.\n`);
 
@@ -54,11 +52,38 @@ Start working on the code changes immediately.\n`);
     }
   }
 
+  // Comment Summary section
+  if (commentSummary.total > 0) {
+    const severityParts = Object.entries(commentSummary.bySeverity)
+      .map(([sev, count]) => `${count} ${sev}`)
+      .join(', ');
+
+    const fileCount = commentSummary.files.length;
+    sections.push(`## Comment Summary
+
+${commentSummary.total} comments (${severityParts}) across ${fileCount} file${fileCount !== 1 ? 's' : ''}
+`);
+
+    if (commentSummary.generalCount > 0) {
+      sections.push(`General comments: ${commentSummary.generalCount}\n`);
+    }
+
+    if (commentSummary.files.length > 0) {
+      const fileLines = commentSummary.files.map((f, i) => {
+        const fileSeverityParts = Object.entries(f.bySeverity)
+          .map(([sev, count]) => `${count} ${sev}`)
+          .join(', ');
+        return `${i + 1}. ${f.path} (${f.count} comment${f.count !== 1 ? 's' : ''}: ${fileSeverityParts})`;
+      });
+      sections.push(`### Files (in diff order)\n${fileLines.join('\n')}\n`);
+    }
+  }
+
   sections.push(`# Skill: Respond to PR Review Comments
 
 ## When to Use
 
-Use this skill when the human reviewer has requested changes on your PR. The orchestrator will provide you with the review comments grouped by file, each tagged with a severity level. Your job is to address every comment: either make the requested change or reply with a reasoned explanation for why you are not making it.
+Use this skill when the human reviewer has requested changes on your PR. The comment summary above tells you how many comments exist and their severity breakdown. Your job is to fetch the comments, address every one of them: either make the requested change or reply with a reasoned explanation for why you are not making it.
 
 ## Severity Levels and How to Handle Them
 
@@ -100,94 +125,41 @@ Reply example (declining): "I considered this approach but stayed with the curre
 
 ## Step-by-Step Workflow
 
-### 1. Read and Categorize All Comments
+### 1. Review the Comment Summary
 
-When you receive review comments, organize them mentally:
+Look at the comment summary above. Note the severity breakdown and which files have comments.
 
-- **must-fix items:** Handle these first. These are non-negotiable.
-- **request items:** Handle next. Plan to comply unless you have a concrete reason not to.
-- **suggestion items:** Handle last. Evaluate each on its merits.
+### 2. Work Through Files Top-to-Bottom
 
-### 2. Make Code Changes
+For each file listed in the summary, starting from the top:
 
-Address the comments that require code changes. Work through them file by file to avoid conflicting edits. After making changes:
+a. Fetch that file's comments:
+   \`\`\`bash
+   shepherd review ${prId} comments --file <file-path>
+   \`\`\`
+b. Read the file and understand the comments
+c. Make the requested changes
+d. Reply to those comments immediately:
+   \`\`\`bash
+   echo '{"replies":[{"parentCommentId":"<id>","body":"<your reply>"}]}' | shepherd batch ${prId} --stdin
+   \`\`\`
+
+Reply as you go -- do not wait until the end. This prevents losing reply details to context compaction on large reviews.
+
+### 3. Handle Cross-File References
+
+If a comment references another file you haven't seen yet, use:
+\`\`\`bash
+shepherd review ${prId} comments --all
+\`\`\`
+
+### 4. Commit and Signal Ready
 
 \`\`\`bash
-# Stage and commit the review changes
-git add <changed-files...>
-git commit -m "Address review feedback: fix null check, refactor error handling"
+git add <changed-files>
+git commit -m "Address review feedback: <summary>"
+shepherd ready ${prId}
 \`\`\`
-
-### 3. Prepare Batch Response
-
-Write a JSON file with all your replies and any new comments. This is more efficient than individual \`agent-shepherd reply\` calls.
-
-Create a file (e.g., \`review-response.json\`):
-
-\`\`\`json
-{
-  "comments": [],
-  "replies": [
-    {
-      "parentCommentId": "comment-uuid-1",
-      "body": "Fixed. Added the null check before accessing \`user.email\`."
-    },
-    {
-      "parentCommentId": "comment-uuid-2",
-      "body": "Done. Refactored to use a try/catch block as suggested."
-    },
-    {
-      "parentCommentId": "comment-uuid-3",
-      "body": "I'd push back here. The async version is needed because loadConfig() reads from disk. Blocking the event loop during startup would delay server readiness by ~200ms. I've added a code comment explaining this."
-    },
-    {
-      "parentCommentId": "comment-uuid-4",
-      "body": "Good suggestion. Renamed the variable to \`activeConnections\`."
-    }
-  ]
-}
-\`\`\`
-
-The \`comments\` array is for new comments you want to leave on the code (e.g., to flag something for the reviewer's attention). Each comment needs \`filePath\`, \`startLine\`, \`endLine\`, \`body\`, and \`severity\`.
-
-The \`replies\` array is for responding to existing review comments. Each reply needs \`parentCommentId\` and \`body\`.
-
-### 4. Submit Replies and Signal Ready
-
-Use \`agent-shepherd ready\` with the \`--file\` flag to submit your batch response and signal that the PR is ready for re-review in a single command:
-
-\`\`\`bash
-agent-shepherd ready <pr-id> --file review-response.json
-\`\`\`
-
-This does two things:
-1. Submits all comments and replies from the JSON file
-2. Signals to the reviewer that you are done and the PR is ready for another look
-
-Alternatively, you can submit the batch separately and then signal ready:
-
-\`\`\`bash
-# Submit batch first
-agent-shepherd batch <pr-id> --file review-response.json
-
-# Then signal ready
-agent-shepherd ready <pr-id>
-\`\`\`
-
-Or pipe JSON directly via stdin:
-
-\`\`\`bash
-echo '{"replies":[{"parentCommentId":"abc","body":"Fixed."}]}' | agent-shepherd batch <pr-id> --stdin
-agent-shepherd ready <pr-id>
-\`\`\`
-
-### 5. Verify Status
-
-\`\`\`bash
-agent-shepherd status <pr-id>
-\`\`\`
-
-Confirm the PR shows the next cycle number and the status reflects that it is awaiting review.
 
 ## Writing Good Reply Messages
 
@@ -237,82 +209,8 @@ Confirm the PR shows the next cycle number and the status reflects that it is aw
 2. **Not replying to every comment.** The reviewer expects a response on each comment. Silence is ambiguous -- it is unclear whether you missed the comment or chose to ignore it.
 3. **Pushing back without concrete reasoning.** "I think the current approach is fine" is not a pushback. "The current approach avoids an extra database query per request, which matters because this endpoint handles 1000+ req/s" is a pushback.
 4. **Making large unrelated changes.** This makes re-review harder. Stick to what was requested.
-5. **Forgetting to call \`agent-shepherd ready\`.** Without this signal, the reviewer is not notified that you are done. The PR will sit in \`agent_working\` status indefinitely.
+5. **Forgetting to call \`shepherd ready\` or forgetting to reply incrementally.** Without the ready signal, the reviewer is not notified that you are done. The PR will sit in \`agent_working\` status indefinitely. And if you wait until the end to reply, context compaction may cause you to lose details from earlier comments.
 `);
-
-  // Group comments into three buckets: global, file-level, line-level
-  const globalComments: ReviewComment[] = [];
-  const fileComments = new Map<string, ReviewComment[]>();
-  const lineComments = new Map<string, ReviewComment[]>();
-
-  for (const c of comments) {
-    if (!c.filePath) {
-      globalComments.push(c);
-    } else if (c.startLine == null) {
-      const existing = fileComments.get(c.filePath) || [];
-      existing.push(c);
-      fileComments.set(c.filePath, existing);
-    } else {
-      const existing = lineComments.get(c.filePath) || [];
-      existing.push(c);
-      lineComments.set(c.filePath, existing);
-    }
-  }
-
-  const formatThread = (c: ReviewComment): string => {
-    const lines: string[] = [];
-    if (c.thread.length > 0) {
-      lines.push(`Thread:`);
-      for (const reply of c.thread) {
-        lines.push(`  - ${reply.author}: ${reply.body}`);
-      }
-      lines.push('');
-    }
-    return lines.join('\n');
-  };
-
-  if (comments.length > 0) {
-    sections.push(`\n## Comments\n`);
-
-    // Global comments
-    if (globalComments.length > 0) {
-      sections.push(`### General Comments\n`);
-      for (const c of globalComments) {
-        const sevLabel = c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
-        sections.push(`**[${sevLabel}]** (comment ID: ${c.id})`);
-        sections.push(`> ${c.body}\n`);
-        const thread = formatThread(c);
-        if (thread) sections.push(thread);
-      }
-    }
-
-    // File-level and line-level comments grouped by file
-    const allFiles = new Set([...fileComments.keys(), ...lineComments.keys()]);
-    for (const filePath of allFiles) {
-      sections.push(`### ${filePath}\n`);
-
-      // File-level comments first
-      const fileLevelComments = fileComments.get(filePath) || [];
-      for (const c of fileLevelComments) {
-        const sevLabel = c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
-        sections.push(`**[${sevLabel}]** (file comment, ID: ${c.id})`);
-        sections.push(`> ${c.body}\n`);
-        const thread = formatThread(c);
-        if (thread) sections.push(thread);
-      }
-
-      // Line-level comments
-      const lineLevelComments = lineComments.get(filePath) || [];
-      for (const c of lineLevelComments) {
-        const sevLabel = c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
-        const lineRange = c.startLine === c.endLine ? `L${c.startLine}` : `L${c.startLine}-${c.endLine}`;
-        sections.push(`**[${sevLabel}]** ${lineRange} (comment ID: ${c.id})`);
-        sections.push(`> ${c.body}\n`);
-        const thread = formatThread(c);
-        if (thread) sections.push(thread);
-      }
-    }
-  }
 
   return sections.join('\n');
 }

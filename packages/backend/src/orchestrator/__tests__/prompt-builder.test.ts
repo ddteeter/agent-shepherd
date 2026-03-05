@@ -2,22 +2,26 @@ import { describe, it, expect } from 'vitest';
 import { buildReviewPrompt } from '../prompt-builder.js';
 
 describe('PromptBuilder', () => {
-  it('groups comments by file', () => {
+  it('includes comment summary with counts', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'Add feature',
       agentContext: '{"summary": "Added auth"}',
-      comments: [
-        { filePath: 'src/auth.ts', startLine: 10, endLine: 10, body: 'Fix this', severity: 'must-fix', id: '1', thread: [] },
-        { filePath: 'src/auth.ts', startLine: 20, endLine: 22, body: 'Consider refactoring', severity: 'suggestion', id: '2', thread: [] },
-        { filePath: 'src/index.ts', startLine: 5, endLine: 5, body: 'Update import', severity: 'request', id: '3', thread: [] },
-      ],
+      commentSummary: {
+        total: 5,
+        bySeverity: { 'must-fix': 2, request: 2, suggestion: 1 },
+        files: [
+          { path: 'src/auth.ts', count: 3, bySeverity: { 'must-fix': 2, request: 1 } },
+          { path: 'src/db.ts', count: 1, bySeverity: { suggestion: 1 } },
+        ],
+        generalCount: 1,
+      },
     });
 
+    expect(prompt).toContain('5 comments');
+    expect(prompt).toContain('2 must-fix');
     expect(prompt).toContain('src/auth.ts');
-    expect(prompt).toContain('src/index.ts');
-    expect(prompt).toContain('MUST FIX');
-    expect(prompt).toContain('Fix this');
+    expect(prompt).toContain('src/db.ts');
   });
 
   it('includes agent context', () => {
@@ -25,7 +29,7 @@ describe('PromptBuilder', () => {
       prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: '{"summary": "Built the auth system"}',
-      comments: [],
+      commentSummary: { total: 0, bySeverity: {}, files: [], generalCount: 0 },
     });
     expect(prompt).toContain('Built the auth system');
   });
@@ -35,28 +39,40 @@ describe('PromptBuilder', () => {
       prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: null,
-      comments: [],
+      commentSummary: { total: 0, bySeverity: {}, files: [], generalCount: 0 },
     });
     expect(prompt).toContain('PR');
     expect(prompt).not.toContain('Context');
   });
 
-  it('includes thread history', () => {
+  it('includes pull-based workflow instructions', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: null,
-      comments: [
-        {
-          filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'Fix this', severity: 'request', id: '1',
-          thread: [
-            { author: 'agent', body: 'I disagree because...' },
-            { author: 'human', body: 'OK but still fix it' },
-          ],
-        },
-      ],
+      commentSummary: { total: 3, bySeverity: { request: 3 }, files: [{ path: 'src/a.ts', count: 3, bySeverity: { request: 3 } }], generalCount: 0 },
     });
-    expect(prompt).toContain('I disagree because');
-    expect(prompt).toContain('OK but still fix it');
+
+    expect(prompt).toContain('shepherd review');
+    expect(prompt).toContain('--file');
+    expect(prompt).toContain('shepherd batch');
+    expect(prompt).toContain('shepherd ready');
+  });
+
+  it('does not include individual comment bodies', () => {
+    const prompt = buildReviewPrompt({
+      prId: 'test-pr-id',
+      prTitle: 'PR',
+      agentContext: null,
+      commentSummary: {
+        total: 1,
+        bySeverity: { 'must-fix': 1 },
+        files: [{ path: 'src/auth.ts', count: 1, bySeverity: { 'must-fix': 1 } }],
+        generalCount: 0,
+      },
+    });
+
+    // The prompt should NOT contain individual comment markers — those come from CLI
+    expect(prompt).not.toContain('comment ID:');
   });
 });
