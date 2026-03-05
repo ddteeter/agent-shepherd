@@ -9,6 +9,7 @@ import { statusCommand } from './commands/status.js';
 import { listProjectsCommand } from './commands/list-projects.js';
 import { setupCommand } from './commands/setup.js';
 import { startCommand } from './commands/start.js';
+import { reviewCommand } from './commands/review.js';
 
 const program = new Command();
 const client = new ApiClient(process.env.SHEPHERD_URL || 'http://localhost:3847');
@@ -26,5 +27,6 @@ statusCommand(program, client);
 listProjectsCommand(program, client);
 setupCommand(program);
 startCommand(program);
+reviewCommand(program, client);
 
 program.parse();
