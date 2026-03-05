@@ -135,7 +135,7 @@ The analyzer reads two kinds of data:
 ### Output Categories
 
 1. **CLAUDE.md recommendations** -- specific rules or instructions to add. Committed as file changes to the insights branch.
-2. **Skill recommendations** -- new skills to create or existing skills to modify. Committed as file changes to the insights branch.
+2. **Skill recommendations** -- new skills to create or existing skills to modify. Committed as file changes to the insights branch. When creating skills, the analyzer should use the `skill-creator` skill if available, or recommend the user install it (`anthropic/skills/skill-creator`) if not.
 3. **Prompt/context engineering** -- coaching for the human on how they interact with agents. Examples: "Your initial prompt was 12 words -- the agent spent 40% of tokens exploring to figure out what you wanted", "You didn't respond to the agent's clarifying question so it guessed wrong". Displayed in UI only.
 4. **Agent behavior observations** -- what the agent did wrong and why. Examples: "Agent explored the codebase for 40% of the session instead of starting work", "Agent added unnecessary error handling in 4 files". Displayed in UI only.
 5. **Recurring pattern alerts** -- cross-PR trends detected from comment history. Examples: "3rd time reviewer flagged unnecessary error handling". Displayed in UI, references prior PRs.

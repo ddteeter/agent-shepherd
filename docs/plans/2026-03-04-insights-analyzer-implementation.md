@@ -1893,6 +1893,7 @@ The skill file should contain:
 - How to check both global (`~/.claude/CLAUDE.md`) and project-level (`CLAUDE.md`) files
 - How to use the shepherd insights CLI commands
 - Guidance on working additively (read existing insights first)
+- When creating new skills as recommendations: use the `skill-creator` skill if it is available in the current environment. If no skill-creation tool is installed, note this in the insights and recommend the user install `anthropic/skills/skill-creator` (https://github.com/anthropics/skills/tree/main/skills/skill-creator)
 
 This is a content authoring task — the skill is a markdown file, not code. Create it and iterate based on real analyzer runs.
 
