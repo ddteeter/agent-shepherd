@@ -249,6 +249,48 @@ describe('Comments API', () => {
     expect(filtered.json()[0].severity).toBe('must-fix');
   });
 
+  it('GET /api/prs/:id/comments?summary=true returns comment stats', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'fix1', severity: 'must-fix', author: 'human' },
+    });
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/auth.ts', startLine: 10, endLine: 10, body: 'fix2', severity: 'request', author: 'human' },
+    });
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/db.ts', startLine: 5, endLine: 5, body: 'suggestion1', severity: 'suggestion', author: 'human' },
+    });
+    // Add a general (no-file) comment
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { body: 'Overall feedback', severity: 'suggestion', author: 'human' },
+    });
+    // Add a reply (should not count as top-level)
+    const parentId = (await inject({ method: 'GET', url: `/api/prs/${prId}/comments` })).json()[0].id;
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'reply', severity: 'suggestion', author: 'agent', parentCommentId: parentId },
+    });
+
+    const response = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?summary=true` });
+    const summary = response.json();
+    expect(summary.total).toBe(4); // 4 top-level, reply excluded
+    expect(summary.bySeverity['must-fix']).toBe(1);
+    expect(summary.bySeverity.request).toBe(1);
+    expect(summary.bySeverity.suggestion).toBe(2);
+    expect(summary.generalCount).toBe(1);
+    expect(summary.files).toHaveLength(2);
+    expect(summary.files[0].path).toBe('src/auth.ts');
+    expect(summary.files[0].count).toBe(2);
+  });
+
   it('POST /api/prs/:id/comments/batch handles batch comments', async () => {
     const response = await inject({
       method: 'POST',

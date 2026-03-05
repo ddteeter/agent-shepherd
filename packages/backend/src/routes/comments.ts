@@ -3,6 +3,7 @@ import type { CreateCommentInput, BatchCommentPayload } from '@agent-shepherd/sh
 import { eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
+import { extractFilesFromDiff } from './diff.js';
 
 /**
  * Find the latest (current) review cycle for a given PR.
@@ -84,7 +85,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
   // GET /api/prs/:prId/comments — List all comments across all cycles for a PR
   fastify.get('/api/prs/:prId/comments', async (request) => {
     const { prId } = request.params as { prId: string };
-    const { filePath, severity } = request.query as { filePath?: string; severity?: string };
+    const { filePath, severity, summary } = request.query as { filePath?: string; severity?: string; summary?: string };
 
     // Get all review cycle IDs for this PR
     const cycles = db
@@ -95,9 +96,88 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
     const cycleIds = cycles.map((c: any) => c.id);
 
-    if (cycleIds.length === 0) return [];
+    if (cycleIds.length === 0) {
+      if (summary === 'true') {
+        return { total: 0, bySeverity: {}, files: [], generalCount: 0 };
+      }
+      return [];
+    }
 
-    let comments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+    const allComments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+
+    // Summary mode: return aggregated stats from all unresolved top-level comments
+    if (summary === 'true') {
+      const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+
+      const bySeverity: Record<string, number> = {};
+      const fileMap: Record<string, { count: number; bySeverity: Record<string, number> }> = {};
+      let generalCount = 0;
+
+      for (const c of topLevel) {
+        // Count by severity
+        bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
+
+        if (c.filePath) {
+          // File-specific comment
+          if (!fileMap[c.filePath]) {
+            fileMap[c.filePath] = { count: 0, bySeverity: {} };
+          }
+          fileMap[c.filePath].count++;
+          fileMap[c.filePath].bySeverity[c.severity] = (fileMap[c.filePath].bySeverity[c.severity] || 0) + 1;
+        } else {
+          // General (no-file) comment
+          generalCount++;
+        }
+      }
+
+      // Try to get diff file ordering from latest cycle's snapshot
+      let diffFileOrder: string[] | null = null;
+      const latestCycle = cycles.reduce(
+        (best: any, cycle: any) =>
+          cycle.cycleNumber > (best?.cycleNumber ?? 0) ? cycle : best,
+        null,
+      );
+      if (latestCycle) {
+        const snapshot = db
+          .select()
+          .from(schema.diffSnapshots)
+          .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
+          .get();
+        if (snapshot) {
+          diffFileOrder = extractFilesFromDiff(snapshot.diffData);
+        }
+      }
+
+      // Sort files by diff order (or alphabetical fallback)
+      const filePaths = Object.keys(fileMap);
+      if (diffFileOrder) {
+        const orderMap = new Map(diffFileOrder.map((f, i) => [f, i]));
+        filePaths.sort((a, b) => {
+          const ai = orderMap.get(a) ?? Infinity;
+          const bi = orderMap.get(b) ?? Infinity;
+          if (ai !== bi) return ai - bi;
+          return a.localeCompare(b);
+        });
+      } else {
+        filePaths.sort((a, b) => a.localeCompare(b));
+      }
+
+      const files = filePaths.map((path) => ({
+        path,
+        count: fileMap[path].count,
+        bySeverity: fileMap[path].bySeverity,
+      }));
+
+      return {
+        total: topLevel.length,
+        bySeverity,
+        files,
+        generalCount,
+      };
+    }
+
+    // Non-summary mode: return filtered comments
+    let comments = allComments;
 
     if (filePath) {
       comments = comments.filter((c: any) => c.filePath === filePath);
