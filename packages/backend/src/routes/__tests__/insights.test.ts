@@ -158,6 +158,41 @@ describe('Insights API', () => {
     expect(response.json()).toEqual([]);
   });
 
+  it('POST /api/prs/:id/run-insights returns insights_started', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/run-insights`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'insights_started' });
+  });
+
+  it('POST /api/prs/:id/run-insights returns 404 for non-existent PR', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: '/api/prs/nonexistent/run-insights',
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it('POST /api/prs/:id/cancel-agent accepts source query param', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/cancel-agent?source=insights`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'cancelled' });
+  });
+
+  it('POST /api/prs/:id/cancel-agent works without source param', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/cancel-agent`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'cancelled' });
+  });
+
   it('GET /api/prs/:prId/insights returns insights after creation', async () => {
     const categories = {
       claudeMdRecommendations: [],
