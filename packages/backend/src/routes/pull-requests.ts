@@ -300,7 +300,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return newCycle;
   });
 
-  fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
+  fastify.post('/api/prs/:id/run-insights', async (request, reply) => {
     const { id } = request.params as { id: string };
 
     const pr = db
@@ -316,7 +316,32 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     const orchestrator = (fastify as any).orchestrator;
     if (orchestrator) {
-      await orchestrator.cancelAgent(id);
+      orchestrator.runInsights(id).catch((err: Error) => {
+        fastify.log.error({ err, prId: id }, 'Insights analysis failed');
+      });
+    }
+
+    return { status: 'insights_started' };
+  });
+
+  fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { source } = request.query as { source?: string };
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    const orchestrator = (fastify as any).orchestrator;
+    if (orchestrator) {
+      await orchestrator.cancelAgent(id, source as any);
     }
 
     return { status: 'cancelled' };
