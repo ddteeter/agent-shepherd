@@ -27,6 +27,30 @@ function getCurrentCycleId(db: any, prId: string): string | null {
 export async function commentRoutes(fastify: FastifyInstance) {
   const db = (fastify as any).db;
 
+  // GET /api/projects/:projectId/comments/history — All comments across all PRs for a project
+  fastify.get('/api/projects/:projectId/comments/history', async (request) => {
+    const { projectId } = request.params as { projectId: string };
+
+    const prs = db.select().from(schema.pullRequests)
+      .where(eq(schema.pullRequests.projectId, projectId)).all();
+    const prIds = prs.map((p: any) => p.id);
+    if (prIds.length === 0) return [];
+
+    const cycles = db.select().from(schema.reviewCycles)
+      .where(inArray(schema.reviewCycles.prId, prIds)).all();
+    const cycleIds = cycles.map((c: any) => c.id);
+    if (cycleIds.length === 0) return [];
+
+    const comments = db.select().from(schema.comments)
+      .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+
+    const cycleToPr = new Map(cycles.map((c: any) => [c.id, c.prId]));
+    return comments.map((c: any) => ({
+      ...c,
+      prId: cycleToPr.get(c.reviewCycleId) ?? null,
+    }));
+  });
+
   // POST /api/prs/:prId/comments — Add a comment to the current review cycle
   fastify.post('/api/prs/:prId/comments', async (request, reply) => {
     const { prId } = request.params as { prId: string };

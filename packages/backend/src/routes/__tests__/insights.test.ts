@@ -100,6 +100,64 @@ describe('Insights API', () => {
     expect(second.json().branchRef).toBe('feat/y');
   });
 
+  it('GET /api/projects/:projectId/comments/history returns comments across all PRs', async () => {
+    // Create a second PR in the same project
+    const pr2 = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR 2', description: '', sourceBranch: 'feat/y' },
+    });
+    const prId2 = pr2.json().id;
+
+    // Add a comment to PR 1
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'Fix in PR1', severity: 'must-fix', author: 'human' },
+    });
+
+    // Add a comment to PR 2
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId2}/comments`,
+      payload: { filePath: 'src/b.ts', startLine: 5, endLine: 5, body: 'Fix in PR2', severity: 'suggestion', author: 'human' },
+    });
+
+    // Fetch comment history for the project
+    const response = await inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/comments/history`,
+    });
+    expect(response.statusCode).toBe(200);
+
+    const comments = response.json();
+    expect(comments).toHaveLength(2);
+
+    const bodies = comments.map((c: any) => c.body).sort();
+    expect(bodies).toEqual(['Fix in PR1', 'Fix in PR2']);
+
+    // Each comment should have a prId
+    const prIds = comments.map((c: any) => c.prId).sort();
+    expect(prIds).toEqual([prId, prId2].sort());
+  });
+
+  it('GET /api/projects/:projectId/comments/history returns empty array for project with no PRs', async () => {
+    // Create a fresh project with no PRs
+    const proj2 = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'empty-project', path: '/tmp/empty' },
+    });
+    const emptyProjectId = proj2.json().id;
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/projects/${emptyProjectId}/comments/history`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual([]);
+  });
+
   it('GET /api/prs/:prId/insights returns insights after creation', async () => {
     const categories = {
       claudeMdRecommendations: [],
