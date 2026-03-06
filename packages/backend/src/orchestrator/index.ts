@@ -2,11 +2,11 @@ import { existsSync } from 'fs';
 import { eq, inArray } from 'drizzle-orm';
 import type { AgentAdapter, AgentSession } from './types.js';
 import { ClaudeCodeAdapter } from './claude-code-adapter.js';
-import { buildReviewPrompt } from './prompt-builder.js';
+import { buildReviewPrompt } from './review/prompt-builder.js';
 import { getLatestCycle } from '../db/queries.js';
 import { NotificationService } from '../services/notifications.js';
 
-export { buildReviewPrompt } from './prompt-builder.js';
+export { buildReviewPrompt } from './review/prompt-builder.js';
 export { ClaudeCodeAdapter } from './claude-code-adapter.js';
 export type { AgentAdapter, AgentSession } from './types.js';
 
