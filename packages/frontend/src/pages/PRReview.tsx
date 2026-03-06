@@ -11,6 +11,7 @@ import type { FileStatus } from '../components/DiffViewer.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { CommentFilter } from '../components/CommentFilter.js';
 import type { CommentFilterValue } from '../components/CommentFilter.js';
+import { InsightsTab } from '../components/InsightsTab.js';
 import { getThreadStatus, groupThreads } from '../utils/commentThreadStatus.js';
 import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 
@@ -41,6 +42,10 @@ export function PRReview() {
   const [agentError, setAgentError] = useState<string | null>(null);
   const [agentActivity, setAgentActivity] = useState<ActivityEntry[]>([]);
   const [commentFilter, setCommentFilter] = useState<CommentFilterValue>('all');
+  const [insights, setInsights] = useState<any>(null);
+  const [insightsActivity, setInsightsActivity] = useState<ActivityEntry[]>([]);
+  const [activeTab, setActiveTab] = useState<'review' | 'insights'>('review');
+  const [analyzerRunning, setAnalyzerRunning] = useState(false);
 
   const { connected } = useWebSocket((msg) => {
     if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
@@ -55,14 +60,30 @@ export function PRReview() {
     if (msg.event === 'agent:working' || msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
       setAgentError(null);
       if (msg.event === 'agent:working') {
-        setAgentActivity([]);
+        if (msg.data?.source === 'insights') {
+          setInsightsActivity([]);
+          setAnalyzerRunning(true);
+        } else {
+          setAgentActivity([]);
+        }
+      }
+      if ((msg.event === 'agent:completed' || msg.event === 'agent:cancelled') && msg.data?.source === 'insights') {
+        setAnalyzerRunning(false);
+        fetchInsights();
       }
       fetchCycles();
     }
     if (msg.event === 'agent:output' && msg.data?.prId === prId && msg.data?.entry) {
-      setAgentActivity((prev) => [...prev.slice(-49), msg.data.entry]);
+      if (msg.data.source === 'insights') {
+        setInsightsActivity((prev) => [...prev.slice(-49), msg.data.entry]);
+      } else {
+        setAgentActivity((prev) => [...prev.slice(-49), msg.data.entry]);
+      }
     }
     if (msg.event === 'agent:error') {
+      if (msg.data?.source === 'insights') {
+        setAnalyzerRunning(false);
+      }
       setAgentError(msg.data?.error || 'Unknown error');
       fetchCycles();
     }
@@ -85,6 +106,16 @@ export function PRReview() {
       setCycles(data as ReviewCycle[]);
     } catch {
       // Cycles endpoint may fail, ignore
+    }
+  }, [prId]);
+
+  const fetchInsights = useCallback(async () => {
+    if (!prId) return;
+    try {
+      const data = await api.insights.get(prId);
+      setInsights(data);
+    } catch {
+      // Insights may not exist yet
     }
   }, [prId]);
 
@@ -126,7 +157,8 @@ export function PRReview() {
 
     fetchComments();
     fetchCycles();
-  }, [prId, fetchComments, fetchCycles]);
+    fetchInsights();
+  }, [prId, fetchComments, fetchCycles, fetchInsights]);
 
   const handleCycleChange = useCallback((value: string) => {
     setSelectedCycle(value);
@@ -222,6 +254,24 @@ export function PRReview() {
       await fetchCycles();
     } catch (err) {
       console.error('Failed to cancel agent:', err);
+    }
+  };
+
+  const handleRunAnalyzer = async () => {
+    if (!prId) return;
+    try {
+      await api.insights.runAnalyzer(prId);
+    } catch (err) {
+      console.error('Failed to start insights analyzer:', err);
+    }
+  };
+
+  const handleCancelAnalyzer = async () => {
+    if (!prId) return;
+    try {
+      await api.prs.cancelAgent(prId, 'insights');
+    } catch (err) {
+      console.error('Failed to cancel analyzer:', err);
     }
   };
 
@@ -496,33 +546,64 @@ export function PRReview() {
         )}
       </div>
 
-      {/* Main content area: file tree + diff viewer */}
-      <div className="flex flex-1 overflow-hidden">
-        <FileTree
-          files={diffData.files}
-          selectedFile={visibleFile}
-          onSelectFile={handleFileSelect}
-          fileStatuses={fileStatuses}
-          commentCounts={commentCounts}
-        />
-        <DiffViewer
-          diff={diffData.diff}
-          files={diffData.files}
-          scrollToFile={scrollToFile}
-          scrollKey={scrollKeyRef.current}
-          onVisibleFileChange={setVisibleFile}
-          comments={filteredComments}
-          threadStatusMap={threadStatusMap}
-          onAddComment={handleAddComment}
-          onReplyComment={handleReplyComment}
-          onResolveComment={handleResolveComment}
-          onEditComment={handleEditComment}
-          onDeleteComment={handleDeleteComment}
-          canEditComments={selectedCycle === 'current'}
-          globalCommentForm={globalCommentForm}
-          onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
-        />
+      {/* Tab navigation */}
+      <div className="flex border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveTab('review')}
+          className={`px-4 py-2 text-sm ${activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
+          style={activeTab === 'review' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
+        >
+          Review
+        </button>
+        <button
+          onClick={() => setActiveTab('insights')}
+          className={`px-4 py-2 text-sm ${activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
+          style={activeTab === 'insights' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
+        >
+          Insights
+        </button>
       </div>
+
+      {/* Main content area */}
+      {activeTab === 'review' ? (
+        <div className="flex flex-1 overflow-hidden">
+          <FileTree
+            files={diffData.files}
+            selectedFile={visibleFile}
+            onSelectFile={handleFileSelect}
+            fileStatuses={fileStatuses}
+            commentCounts={commentCounts}
+          />
+          <DiffViewer
+            diff={diffData.diff}
+            files={diffData.files}
+            scrollToFile={scrollToFile}
+            scrollKey={scrollKeyRef.current}
+            onVisibleFileChange={setVisibleFile}
+            comments={filteredComments}
+            threadStatusMap={threadStatusMap}
+            onAddComment={handleAddComment}
+            onReplyComment={handleReplyComment}
+            onResolveComment={handleResolveComment}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
+            canEditComments={selectedCycle === 'current'}
+            globalCommentForm={globalCommentForm}
+            onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
+          />
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto">
+          <InsightsTab
+            insights={insights}
+            hasComments={topLevelComments.length > 0}
+            analyzerRunning={analyzerRunning}
+            analyzerActivity={insightsActivity}
+            onRunAnalyzer={handleRunAnalyzer}
+            onCancelAnalyzer={handleCancelAnalyzer}
+          />
+        </div>
+      )}
 
       {/* Review submission bar */}
       <ReviewBar
