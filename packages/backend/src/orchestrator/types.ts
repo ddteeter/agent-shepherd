@@ -17,3 +17,17 @@ export interface AgentSession {
   onOutput(callback: (entry: AgentActivityEntry) => void): void;
   kill(): Promise<void>;
 }
+
+export type AgentSource = 'code-fix' | 'insights';
+
+export interface AgentRunConfig {
+  prId: string;
+  projectPath: string;
+  prompt: string;
+  source: AgentSource;
+}
+
+export interface AgentRunCallbacks {
+  onComplete: () => void;
+  onError: (error: Error) => void;
+}
