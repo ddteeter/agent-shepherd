@@ -13,6 +13,7 @@ import { pullRequestRoutes } from './routes/pull-requests.js';
 import { commentRoutes } from './routes/comments.js';
 import { diffRoutes } from './routes/diff.js';
 import { configRoutes } from './routes/config.js';
+import { insightsRoutes } from './routes/insights.js';
 import { websocketPlugin, broadcast } from './ws.js';
 import { Orchestrator } from './orchestrator/index.js';
 import { NotificationService } from './services/notifications.js';
@@ -139,6 +140,7 @@ export async function buildServer(opts: ServerOptions = {}) {
   await fastify.register(commentRoutes);
   await fastify.register(diffRoutes);
   await fastify.register(configRoutes);
+  await fastify.register(insightsRoutes);
 
   // Serve bundled frontend static files (production mode)
   const __dirname = dirname(fileURLToPath(import.meta.url));

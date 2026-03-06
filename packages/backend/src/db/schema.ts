@@ -65,3 +65,12 @@ export const projectConfig = sqliteTable('project_config', {
 }, (t) => [
   primaryKey({ columns: [t.projectId, t.key] }),
 ]);
+
+export const insights = sqliteTable('insights', {
+  id: text('id').primaryKey(),
+  prId: text('pr_id').notNull().references(() => pullRequests.id),
+  categories: text('categories').notNull().default('{}'),
+  branchRef: text('branch_ref'),
+  worktreePath: text('worktree_path'),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+});
