@@ -47,11 +47,11 @@ export async function insightsRoutes(fastify: FastifyInstance) {
       db.update(schema.insights)
         .set({
           categories: categoriesJson,
-          branchRef: branchRef ?? existing.branchRef,
-          worktreePath: worktreePath ?? existing.worktreePath,
+          ...(branchRef !== undefined ? { branchRef } : {}),
+          ...(worktreePath !== undefined ? { worktreePath } : {}),
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(schema.insights.prId, prId))
+        .where(eq(schema.insights.id, existing.id))
         .run();
     } else {
       const id = randomUUID();
