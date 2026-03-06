@@ -38,8 +38,10 @@ export const api = {
       request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
     review: (id: string, action: string) =>
       request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }),
-    cancelAgent: (id: string) =>
-      request<any>(`/prs/${id}/cancel-agent`, { method: 'POST' }),
+    cancelAgent: (id: string, source?: string) => {
+      const params = source ? `?source=${source}` : '';
+      return request<any>(`/prs/${id}/cancel-agent${params}`, { method: 'POST' });
+    },
     close: (id: string) =>
       request<any>(`/prs/${id}/close`, { method: 'POST' }),
     reopen: (id: string) =>
@@ -53,5 +55,9 @@ export const api = {
       request<any>(`/comments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (id: string) =>
       request<void>(`/comments/${id}`, { method: 'DELETE' }),
+  },
+  insights: {
+    get: (prId: string) => request<any | null>(`/prs/${prId}/insights`),
+    runAnalyzer: (prId: string) => request<any>(`/prs/${prId}/run-insights`, { method: 'POST' }),
   },
 };
