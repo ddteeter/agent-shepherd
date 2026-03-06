@@ -108,32 +108,3 @@ export interface CreateCommentInput {
 export interface SubmitReviewInput {
   action: 'approve' | 'request-changes';
 }
-
-export interface InsightItem {
-  title: string;
-  description: string;
-  applied?: boolean;
-}
-
-export interface RecurringPatternItem {
-  title: string;
-  description: string;
-  prIds: string[];
-}
-
-export interface InsightCategories {
-  claudeMdRecommendations: InsightItem[];
-  skillRecommendations: InsightItem[];
-  promptEngineering: InsightItem[];
-  agentBehaviorObservations: InsightItem[];
-  recurringPatterns: RecurringPatternItem[];
-}
-
-export interface Insights {
-  id: string;
-  prId: string;
-  categories: InsightCategories;
-  branchRef: string | null;
-  worktreePath: string | null;
-  updatedAt: string;
-}
