@@ -51,17 +51,20 @@ export class InsightsAnalyzer {
     // For now, use the PR's working directory
     const effectivePath = pr.workingDirectory ?? project.path;
 
-    await this.agentRunner.run(
-      { prId, projectPath: effectivePath, prompt, source: 'insights' },
-      {
-        onComplete: () => {
-          // Insights completion is non-critical — no cycle status to update
+    try {
+      await this.agentRunner.run(
+        { prId, projectPath: effectivePath, prompt, source: 'insights' },
+        {
+          onComplete: () => {
+            // Insights completion is non-critical — no cycle status to update
+          },
+          onError: (error) => {
+            console.error(`Insights analyzer error for PR ${prId}:`, error.message);
+          },
         },
-        onError: (error) => {
-          // Log but don't fail the overall flow
-          console.error(`Insights analyzer error for PR ${prId}:`, error.message);
-        },
-      },
-    );
+      );
+    } catch (error) {
+      console.error(`Insights analyzer failed to start for PR ${prId}:`, (error as Error).message);
+    }
   }
 }
