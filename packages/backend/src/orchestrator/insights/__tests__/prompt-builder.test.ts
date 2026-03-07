@@ -35,9 +35,9 @@ describe('Insights PromptBuilder', () => {
       projectId: 'proj-1',
       sessionLogPaths: [],
     });
-    expect(prompt).toContain('shepherd insights get');
-    expect(prompt).toContain('shepherd insights update');
-    expect(prompt).toContain('shepherd insights history');
+    expect(prompt).toContain('agent-shepherd insights get');
+    expect(prompt).toContain('agent-shepherd insights update');
+    expect(prompt).toContain('agent-shepherd insights history');
   });
 
   it('handles empty session logs gracefully', () => {

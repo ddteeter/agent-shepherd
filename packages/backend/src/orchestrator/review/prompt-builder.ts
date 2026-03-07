@@ -37,7 +37,7 @@ DO:
 3. Make the requested code changes in the project files
 4. Reply to comments as you finish each file (don't wait until the end)
 5. Commit your changes
-6. Submit via \`shepherd ready ${prId}\`
+6. Submit via \`agent-shepherd ready ${prId}\`
 
 Start working on the code changes immediately.\n`);
 
@@ -135,13 +135,13 @@ For each file listed in the summary, starting from the top:
 
 a. Fetch that file's comments:
    \`\`\`bash
-   shepherd review ${prId} comments --file <file-path>
+   agent-shepherd review ${prId} comments --file <file-path>
    \`\`\`
 b. Read the file and understand the comments
 c. Make the requested changes
 d. Reply to those comments immediately:
    \`\`\`bash
-   echo '{"replies":[{"parentCommentId":"<id>","body":"<your reply>"}]}' | shepherd batch ${prId} --stdin
+   echo '{"replies":[{"parentCommentId":"<id>","body":"<your reply>"}]}' | agent-shepherd batch ${prId} --stdin
    \`\`\`
 
 Reply as you go -- do not wait until the end. This prevents losing reply details to context compaction on large reviews.
@@ -150,7 +150,7 @@ Reply as you go -- do not wait until the end. This prevents losing reply details
 
 If a comment references another file you haven't seen yet, use:
 \`\`\`bash
-shepherd review ${prId} comments --all
+agent-shepherd review ${prId} comments --all
 \`\`\`
 
 ### 4. Commit and Signal Ready
@@ -158,7 +158,7 @@ shepherd review ${prId} comments --all
 \`\`\`bash
 git add <changed-files>
 git commit -m "Address review feedback: <summary>"
-shepherd ready ${prId}
+agent-shepherd ready ${prId}
 \`\`\`
 
 ## Writing Good Reply Messages
@@ -209,7 +209,7 @@ shepherd ready ${prId}
 2. **Not replying to every comment.** The reviewer expects a response on each comment. Silence is ambiguous -- it is unclear whether you missed the comment or chose to ignore it.
 3. **Pushing back without concrete reasoning.** "I think the current approach is fine" is not a pushback. "The current approach avoids an extra database query per request, which matters because this endpoint handles 1000+ req/s" is a pushback.
 4. **Making large unrelated changes.** This makes re-review harder. Stick to what was requested.
-5. **Forgetting to call \`shepherd ready\` or forgetting to reply incrementally.** Without the ready signal, the reviewer is not notified that you are done. The PR will sit in \`agent_working\` status indefinitely. And if you wait until the end to reply, context compaction may cause you to lose details from earlier comments.
+5. **Forgetting to call \`agent-shepherd ready\` or forgetting to reply incrementally.** Without the ready signal, the reviewer is not notified that you are done. The PR will sit in \`agent_working\` status indefinitely. And if you wait until the end to reply, context compaction may cause you to lose details from earlier comments.
 `);
 
   return sections.join('\n');

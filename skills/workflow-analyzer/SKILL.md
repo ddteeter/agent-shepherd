@@ -34,9 +34,9 @@ Use the CLI commands provided in your prompt to fetch:
 
 ## Analysis Workflow
 
-1. **Read existing insights** -- Call `shepherd insights get <pr-id>` first. If insights already exist, build on them rather than replacing them.
+1. **Read existing insights** -- Call `agent-shepherd insights get <pr-id>` first. If insights already exist, build on them rather than replacing them.
 
-2. **Fetch comment history** -- Call `shepherd insights history <project-id>` to get all comments across PRs. Look for recurring themes.
+2. **Fetch comment history** -- Call `agent-shepherd insights history <project-id>` to get all comments across PRs. Look for recurring themes.
 
 3. **Read session transcripts** -- Read the JSONL files listed in your prompt. Scan for patterns described above.
 
@@ -101,7 +101,7 @@ Examples:
 
 Submit via CLI:
 ```bash
-echo '<json>' | shepherd insights update <pr-id> --stdin
+echo '<json>' | agent-shepherd insights update <pr-id> --stdin
 ```
 
 JSON structure:

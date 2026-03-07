@@ -53,10 +53,10 @@ describe('PromptBuilder', () => {
       commentSummary: { total: 3, bySeverity: { request: 3 }, files: [{ path: 'src/a.ts', count: 3, bySeverity: { request: 3 } }], generalCount: 0 },
     });
 
-    expect(prompt).toContain('shepherd review');
+    expect(prompt).toContain('agent-shepherd review');
     expect(prompt).toContain('--file');
-    expect(prompt).toContain('shepherd batch');
-    expect(prompt).toContain('shepherd ready');
+    expect(prompt).toContain('agent-shepherd batch');
+    expect(prompt).toContain('agent-shepherd ready');
   });
 
   it('does not include individual comment bodies', () => {

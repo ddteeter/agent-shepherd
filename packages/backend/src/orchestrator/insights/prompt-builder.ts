@@ -35,9 +35,9 @@ No session logs found for this branch. Focus analysis on the comment history.
 
   sections.push(`## Available CLI Commands
 
-- \`shepherd insights get ${prId}\` — Read current insights (call this first to work additively)
-- \`shepherd insights update ${prId} --stdin\` — Save/update your insights
-- \`shepherd insights history ${projectId}\` — Get all comments across PRs for pattern detection
+- \`agent-shepherd insights get ${prId}\` — Read current insights (call this first to work additively)
+- \`agent-shepherd insights update ${prId} --stdin\` — Save/update your insights
+- \`agent-shepherd insights history ${projectId}\` — Get all comments across PRs for pattern detection
 
 ## Your Task
 
@@ -47,7 +47,7 @@ Analyze the agent's session transcripts and the project's comment history to pro
 
 Submit your findings via:
 \`\`\`bash
-echo '<json>' | shepherd insights update ${prId} --stdin
+echo '<json>' | agent-shepherd insights update ${prId} --stdin
 \`\`\`
 
 The JSON payload must have this structure:
@@ -65,8 +65,8 @@ The JSON payload must have this structure:
 
 ### Workflow
 
-1. Call \`shepherd insights get ${prId}\` to check for existing insights
-2. Call \`shepherd insights history ${projectId}\` to get cross-PR comment patterns
+1. Call \`agent-shepherd insights get ${prId}\` to check for existing insights
+2. Call \`agent-shepherd insights history ${projectId}\` to get cross-PR comment patterns
 3. Read the session log files listed above
 4. Analyze the session transcripts, correlating with review comments
 5. For CLAUDE.md and skill recommendations, also make the file changes and commit them

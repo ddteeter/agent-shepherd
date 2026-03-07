@@ -83,7 +83,7 @@ describe('Orchestrator cross-cycle comment query', () => {
     expect(prompt).toContain('2 comments');
     expect(prompt).toContain('src/index.ts');
     expect(prompt).toContain('src/auth.ts');
-    expect(prompt).toContain('shepherd review');
+    expect(prompt).toContain('agent-shepherd review');
     // Should NOT contain the actual comment body text
     expect(prompt).not.toContain('Fix the null check');
   });
