@@ -8,7 +8,7 @@ describe('Insights PromptBuilder', () => {
       prTitle: 'Add auth feature',
       branch: 'feat/auth',
       projectId: 'proj-1',
-      sessionLogPaths: [],
+      transcriptPaths: [],
     });
     expect(prompt).toContain('pr-123');
     expect(prompt).toContain('Add auth feature');
@@ -21,10 +21,10 @@ describe('Insights PromptBuilder', () => {
       prTitle: 'PR',
       branch: 'feat/x',
       projectId: 'proj-1',
-      sessionLogPaths: ['/home/user/.claude/projects/x/sess-1.jsonl', '/home/user/.claude/projects/x/sess-2.jsonl'],
+      transcriptPaths: ['/tmp/transcripts/sess-1.md', '/tmp/transcripts/sess-2.md'],
     });
-    expect(prompt).toContain('sess-1.jsonl');
-    expect(prompt).toContain('sess-2.jsonl');
+    expect(prompt).toContain('sess-1.md');
+    expect(prompt).toContain('sess-2.md');
   });
 
   it('includes CLI command references', () => {
@@ -33,7 +33,7 @@ describe('Insights PromptBuilder', () => {
       prTitle: 'PR',
       branch: 'feat/x',
       projectId: 'proj-1',
-      sessionLogPaths: [],
+      transcriptPaths: [],
     });
     expect(prompt).toContain('agent-shepherd insights get');
     expect(prompt).toContain('agent-shepherd insights update');
@@ -46,8 +46,49 @@ describe('Insights PromptBuilder', () => {
       prTitle: 'PR',
       branch: 'feat/x',
       projectId: 'proj-1',
-      sessionLogPaths: [],
+      transcriptPaths: [],
     });
     expect(prompt).toContain('No session logs');
+  });
+
+  it('includes confidence threshold guidance', () => {
+    const prompt = buildInsightsPrompt({
+      prId: 'pr-123',
+      prTitle: 'PR',
+      branch: 'feat/x',
+      projectId: 'proj-1',
+      transcriptPaths: [],
+    });
+    expect(prompt).toContain('confidence');
+    expect(prompt).toContain('`high`');
+    expect(prompt).toContain('`medium`');
+    expect(prompt).toContain('`low`');
+  });
+
+  it('includes deduplication context when previousUpdatedAt is provided', () => {
+    const prompt = buildInsightsPrompt({
+      prId: 'pr-1',
+      prTitle: 'Test PR',
+      branch: 'feat/test',
+      projectId: 'proj-1',
+      transcriptPaths: ['/tmp/session.md'],
+      previousUpdatedAt: '2026-03-07T10:00:00Z',
+    });
+
+    expect(prompt).toContain('2026-03-07T10:00:00Z');
+    expect(prompt).toContain('git log');
+    expect(prompt).toContain('already been factored');
+  });
+
+  it('omits deduplication context when previousUpdatedAt is not provided', () => {
+    const prompt = buildInsightsPrompt({
+      prId: 'pr-1',
+      prTitle: 'Test PR',
+      branch: 'feat/test',
+      projectId: 'proj-1',
+      transcriptPaths: [],
+    });
+
+    expect(prompt).not.toContain('previous analysis');
   });
 });

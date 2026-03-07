@@ -4,6 +4,7 @@ interface InsightsPromptInput {
   branch: string;
   projectId: string;
   transcriptPaths: string[];
+  previousUpdatedAt?: string;
 }
 
 export function buildInsightsPrompt(input: InsightsPromptInput): string {
@@ -35,6 +36,19 @@ No session logs found for this branch. Focus analysis on the comment history.
 `);
   }
 
+  if (input.previousUpdatedAt) {
+    sections.push(`## Incremental Analysis
+
+Your previous analysis was saved at ${input.previousUpdatedAt}. This is a follow-up run.
+
+- Run \`git log --since="${input.previousUpdatedAt}" --oneline\` to see commits made since your last analysis. Focus on sessions that produced these new commits.
+- Review your previous findings via \`insights get\`. Do not re-report existing recommendations.
+- Comments from review cycles prior to ${input.previousUpdatedAt} have already been factored into your existing recommendations. Do not count them as additional evidence for a pattern. You may reference them for context when analyzing newer comments, but they should not inflate confidence or cause duplicate findings.
+- If a previous finding is now better supported by additional evidence, update its confidence level or description rather than creating a duplicate.
+- If no meaningful new patterns emerge, return your existing insights unchanged.
+`);
+  }
+
   sections.push(`## Available CLI Commands
 
 - \`agent-shepherd insights get ${prId}\` — Read current insights (call this first to work additively)
@@ -43,11 +57,13 @@ No session logs found for this branch. Focus analysis on the comment history.
 
 ## Your Task
 
-Use the \`agent-shepherd:workflow-analyzer\` skill to analyze the agent's session transcripts and comment history. The skill contains the full methodology, output categories, and JSON format.
+Use the \`agent-shepherd:workflow-analyzer\` skill to analyze the agent's session transcripts and comment history. The skill contains the full methodology, output categories, confidence levels, and JSON format.
 
 ### Important Notes
 
-- For CLAUDE.md and skill recommendations, only make and commit file changes if you are highly confident they are correct.
+- Every recommendation MUST include a \`confidence\` field (\`high\`, \`medium\`, or \`low\`).
+- Only make and commit file changes for CLAUDE.md and skill recommendations when confidence is \`high\`.
+- When committing changes, set \`appliedPath\` to the file you modified. Choose the best location per the skill's CLAUDE.md best practices guidance.
 - The \`insights update\` command replaces all existing insights for this PR. Call \`insights get\` first and include any previous findings you want to keep.
 `);
 
