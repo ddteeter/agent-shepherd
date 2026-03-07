@@ -87,10 +87,10 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
   // Analyzer running state
   if (analyzerRunning) {
     return (
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-4">
+      <div>
+        <div className="flex items-center gap-2 text-sm px-4 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
           <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-          <span className="text-sm" style={{ color: 'var(--color-warning, #d29922)' }}>Analyzer running...</span>
+          <span style={{ color: 'var(--color-warning, #d29922)' }}>Analyzer running...</span>
           <button
             onClick={onCancelAnalyzer}
             className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
@@ -99,7 +99,9 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
             Cancel
           </button>
         </div>
-        <AgentActivityPanel entries={analyzerActivity} />
+        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <AgentActivityPanel entries={analyzerActivity} />
+        </div>
       </div>
     );
   }
