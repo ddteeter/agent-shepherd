@@ -98,6 +98,50 @@ The context you attach to a PR serves two purposes:
 
 **`notesForFutureSessions`** — Key files and their roles, main abstractions and how to extend them, where tests live, and anything non-obvious discovered during implementation. Think of this as a handoff document for a colleague who has never seen the code.
 
+### 3b. Write a File Groups File
+
+Create a JSON file that defines how files in your diff should be logically grouped for review. This helps the reviewer navigate the diff by feature/concern rather than directory structure.
+
+Create a file (e.g., `file-groups.json`):
+
+```json
+[
+  {
+    "name": "Database Schema",
+    "description": "New tables and migration for the feature. Review schema design first.",
+    "files": [
+      "packages/backend/src/db/schema.ts",
+      "packages/backend/drizzle/0005_add_feature.sql"
+    ]
+  },
+  {
+    "name": "API Layer",
+    "description": "REST endpoints that expose the new functionality.",
+    "files": [
+      "packages/backend/src/routes/feature.ts"
+    ]
+  },
+  {
+    "name": "Frontend Components",
+    "description": "UI components for the new feature.",
+    "files": [
+      "packages/frontend/src/components/FeaturePanel.tsx",
+      "packages/frontend/src/pages/FeaturePage.tsx"
+    ]
+  }
+]
+```
+
+#### File Groups Guidance
+
+- **Group by logical concern**, not by directory. "Authentication Flow" is better than "src/auth/"
+- **Name groups** to describe WHAT they represent, not WHERE they are
+- **Descriptions** should tell the reviewer what to look for in that group
+- **Order groups** in the recommended review sequence (e.g., schema first, then API, then UI)
+- **Every changed file** should appear in exactly one group
+- **Keep group count reasonable** -- 2-6 groups for most PRs
+- A file can only appear in one group. Files not in any group will appear in an "Other Changes" section
+
 ### 4. Submit the PR
 
 ```bash
@@ -105,7 +149,8 @@ agent-shepherd submit \
   --project <project-id> \
   --title "Add user authentication flow" \
   --description "Implements login, logout, and session management with JWT tokens." \
-  --context-file pr-context.json
+  --context-file pr-context.json \
+  --file-groups file-groups.json
 ```
 
 **Flags:**
@@ -117,6 +162,7 @@ agent-shepherd submit \
 | `-d, --description <desc>` | No | Short PR description |
 | `-s, --source-branch <branch>` | No | Source branch (auto-detected from HEAD if omitted) |
 | `-c, --context-file <path>` | No | Path to JSON file with structured agent context |
+| `--file-groups <path>` | No | Path to JSON file with logical file groupings for review |
 | (auto) | — | Working directory is automatically captured from `cwd` |
 
 The command outputs the PR ID, title, and status on success. Save the PR ID -- you will need it if responding to review comments later.
@@ -146,9 +192,26 @@ The description appears in the review UI alongside the diff. Keep it concise but
 - Why? (Link to plan/spec if applicable)
 - Any special instructions for the reviewer (e.g., "Focus review on the error handling in src/api/handler.ts")
 
+## Fix Cycles: Updating File Groups
+
+When responding to review feedback (`shepherd ready`), you must provide updated file groups if the initial PR had them. If you forget, the command will fail with an error telling you what to do.
+
+1. Fetch the current groups:
+   ```bash
+   shepherd file-groups <pr-id>
+   ```
+2. Review which files you've changed or added during fixes
+3. Add new files to the most appropriate existing group, or create a new group if they represent a distinct concern
+4. Keep existing group names and descriptions stable unless your changes fundamentally alter them
+5. Save the updated groups and provide them:
+   ```bash
+   shepherd ready <pr-id> --file-groups updated-groups.json
+   ```
+
 ## Common Mistakes to Avoid
 
 1. **Submitting with uncommitted changes.** The diff is computed from git. If you forgot to commit, the reviewer sees nothing or an incomplete diff.
 2. **Using the default title.** "Agent PR" tells the reviewer nothing. Always provide a descriptive title.
 3. **Skipping the context file.** If the review requires changes (which it often does), the context file is critical for maintaining continuity across review cycles. Always provide one.
 4. **Committing secrets or .env files.** Review your staged files before committing.
+5. **Forgetting file groups on `shepherd ready`.** If the initial PR had file groups, every subsequent `shepherd ready` must include `--file-groups`. Use `shepherd file-groups <pr-id>` to fetch the current groups.
