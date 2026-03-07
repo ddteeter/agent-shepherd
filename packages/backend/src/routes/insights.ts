@@ -3,6 +3,22 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
 
+export function migrateInsightCategories(categories: Record<string, any[]>): Record<string, any[]> {
+  const migrate = (items: any[]) =>
+    items.map(({ applied, ...rest }) => ({
+      ...rest,
+      ...(applied === true ? { appliedPath: 'CLAUDE.md' } : {}),
+    }));
+
+  return {
+    claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
+    skillRecommendations: migrate(categories.skillRecommendations ?? []),
+    promptEngineering: migrate(categories.promptEngineering ?? []),
+    agentBehaviorObservations: migrate(categories.agentBehaviorObservations ?? []),
+    recurringPatterns: migrate(categories.recurringPatterns ?? []),
+  };
+}
+
 export async function insightsRoutes(fastify: FastifyInstance) {
   const db = (fastify as any).db;
 
@@ -22,7 +38,7 @@ export async function insightsRoutes(fastify: FastifyInstance) {
 
     return {
       ...row,
-      categories: JSON.parse(row.categories),
+      categories: migrateInsightCategories(JSON.parse(row.categories)),
     };
   });
 
@@ -62,6 +78,7 @@ export async function insightsRoutes(fastify: FastifyInstance) {
           categories: categoriesJson,
           branchRef: branchRef ?? null,
           worktreePath: worktreePath ?? null,
+          updatedAt: new Date().toISOString(),
         })
         .run();
     }
@@ -74,7 +91,7 @@ export async function insightsRoutes(fastify: FastifyInstance) {
 
     return {
       ...row,
-      categories: JSON.parse(row.categories),
+      categories: migrateInsightCategories(JSON.parse(row.categories)),
     };
   });
 }
