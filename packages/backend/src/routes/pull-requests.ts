@@ -307,6 +307,110 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     return newCycle;
   });
 
+  fastify.post('/api/prs/:id/resubmit', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { context } = request.body as { context?: string };
+
+    if (!context) {
+      reply.code(400).send({ error: 'Context is required for resubmit' });
+      return;
+    }
+
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
+
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    const latestCycle = getLatestCycle(db, id);
+    const now = new Date().toISOString();
+
+    // Mark current cycle as superseded
+    if (latestCycle) {
+      db.update(schema.reviewCycles)
+        .set({ status: 'superseded' })
+        .where(eq(schema.reviewCycles.id, latestCycle.id))
+        .run();
+    }
+
+    // Look up project for git operations
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, pr.projectId))
+      .get();
+
+    // Capture commit SHA
+    let commitSha: string | null = null;
+    if (project) {
+      try {
+        const gitService = new GitService(project.path);
+        commitSha = await gitService.getHeadSha(pr.sourceBranch);
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    // Create new review cycle
+    const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
+    const newCycleId = randomUUID();
+    db.insert(schema.reviewCycles)
+      .values({
+        id: newCycleId,
+        prId: id,
+        cycleNumber: newCycleNumber,
+        status: 'pending_review',
+        commitSha,
+        context,
+      })
+      .run();
+
+    const newCycle = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.id, newCycleId))
+      .get();
+
+    // Store diff snapshot
+    if (project) {
+      try {
+        const gitService = new GitService(project.path);
+        const diffData = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
+        db.insert(schema.diffSnapshots)
+          .values({
+            id: randomUUID(),
+            reviewCycleId: newCycleId,
+            diffData,
+          })
+          .run();
+      } catch {
+        fastify.log.warn({ prId: id }, 'Failed to store diff snapshot for resubmit cycle');
+      }
+    }
+
+    // Update PR updatedAt
+    db.update(schema.pullRequests)
+      .set({ updatedAt: now })
+      .where(eq(schema.pullRequests.id, id))
+      .run();
+
+    const broadcast = (fastify as any).broadcast;
+    if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
+
+    const notificationService: NotificationService | undefined =
+      (fastify as any).notificationService;
+    if (notificationService) {
+      notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
+    }
+
+    return newCycle;
+  });
+
   fastify.post('/api/prs/:id/run-insights', async (request, reply) => {
     const { id } = request.params as { id: string };
 

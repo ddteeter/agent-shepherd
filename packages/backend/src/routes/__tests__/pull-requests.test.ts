@@ -246,6 +246,84 @@ describe('Pull Requests API', () => {
     expect(body.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
   });
 
+  it('POST /api/prs/:id/resubmit supersedes current cycle and creates new one', async () => {
+    const create = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${id}/resubmit`,
+      payload: { context: 'Fixed the auth flow manually in Claude Code' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().cycleNumber).toBe(2);
+    expect(response.json().status).toBe('pending_review');
+    expect(response.json().context).toBe('Fixed the auth flow manually in Claude Code');
+
+    // Check cycles — cycle 1 should be superseded
+    const cycles = await inject({
+      method: 'GET',
+      url: `/api/prs/${id}/cycles`,
+    });
+    expect(cycles.json()).toHaveLength(2);
+    expect(cycles.json()[0].status).toBe('superseded');
+    expect(cycles.json()[1].status).toBe('pending_review');
+  });
+
+  it('POST /api/prs/:id/resubmit works regardless of current cycle status', async () => {
+    const create = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    // Request changes (puts cycle in changes_requested)
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${id}/review`,
+      payload: { action: 'request-changes' },
+    });
+
+    // Resubmit should still work
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${id}/resubmit`,
+      payload: { context: 'Took over from agent' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().cycleNumber).toBe(2);
+  });
+
+  it('POST /api/prs/:id/resubmit requires context', async () => {
+    const create = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
+    });
+    const { id } = create.json();
+
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${id}/resubmit`,
+      payload: {},
+    });
+    expect(response.statusCode).toBe(400);
+  });
+
+  it('POST /api/prs/:id/resubmit returns 404 for nonexistent PR', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: '/api/prs/nonexistent/resubmit',
+      payload: { context: 'test' },
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it('POST /api/projects/:id/prs defaults workingDirectory to null', async () => {
     const response = await inject({
       method: 'POST',
