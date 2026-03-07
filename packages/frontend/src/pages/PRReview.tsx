@@ -513,37 +513,6 @@ export function PRReview() {
             </span>
           )}
         </div>
-        {agentWorking && (
-          <div className="flex items-center gap-2 text-sm mt-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-            <span style={{ color: 'var(--color-warning, #d29922)' }}>Agent working...</span>
-            <button
-              onClick={handleCancelAgent}
-              className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-        {agentErrored && (
-          <div className="flex items-center gap-2 text-sm mt-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
-            <span style={{ color: 'var(--color-danger, #cf222e)' }}>
-              Agent error{agentError ? `: ${agentError}` : ''}
-            </span>
-          </div>
-        )}
-        {(agentWorking || agentActivity.length > 0) && (
-          <AgentActivityPanel entries={agentActivity} />
-        )}
-        {cycles.length > 1 && (
-          <CommentFilter
-            activeFilter={commentFilter}
-            onFilterChange={setCommentFilter}
-            counts={filterCounts}
-          />
-        )}
       </div>
 
       {/* Tab navigation */}
@@ -566,7 +535,44 @@ export function PRReview() {
 
       {/* Main content area */}
       {activeTab === 'review' ? (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Review agent status */}
+          {agentWorking && (
+            <div className="flex items-center gap-2 text-sm px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+              <span style={{ color: 'var(--color-warning, #d29922)' }}>Agent working...</span>
+              <button
+                onClick={handleCancelAgent}
+                className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {agentErrored && (
+            <div className="flex items-center gap-2 text-sm px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+              <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+              <span style={{ color: 'var(--color-danger, #cf222e)' }}>
+                Agent error{agentError ? `: ${agentError}` : ''}
+              </span>
+            </div>
+          )}
+          {(agentWorking || agentActivity.length > 0) && (
+            <div className="px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+              <AgentActivityPanel entries={agentActivity} />
+            </div>
+          )}
+          {cycles.length > 1 && (
+            <div className="px-4 shrink-0">
+              <CommentFilter
+                activeFilter={commentFilter}
+                onFilterChange={setCommentFilter}
+                counts={filterCounts}
+              />
+            </div>
+          )}
+          <div className="flex flex-1 overflow-hidden">
           <FileTree
             files={diffData.files}
             selectedFile={visibleFile}
@@ -591,6 +597,7 @@ export function PRReview() {
             globalCommentForm={globalCommentForm}
             onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
           />
+          </div>
         </div>
       ) : (
         <div className="flex-1 overflow-auto">
