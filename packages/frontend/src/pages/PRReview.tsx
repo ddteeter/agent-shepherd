@@ -23,6 +23,7 @@ interface ReviewCycle {
   reviewedAt: string | null;
   agentCompletedAt: string | null;
   hasDiffSnapshot: boolean;
+  context: string | null;
 }
 
 export function PRReview() {
@@ -341,6 +342,13 @@ export function PRReview() {
     return map;
   }, [comments, latestCycle]);
 
+  const selectedCycleData = useMemo(() => {
+    if (selectedCycle === 'current') return null;
+    if (selectedCycle.startsWith('inter:')) return null;
+    const num = parseInt(selectedCycle, 10);
+    return cycles.find((c) => c.cycleNumber === num) ?? null;
+  }, [selectedCycle, cycles]);
+
   const filterCounts = useMemo(() => {
     let all = 0;
     let needsAttention = 0;
@@ -454,21 +462,25 @@ export function PRReview() {
                       Cycle {cycle.cycleNumber}
                       {cycle.status === 'approved' ? ' (approved)' : ''}
                       {cycle.status === 'changes_requested' ? ' (changes requested)' : ''}
+                      {cycle.status === 'superseded' ? ' (superseded)' : ''}
                     </option>
                   ))
                 }
                 {cyclesWithSnapshots.length >= 2 && (
                   <>
                     <option disabled>───────────</option>
-                    {cyclesWithSnapshots
-                      .sort((a, b) => a.cycleNumber - b.cycleNumber)
-                      .slice(1)
-                      .map((cycle) => {
-                        const prevCycle = cyclesWithSnapshots.find(
+                    {(() => {
+                      const sorted = [...cyclesWithSnapshots]
+                        .sort((a, b) => a.cycleNumber - b.cycleNumber);
+                      const options: React.ReactNode[] = [];
+
+                      // Sequential inter-cycle diffs
+                      sorted.slice(1).forEach((cycle) => {
+                        const prevCycle = sorted.find(
                           (c) => c.cycleNumber === cycle.cycleNumber - 1
                         );
-                        if (!prevCycle) return null;
-                        return (
+                        if (!prevCycle) return;
+                        options.push(
                           <option
                             key={`inter-${prevCycle.cycleNumber}-${cycle.cycleNumber}`}
                             value={`inter:${prevCycle.cycleNumber}:${cycle.cycleNumber}`}
@@ -476,8 +488,30 @@ export function PRReview() {
                             Changes: Cycle {prevCycle.cycleNumber} → {cycle.cycleNumber}
                           </option>
                         );
-                      })
-                    }
+                      });
+
+                      // "Since last reviewed" diffs (skip superseded cycles)
+                      const reviewedCycles = sorted.filter(
+                        (c) => c.status !== 'superseded' && c.status !== 'pending_review'
+                      );
+                      const latestCycle = sorted[sorted.length - 1];
+                      if (reviewedCycles.length > 0 && latestCycle) {
+                        const lastReviewed = reviewedCycles[reviewedCycles.length - 1];
+                        // Only add if it's different from a sequential diff already shown
+                        if (lastReviewed.cycleNumber !== latestCycle.cycleNumber - 1) {
+                          options.push(
+                            <option
+                              key={`reviewed-${lastReviewed.cycleNumber}-${latestCycle.cycleNumber}`}
+                              value={`inter:${lastReviewed.cycleNumber}:${latestCycle.cycleNumber}`}
+                            >
+                              Changes: Since last review (Cycle {lastReviewed.cycleNumber} → {latestCycle.cycleNumber})
+                            </option>
+                          );
+                        }
+                      }
+
+                      return options;
+                    })()}
                   </>
                 )}
               </select>
@@ -516,6 +550,19 @@ export function PRReview() {
               }}
             >
               Snapshot from Cycle {selectedCycle}
+            </span>
+          )}
+          {selectedCycleData?.context && (
+            <span
+              className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs"
+              style={{
+                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                color: 'var(--color-text)',
+              }}
+            >
+              Resubmit context: {selectedCycleData.context.length > 200
+                ? selectedCycleData.context.slice(0, 200) + '...'
+                : selectedCycleData.context}
             </span>
           )}
         </div>
