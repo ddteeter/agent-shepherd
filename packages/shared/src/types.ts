@@ -64,6 +64,13 @@ export interface DiffSnapshot {
   id: string;
   reviewCycleId: string;
   diffData: string;
+  fileGroups: FileGroup[] | null;
+}
+
+export interface FileGroup {
+  name: string;
+  description?: string;
+  files: string[];
 }
 
 export interface BatchCommentPayload {
