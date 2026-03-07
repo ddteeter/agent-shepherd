@@ -123,18 +123,20 @@ agent-shepherd submit [--title] [--context]    # Submit PR from current branch
 agent-shepherd status <prId>                   # Check PR status
 agent-shepherd batch <prId> --file <json>      # Batch submit comments/replies
 agent-shepherd ready <prId>                    # Signal ready for re-review
+agent-shepherd resubmit <prId> -c <context-file>  # Resubmit PR with new cycle
 agent-shepherd setup                           # Install skills + verify prerequisites
 agent-shepherd start [--port 3847]             # Start the server
 ```
 
 ## Skills
 
-Agent Shepherd ships two [Claude Code skills](https://github.com/vercel-labs/skills) that teach agents how to interact with the review workflow:
+Agent Shepherd ships three [Claude Code skills](https://github.com/vercel-labs/skills) that teach agents how to interact with the review workflow:
 
 | Skill | Purpose |
 |---|---|
 | `agent-shepherd:respond-to-review` | Guides agents through severity handling, batch response format, and the CLI workflow for addressing review comments |
 | `agent-shepherd:submit-pr` | Guides agents through commit preparation, context file creation, and the submit workflow |
+| `agent-shepherd:resubmit-pr` | Guides agents through context generation and the resubmit workflow for changes made outside the review flow |
 
 Skills are installed automatically by `agent-shepherd setup` via `npx skills add`. They are installed globally to `~/.claude/skills/` so they are available in all repositories.
 
