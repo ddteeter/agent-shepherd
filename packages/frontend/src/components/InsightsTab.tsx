@@ -2,15 +2,20 @@ import { useState } from 'react';
 import { AgentActivityPanel } from './AgentActivityPanel.js';
 import type { ActivityEntry } from './AgentActivityPanel.js';
 
+type InsightConfidence = 'high' | 'medium' | 'low';
+
 interface InsightItem {
   title: string;
   description: string;
-  applied?: boolean;
+  confidence: InsightConfidence;
+  appliedPath?: string;
 }
 
 interface RecurringPatternItem {
   title: string;
   description: string;
+  confidence: InsightConfidence;
+  appliedPath?: string;
   prIds: string[];
 }
 
@@ -60,24 +65,33 @@ function CategorySection({ title, items, renderItem }: {
   );
 }
 
+const confidenceColors: Record<InsightConfidence, { bg: string; text: string; label: string }> = {
+  high: { bg: 'rgba(46,160,67,0.15)', text: 'var(--color-success, #3fb950)', label: 'High' },
+  medium: { bg: 'rgba(210,153,34,0.15)', text: 'var(--color-warning, #d29922)', label: 'Medium' },
+  low: { bg: 'rgba(130,130,130,0.15)', text: 'var(--color-text)', label: 'Low' },
+};
+
 function InsightCard({ item }: { item: InsightItem }) {
+  const conf = confidenceColors[item.confidence] ?? confidenceColors.medium;
   return (
     <div
       className="p-3 rounded border text-sm"
       style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, rgba(130,130,130,0.05))' }}
     >
-      <div className="font-medium">{item.title}</div>
-      <div className="mt-1 opacity-80">{item.description}</div>
-      {item.applied !== undefined && (
+      <div className="font-medium flex items-center gap-2">
+        {item.title}
         <span
-          className="inline-block mt-2 text-xs px-2 py-0.5 rounded"
-          style={{
-            backgroundColor: item.applied ? 'rgba(46,160,67,0.15)' : 'rgba(130,130,130,0.1)',
-            color: item.applied ? 'var(--color-success)' : 'var(--color-text)',
-          }}
+          className="text-xs px-1.5 py-0.5 rounded"
+          style={{ backgroundColor: conf.bg, color: conf.text }}
         >
-          {item.applied ? 'Applied' : 'Pending'}
+          {conf.label}
         </span>
+      </div>
+      <div className="mt-1 opacity-80">{item.description}</div>
+      {item.appliedPath && (
+        <div className="mt-2 text-xs opacity-70">
+          Applied to <code className="px-1 py-0.5 rounded" style={{ backgroundColor: 'rgba(130,130,130,0.15)' }}>{item.appliedPath}</code>
+        </div>
       )}
     </div>
   );
