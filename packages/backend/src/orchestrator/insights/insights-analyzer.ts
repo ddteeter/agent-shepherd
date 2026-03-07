@@ -1,7 +1,11 @@
 import { eq } from 'drizzle-orm';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { rm } from 'node:fs/promises';
 import type { AgentRunner } from '../agent-runner.js';
 import type { SessionLogProvider } from '../session-log/provider.js';
 import { buildInsightsPrompt } from './prompt-builder.js';
+import { formatTranscript } from './transcript-formatter.js';
 
 interface InsightsAnalyzerDeps {
   db: any;
@@ -38,30 +42,51 @@ export class InsightsAnalyzer {
       branch: pr.sourceBranch,
     });
 
+    // Format transcripts into readable markdown in a temp directory
+    const outputDir = join(tmpdir(), 'agent-shepherd', 'transcripts', prId);
+    const transcriptPaths = await Promise.all(
+      sessions.map(s => formatTranscript(s, outputDir)),
+    );
+
+    // Check for existing insights to enable incremental analysis
+    const existingInsights = this.db.select().from(this.schema.insights)
+      .where(eq(this.schema.insights.prId, prId)).get();
+
     // Build prompt
     const prompt = buildInsightsPrompt({
       prId,
       prTitle: pr.title,
       branch: pr.sourceBranch,
       projectId: pr.projectId,
-      sessionLogPaths: sessions.map(s => s.filePath),
+      transcriptPaths,
+      previousUpdatedAt: existingInsights?.updatedAt,
     });
 
     const effectivePath = pr.workingDirectory ?? project.path;
+    const cleanupTranscripts = () =>
+      rm(outputDir, { recursive: true, force: true }).catch(() => {});
 
     try {
       await this.agentRunner.run(
-        { prId, projectPath: effectivePath, prompt, source: 'insights' },
+        {
+          prId,
+          projectPath: effectivePath,
+          prompt,
+          source: 'insights',
+          additionalDirs: transcriptPaths.length > 0 ? [outputDir] : undefined,
+        },
         {
           onComplete: () => {
-            // Insights completion is non-critical — no cycle status to update
+            cleanupTranscripts();
           },
           onError: (error) => {
+            cleanupTranscripts();
             console.error(`Insights analyzer error for PR ${prId}:`, error.message);
           },
         },
       );
     } catch (error) {
+      await cleanupTranscripts();
       console.error(`Insights analyzer failed to start for PR ${prId}:`, (error as Error).message);
     }
   }

@@ -3,6 +3,12 @@ import { InsightsAnalyzer } from '../insights-analyzer.js';
 import type { AgentRunner } from '../../agent-runner.js';
 import type { SessionLogProvider } from '../../session-log/provider.js';
 
+vi.mock('../transcript-formatter.js', () => ({
+  formatTranscript: vi.fn(async (session: any, _outputDir: string) =>
+    `/tmp/formatted/${session.sessionId}.md`
+  ),
+}));
+
 function createMockRunner(): AgentRunner {
   return {
     run: vi.fn(async () => {}),
@@ -18,9 +24,10 @@ function createMockSessionLogProvider(sessions: any[] = []): SessionLogProvider 
   };
 }
 
-function createMockDb(opts?: { pr?: any; project?: any }) {
+function createMockDb(opts?: { pr?: any; project?: any; insights?: any }) {
   const pr = opts !== undefined && 'pr' in opts ? opts.pr : { id: 'pr-1', projectId: 'proj-1', title: 'Test PR', sourceBranch: 'feat/x', workingDirectory: '/tmp/worktree' };
   const project = opts !== undefined && 'project' in opts ? opts.project : { id: 'proj-1', path: '/tmp/project', name: 'Test' };
+  const insightsRow = opts !== undefined && 'insights' in opts ? opts.insights : null;
 
   let callCount = 0;
   return {
@@ -29,7 +36,9 @@ function createMockDb(opts?: { pr?: any; project?: any }) {
         where: vi.fn(() => ({
           get: vi.fn(() => {
             callCount++;
-            return callCount === 1 ? pr : project;
+            if (callCount === 1) return pr;
+            if (callCount === 2) return project;
+            return insightsRow;
           }),
         })),
       })),
@@ -40,7 +49,7 @@ function createMockDb(opts?: { pr?: any; project?: any }) {
 }
 
 describe('InsightsAnalyzer', () => {
-  it('discovers session logs and spawns agent', async () => {
+  it('discovers session logs, formats them, and spawns agent', async () => {
     const runner = createMockRunner();
     const sessionLogProvider = createMockSessionLogProvider([
       { sessionId: 's1', filePath: '/path/to/s1.jsonl', startedAt: '2026-01-01', branch: 'feat/x' },
@@ -50,7 +59,7 @@ describe('InsightsAnalyzer', () => {
 
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider,
     });
@@ -58,6 +67,22 @@ describe('InsightsAnalyzer', () => {
     await analyzer.run('pr-1');
 
     expect(sessionLogProvider.findSessions).toHaveBeenCalled();
+
+    // Verify formatTranscript was called
+    const { formatTranscript } = await import('../transcript-formatter.js');
+    expect(formatTranscript).toHaveBeenCalledWith(
+      { sessionId: 's1', filePath: '/path/to/s1.jsonl', startedAt: '2026-01-01', branch: 'feat/x' },
+      expect.stringContaining('transcripts'),
+    );
+
+    // Verify the prompt includes formatted paths (not raw JSONL paths)
+    const runCall = (runner.run as any).mock.calls[0];
+    expect(runCall[0].prompt).toContain('/tmp/formatted/s1.md');
+    expect(runCall[0].prompt).not.toContain('s1.jsonl');
+
+    // Verify additionalDirs is passed so the agent sandbox can access transcript files
+    expect(runCall[0].additionalDirs).toEqual([expect.stringContaining('transcripts')]);
+
     expect(runner.run).toHaveBeenCalledWith(
       expect.objectContaining({ prId: 'pr-1', source: 'insights' }),
       expect.any(Object),
@@ -68,7 +93,7 @@ describe('InsightsAnalyzer', () => {
     const db = createMockDb({ pr: null });
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: createMockRunner(),
       sessionLogProvider: createMockSessionLogProvider(),
     });
@@ -80,7 +105,7 @@ describe('InsightsAnalyzer', () => {
     const db = createMockDb({ project: null });
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: createMockRunner(),
       sessionLogProvider: createMockSessionLogProvider(),
     });
@@ -95,7 +120,7 @@ describe('InsightsAnalyzer', () => {
 
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider,
     });
@@ -114,7 +139,7 @@ describe('InsightsAnalyzer', () => {
 
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
     });
@@ -136,7 +161,7 @@ describe('InsightsAnalyzer', () => {
 
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
     });
@@ -150,6 +175,43 @@ describe('InsightsAnalyzer', () => {
     );
   });
 
+  it('passes previousUpdatedAt to prompt when insights exist', async () => {
+    const runner = createMockRunner();
+    const db = createMockDb({
+      insights: { id: 'ins-1', prId: 'pr-1', updatedAt: '2026-03-07T10:00:00Z' },
+    });
+
+    const analyzer = new InsightsAnalyzer({
+      db,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      agentRunner: runner,
+      sessionLogProvider: createMockSessionLogProvider(),
+    });
+
+    await analyzer.run('pr-1');
+
+    const runCall = (runner.run as any).mock.calls[0];
+    expect(runCall[0].prompt).toContain('2026-03-07T10:00:00Z');
+    expect(runCall[0].prompt).toContain('Incremental Analysis');
+  });
+
+  it('omits previousUpdatedAt when no prior insights exist', async () => {
+    const runner = createMockRunner();
+    const db = createMockDb();
+
+    const analyzer = new InsightsAnalyzer({
+      db,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      agentRunner: runner,
+      sessionLogProvider: createMockSessionLogProvider(),
+    });
+
+    await analyzer.run('pr-1');
+
+    const runCall = (runner.run as any).mock.calls[0];
+    expect(runCall[0].prompt).not.toContain('Incremental Analysis');
+  });
+
   it('does not throw when agentRunner.run fails (non-critical)', async () => {
     const runner = createMockRunner();
     (runner.run as any).mockRejectedValue(new Error('spawn failed'));
@@ -157,7 +219,7 @@ describe('InsightsAnalyzer', () => {
 
     const analyzer = new InsightsAnalyzer({
       db,
-      schema: { pullRequests: {}, projects: {} } as any,
+      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
     });
