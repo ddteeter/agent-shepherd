@@ -31,6 +31,7 @@ export const reviewCycles = sqliteTable('review_cycles', {
   reviewedAt: text('reviewed_at'),
   agentCompletedAt: text('agent_completed_at'),
   commitSha: text('commit_sha'),
+  context: text('context'),
 });
 
 export const comments = sqliteTable('comments', {

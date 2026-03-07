@@ -1,0 +1,1 @@
+ALTER TABLE `review_cycles` ADD `context` text;
