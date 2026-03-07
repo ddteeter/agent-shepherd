@@ -843,6 +843,134 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(resolved.resolved).toBe(true);
   });
 
+  it('stores file groups on initial PR submission and returns them in diff response', async () => {
+    const projectRes = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'fg-project', path: repoPath },
+    });
+    const projectId = projectRes.json().id;
+
+    const fileGroups = [
+      { name: 'Core Changes', description: 'Main utility updates', files: ['src/utils.ts'] },
+      { name: 'Exports', description: 'Re-export updates', files: ['src/index.ts'] },
+    ];
+
+    const prRes = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR with file groups', sourceBranch: 'feat/add-multiply', fileGroups },
+    });
+    expect(prRes.statusCode).toBe(201);
+    const prId = prRes.json().id;
+
+    const diffRes = await inject({ method: 'GET', url: `/api/prs/${prId}/diff?cycle=1` });
+    expect(diffRes.statusCode).toBe(200);
+    expect(diffRes.json().fileGroups).toEqual(fileGroups);
+  });
+
+  it('requires file groups on agent-ready if previous cycle had them', async () => {
+    const projectRes = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'fg-ready-project', path: repoPath },
+    });
+    const projectId = projectRes.json().id;
+
+    const fileGroups = [
+      { name: 'Utils', files: ['src/utils.ts'] },
+      { name: 'Index', files: ['src/index.ts'] },
+    ];
+
+    const prRes = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR needing groups on ready', sourceBranch: 'feat/add-multiply', fileGroups },
+    });
+    const prId = prRes.json().id;
+
+    await inject({ method: 'POST', url: `/api/prs/${prId}/review`, payload: { action: 'request-changes' } });
+
+    // Without file groups — should fail
+    const readyRes = await inject({ method: 'POST', url: `/api/prs/${prId}/agent-ready`, payload: {} });
+    expect(readyRes.statusCode).toBe(400);
+    expect(readyRes.json().error).toContain('file groups');
+
+    // With file groups — should succeed
+    const readyRes2 = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/agent-ready`,
+      payload: { fileGroups: [{ name: 'Utils', files: ['src/utils.ts'] }, { name: 'Index', files: ['src/index.ts'] }] },
+    });
+    expect(readyRes2.statusCode).toBe(200);
+
+    const diffRes = await inject({ method: 'GET', url: `/api/prs/${prId}/diff?cycle=2` });
+    expect(diffRes.statusCode).toBe(200);
+    expect(diffRes.json().fileGroups).toEqual([{ name: 'Utils', files: ['src/utils.ts'] }, { name: 'Index', files: ['src/index.ts'] }]);
+  });
+
+  it('allows agent-ready without file groups when previous cycle had none', async () => {
+    const projectRes = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'fg-no-groups-project', path: repoPath },
+    });
+    const projectId = projectRes.json().id;
+
+    const prRes = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR without groups', sourceBranch: 'feat/add-multiply' },
+    });
+    const prId = prRes.json().id;
+
+    await inject({ method: 'POST', url: `/api/prs/${prId}/review`, payload: { action: 'request-changes' } });
+
+    const readyRes = await inject({ method: 'POST', url: `/api/prs/${prId}/agent-ready`, payload: {} });
+    expect(readyRes.statusCode).toBe(200);
+  });
+
+  it('returns file groups via dedicated endpoint', async () => {
+    const projectRes = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'fg-endpoint-project', path: repoPath },
+    });
+    const projectId = projectRes.json().id;
+
+    const fileGroups = [
+      { name: 'Utils', description: 'Utility functions', files: ['src/utils.ts'] },
+      { name: 'Index', files: ['src/index.ts'] },
+    ];
+
+    const prRes = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR for file-groups endpoint', sourceBranch: 'feat/add-multiply', fileGroups },
+    });
+    const prId = prRes.json().id;
+
+    const fgRes = await inject({ method: 'GET', url: `/api/prs/${prId}/file-groups` });
+    expect(fgRes.statusCode).toBe(200);
+    expect(fgRes.json().fileGroups).toEqual(fileGroups);
+    expect(fgRes.json().cycleNumber).toBe(1);
+
+    const fgRes2 = await inject({ method: 'GET', url: `/api/prs/${prId}/file-groups?cycle=1` });
+    expect(fgRes2.statusCode).toBe(200);
+    expect(fgRes2.json().fileGroups).toEqual(fileGroups);
+
+    // PR without file groups returns null
+    const prRes2 = await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: { title: 'PR without groups', sourceBranch: 'feat/add-multiply' },
+    });
+    const prId2 = prRes2.json().id;
+    const fgRes3 = await inject({ method: 'GET', url: `/api/prs/${prId2}/file-groups` });
+    expect(fgRes3.statusCode).toBe(200);
+    expect(fgRes3.json().fileGroups).toBeNull();
+  });
+
   it('returns inter-cycle diff showing only changes between cycles', async () => {
     const projRes = await inject({
       method: 'POST',

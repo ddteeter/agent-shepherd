@@ -65,7 +65,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       const gitService = new GitService(project.path);
       const diff = await gitService.getDiffBetweenCommits(fromCycle.commitSha, toCycle.commitSha);
       const files = extractFilesFromDiff(diff);
-      return { diff, files, fromCycle: fromNum, toCycle: toNum, isInterCycleDiff: true };
+      return { diff, files, fromCycle: fromNum, toCycle: toNum, isInterCycleDiff: true, fileGroups: null };
     }
 
     // If cycle param is provided, return stored snapshot
@@ -102,7 +102,8 @@ export async function diffRoutes(fastify: FastifyInstance) {
 
       // Parse stored files from the diff data (extract file names from unified diff)
       const files = extractFilesFromDiff(snapshot.diffData);
-      return { diff: snapshot.diffData, files, cycleNumber, isSnapshot: true };
+      const fileGroups = snapshot.fileGroups ? JSON.parse(snapshot.fileGroups as string) : null;
+      return { diff: snapshot.diffData, files, cycleNumber, isSnapshot: true, fileGroups };
     }
 
     // Default: live diff
@@ -116,7 +117,49 @@ export async function diffRoutes(fastify: FastifyInstance) {
     const diff = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
     const files = await gitService.getChangedFiles(pr.baseBranch, pr.sourceBranch);
 
-    return { diff, files };
+    return { diff, files, fileGroups: null };
+  });
+
+  // GET /api/prs/:id/file-groups — Get file groups for a PR cycle
+  fastify.get('/api/prs/:id/file-groups', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { cycle } = request.query as { cycle?: string };
+
+    const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    if (!pr) {
+      reply.code(404).send({ error: 'Pull request not found' });
+      return;
+    }
+
+    let reviewCycle;
+    if (cycle !== undefined) {
+      const cycleNumber = parseInt(cycle, 10);
+      if (isNaN(cycleNumber) || cycleNumber < 1) {
+        reply.code(400).send({ error: 'Invalid cycle number' });
+        return;
+      }
+      reviewCycle = db
+        .select()
+        .from(schema.reviewCycles)
+        .where(and(eq(schema.reviewCycles.prId, id), eq(schema.reviewCycles.cycleNumber, cycleNumber)))
+        .get();
+    } else {
+      reviewCycle = getLatestCycle(db, id);
+    }
+
+    if (!reviewCycle) {
+      reply.code(404).send({ error: 'Review cycle not found' });
+      return;
+    }
+
+    const snapshot = db
+      .select()
+      .from(schema.diffSnapshots)
+      .where(eq(schema.diffSnapshots.reviewCycleId, reviewCycle.id))
+      .get();
+
+    const fileGroups = snapshot?.fileGroups ? JSON.parse(snapshot.fileGroups as string) : null;
+    return { fileGroups, cycleNumber: reviewCycle.cycleNumber };
   });
 
   // POST /api/prs/:id/diff/snapshot — Store a diff snapshot for the current (latest) cycle

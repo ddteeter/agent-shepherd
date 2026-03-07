@@ -12,7 +12,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
-    const { title, description, sourceBranch, baseBranch, workingDirectory } = request.body as Omit<CreatePRInput, 'projectId'>;
+    const { title, description, sourceBranch, baseBranch, workingDirectory, fileGroups } = request.body as Omit<CreatePRInput, 'projectId'> & { fileGroups?: Array<{ name: string; description?: string; files: string[] }> };
 
     // Verify project exists
     const project = db
@@ -71,6 +71,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
             id: randomUUID(),
             reviewCycleId: cycleId,
             diffData,
+            fileGroups: fileGroups ? JSON.stringify(fileGroups) : null,
           })
           .run();
       } catch {
@@ -217,6 +218,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
+    const { fileGroups } = (request.body as { fileGroups?: Array<{ name: string; description?: string; files: string[] }> } || {});
 
     const pr = db
       .select()
@@ -231,6 +233,22 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     const latestCycle = getLatestCycle(db, id);
     const now = new Date().toISOString();
+
+    // Check if previous cycle's snapshot had file groups
+    if (latestCycle) {
+      const prevSnapshot = db
+        .select()
+        .from(schema.diffSnapshots)
+        .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
+        .get();
+
+      if (prevSnapshot?.fileGroups && !fileGroups) {
+        reply.code(400).send({
+          error: 'This PR has file groups from the previous cycle. You must provide --file-groups. Run `shepherd file-groups ' + id + '` to fetch the current groups and update them.',
+        });
+        return;
+      }
+    }
 
     // Mark current cycle's agentCompletedAt
     if (latestCycle) {
@@ -286,6 +304,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
             id: randomUUID(),
             reviewCycleId: newCycleId,
             diffData,
+            fileGroups: fileGroups ? JSON.stringify(fileGroups) : null,
           })
           .run();
       } catch {
