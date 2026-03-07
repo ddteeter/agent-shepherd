@@ -109,15 +109,19 @@ export interface SubmitReviewInput {
   action: 'approve' | 'request-changes';
 }
 
+export type InsightConfidence = 'high' | 'medium' | 'low';
+
 export interface InsightItem {
   title: string;
   description: string;
-  applied?: boolean;
+  confidence: InsightConfidence;
+  appliedPath?: string;
 }
 
 export interface RecurringPatternItem {
   title: string;
   description: string;
+  confidence: InsightConfidence;
   prIds: string[];
 }
 
