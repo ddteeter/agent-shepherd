@@ -3,11 +3,11 @@ interface InsightsPromptInput {
   prTitle: string;
   branch: string;
   projectId: string;
-  sessionLogPaths: string[];
+  transcriptPaths: string[];
 }
 
 export function buildInsightsPrompt(input: InsightsPromptInput): string {
-  const { prId, prTitle, branch, projectId, sessionLogPaths } = input;
+  const { prId, prTitle, branch, projectId, transcriptPaths } = input;
   const sections: string[] = [];
 
   sections.push(`# Workflow Insights Analysis for PR: ${prTitle}\n`);
@@ -19,15 +19,17 @@ export function buildInsightsPrompt(input: InsightsPromptInput): string {
 - Project ID: ${projectId}
 `);
 
-  if (sessionLogPaths.length > 0) {
-    sections.push(`## Session Logs
+  if (transcriptPaths.length > 0) {
+    sections.push(`## Session Transcripts
 
-The following session transcript files are available for analysis. These are JSONL files that can be very large. Read them in chunks using the \`offset\` and \`limit\` parameters of the Read tool (e.g., start with \`offset: 1, limit: 500\`, then \`offset: 501, limit: 500\`, etc.). Do NOT attempt to read an entire file at once.
+The following formatted transcript files are available for analysis. These are readable markdown files with the full agent reasoning and tool call summaries. Each file has YAML frontmatter with the original JSONL path for reference. Entries are annotated with \`[line N]\` source line numbers.
 
-${sessionLogPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+${transcriptPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+If you need to see a specific file's contents, read the file directly from the repo rather than trying to extract it from the transcript.
 `);
   } else {
-    sections.push(`## Session Logs
+    sections.push(`## Session Transcripts
 
 No session logs found for this branch. Focus analysis on the comment history.
 `);
@@ -41,7 +43,7 @@ No session logs found for this branch. Focus analysis on the comment history.
 
 ## Your Task
 
-Use the \`workflow-analyzer\` skill to analyze the agent's session transcripts and comment history. The skill contains the full methodology, output categories, and JSON format.
+Use the \`agent-shepherd:workflow-analyzer\` skill to analyze the agent's session transcripts and comment history. The skill contains the full methodology, output categories, and JSON format.
 
 ### Important Notes
 
