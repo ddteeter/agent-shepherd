@@ -87,18 +87,17 @@ function formatComments(comments: Comment[], heading: string): string {
 
 export function reviewCommand(program: Command, client: ApiClient) {
   const review = program
-    .command('review <pr-id>')
+    .command('review')
     .description('Review tools for working with PR comments');
 
   review
-    .command('comments')
+    .command('comments <pr-id>')
     .description('Fetch review comments for a PR')
     .option('--summary', 'Show comment counts and file list only')
     .option('--file <path>', 'Filter to comments on a specific file')
     .option('--severity <level>', 'Filter by severity (must-fix, request, suggestion)')
     .option('--all', 'Fetch all comments')
-    .action(async (opts: { summary?: boolean; file?: string; severity?: string; all?: boolean }) => {
-      const prId = review.args[0];
+    .action(async (prId: string, opts: { summary?: boolean; file?: string; severity?: string; all?: boolean }) => {
       const pr = await client.get<{ title: string }>(`/api/prs/${prId}`);
 
       if (opts.summary) {

@@ -66,6 +66,10 @@ export class Orchestrator {
     await this.insightsAnalyzer.run(prId);
   }
 
+  hasActiveAgent(prId: string, source: AgentSource): boolean {
+    return this.agentRunner.hasActiveSession(prId, source);
+  }
+
   async cancelAgent(prId: string, source?: AgentSource): Promise<void> {
     if (source) {
       await this.agentRunner.cancel(prId, source);

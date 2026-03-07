@@ -6,6 +6,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
+import { eq } from 'drizzle-orm';
 import { createDb } from './db/index.js';
 import { schema } from './db/index.js';
 import { projectRoutes } from './routes/projects.js';
@@ -92,6 +93,12 @@ export async function buildServer(opts: ServerOptions = {}) {
 
   fastify.decorate('db', db);
   fastify.decorate('sqlite', sqlite);
+
+  // Reset stale agent_working cycles from previous server runs
+  db.update(schema.reviewCycles)
+    .set({ status: 'agent_error' })
+    .where(eq(schema.reviewCycles.status, 'agent_working'))
+    .run();
 
   const notificationService = new NotificationService();
   fastify.decorate('notificationService', notificationService);

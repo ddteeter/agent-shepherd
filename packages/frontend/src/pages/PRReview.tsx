@@ -151,6 +151,9 @@ export function PRReview() {
     ]).then(([prData, diff]) => {
       setPr(prData);
       setDiffData(diff);
+      if (prData.agents?.insights) {
+        setAnalyzerRunning(true);
+      }
     }).catch((err) => {
       setError(err instanceof Error ? err.message : 'Failed to load PR');
     }).finally(() => setLoading(false));

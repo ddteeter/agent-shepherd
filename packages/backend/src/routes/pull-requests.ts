@@ -111,7 +111,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
-    return pr;
+
+    const orchestrator = (fastify as any).orchestrator;
+    const agents = orchestrator ? {
+      codeFix: orchestrator.hasActiveAgent(id, 'code-fix'),
+      insights: orchestrator.hasActiveAgent(id, 'insights'),
+    } : undefined;
+
+    return { ...pr, agents };
   });
 
   fastify.put('/api/prs/:id', async (request, reply) => {

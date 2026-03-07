@@ -135,7 +135,7 @@ For each file listed in the summary, starting from the top:
 
 a. Fetch that file's comments:
    \`\`\`bash
-   agent-shepherd review ${prId} comments --file <file-path>
+   agent-shepherd review comments ${prId} --file <file-path>
    \`\`\`
 b. Read the file and understand the comments
 c. Make the requested changes
@@ -150,7 +150,7 @@ Reply as you go -- do not wait until the end. This prevents losing reply details
 
 If a comment references another file you haven't seen yet, use:
 \`\`\`bash
-agent-shepherd review ${prId} comments --all
+agent-shepherd review comments ${prId} --all
 \`\`\`
 
 ### 4. Commit and Signal Ready

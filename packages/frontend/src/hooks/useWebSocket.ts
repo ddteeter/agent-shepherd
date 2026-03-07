@@ -22,8 +22,10 @@ export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
     ws.onopen = () => setConnected(true);
     ws.onclose = () => {
       setConnected(false);
-      // Auto-reconnect after 3 seconds
-      reconnectTimer.current = setTimeout(connect, 3000);
+      // Only reconnect if this WebSocket is still the active one
+      if (wsRef.current === ws) {
+        reconnectTimer.current = setTimeout(connect, 3000);
+      }
     };
     ws.onmessage = (event) => {
       try {

@@ -47,8 +47,6 @@ export class InsightsAnalyzer {
       sessionLogPaths: sessions.map(s => s.filePath),
     });
 
-    // TODO: Create worktree branched off PR branch for file changes
-    // For now, use the PR's working directory
     const effectivePath = pr.workingDirectory ?? project.path;
 
     try {

@@ -22,7 +22,7 @@ export function buildInsightsPrompt(input: InsightsPromptInput): string {
   if (sessionLogPaths.length > 0) {
     sections.push(`## Session Logs
 
-The following session transcript files are available for analysis. Read them to understand what the agent did and why.
+The following session transcript files are available for analysis. These are JSONL files that can be very large. Read them in chunks using the \`offset\` and \`limit\` parameters of the Read tool (e.g., start with \`offset: 1, limit: 500\`, then \`offset: 501, limit: 500\`, etc.). Do NOT attempt to read an entire file at once.
 
 ${sessionLogPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}
 `);
@@ -41,36 +41,12 @@ No session logs found for this branch. Focus analysis on the comment history.
 
 ## Your Task
 
-Analyze the agent's session transcripts and the project's comment history to produce workflow improvement recommendations. Use the analyzer skill for detailed methodology.
+Use the \`workflow-analyzer\` skill to analyze the agent's session transcripts and comment history. The skill contains the full methodology, output categories, and JSON format.
 
-### Output Format
+### Important Notes
 
-Submit your findings via:
-\`\`\`bash
-echo '<json>' | agent-shepherd insights update ${prId} --stdin
-\`\`\`
-
-The JSON payload must have this structure:
-\`\`\`json
-{
-  "categories": {
-    "claudeMdRecommendations": [{"title": "...", "description": "...", "applied": false}],
-    "skillRecommendations": [{"title": "...", "description": "...", "applied": false}],
-    "promptEngineering": [{"title": "...", "description": "..."}],
-    "agentBehaviorObservations": [{"title": "...", "description": "..."}],
-    "recurringPatterns": [{"title": "...", "description": "...", "prIds": ["..."]}]
-  }
-}
-\`\`\`
-
-### Workflow
-
-1. Call \`agent-shepherd insights get ${prId}\` to check for existing insights
-2. Call \`agent-shepherd insights history ${projectId}\` to get cross-PR comment patterns
-3. Read the session log files listed above
-4. Analyze the session transcripts, correlating with review comments
-5. For CLAUDE.md and skill recommendations, also make the file changes and commit them
-6. Submit all insights via the update command
+- For CLAUDE.md and skill recommendations, only make and commit file changes if you are highly confident they are correct.
+- The \`insights update\` command replaces all existing insights for this PR. Call \`insights get\` first and include any previous findings you want to keep.
 `);
 
   return sections.join('\n');
