@@ -45,7 +45,7 @@ Use the CLI commands provided in your prompt to fetch:
 
 5. **Produce recommendations** -- Fill all 5 categories below.
 
-6. **For CLAUDE.md and skill recommendations** -- If you recommend adding a rule to CLAUDE.md or creating a new skill, actually make the file changes and commit them. For new skills: use the `skill-creator` skill if it is available in your current environment. If no skill-creation tool is installed, note this in your recommendation and suggest the user install `anthropic/skills/skill-creator`.
+6. **For CLAUDE.md and skill recommendations** -- For CLAUDE.md and skill recommendations with `high` confidence, actually make the file changes and commit them. For `medium` and `low` confidence, describe the recommendation but do not make file changes. For new skills: use the `skill-creator` skill if it is available in your current environment. If no skill-creation tool is installed, note this in your recommendation and suggest the user install `anthropic/skills/skill-creator`.
 
 7. **Submit insights** -- Use the CLI command to save your findings.
 
@@ -61,6 +61,38 @@ Examples:
 - "Add convention: Use `vi.fn()` for mocks, not manual stub objects"
 
 Check both the project-level `CLAUDE.md` and global `~/.claude/CLAUDE.md` to avoid duplicating existing rules.
+
+#### CLAUDE.md Best Practices
+
+<!-- Source: https://code.claude.com/docs/en/memory#claudemd-files -->
+<!-- Last reviewed: 2026-03-07 -->
+
+When recommending CLAUDE.md additions, choose the right location:
+
+| Situation | Location | Example |
+|---|---|---|
+| Simple universal rule | Add directly to `CLAUDE.md` | "Use 2-space indentation" |
+| Detailed topic guide | Create file + `@path/to/file` import in CLAUDE.md | API design patterns doc |
+| Rule scoped to file types | `.claude/rules/name.md` with `paths` frontmatter | Rules for `src/api/**/*.ts` |
+
+Key principles:
+- Keep CLAUDE.md under 200 lines. Move details to separate files via `@imports` or `.claude/rules/`.
+- Be specific and concrete — verifiable instructions, not vague guidance.
+- Avoid conflicting instructions across files. Check existing CLAUDE.md and rules before adding.
+- Use `paths` frontmatter in `.claude/rules/` files to scope rules to specific glob patterns.
+- Think of CLAUDE.md as a "lookup matrix" — an index pointing agents to the right context for a given situation, not a dumping ground for all instructions.
+
+Example `.claude/rules/` file with path scoping:
+```yaml
+---
+paths:
+  - "src/api/**/*.ts"
+---
+
+# API Rules
+- All endpoints must validate input
+- Use standard error response format
+```
 
 ### 2. Skill Recommendations
 
@@ -98,6 +130,16 @@ Examples:
 - "Reviewer has requested snake_case naming in 2 previous PRs"
 - "Agent consistently over-engineers validation logic"
 
+## Confidence Levels
+
+Every recommendation MUST include a `confidence` field:
+
+- **high** — Clear, repeated pattern with strong transcript evidence. The fix is well-scoped and low-risk. **Action: auto-commit file changes** for CLAUDE.md and skill recommendations.
+- **medium** — Likely a real issue with a reasonable fix, but evidence is limited or the fix could have side effects. **Action: recommend only, do NOT commit file changes.**
+- **low** — Possible pattern worth considering, but could be a one-off or context-dependent. **Action: recommend only, mark as speculative.**
+
+For CLAUDE.md and skill recommendations: only commit file changes when confidence is `high`. For `medium` and `low`, describe the recommendation but leave implementation to the user.
+
 ## Output Format
 
 Submit via CLI:
@@ -110,25 +152,25 @@ JSON structure:
 {
   "categories": {
     "claudeMdRecommendations": [
-      { "title": "Short title", "description": "Detailed explanation", "applied": false }
+      { "title": "Short title", "description": "Detailed explanation", "confidence": "high", "appliedPath": "CLAUDE.md" }
     ],
     "skillRecommendations": [
-      { "title": "Short title", "description": "Detailed explanation", "applied": false }
+      { "title": "Short title", "description": "Detailed explanation", "confidence": "medium" }
     ],
     "promptEngineering": [
-      { "title": "Short title", "description": "Detailed explanation" }
+      { "title": "Short title", "description": "Detailed explanation", "confidence": "high" }
     ],
     "agentBehaviorObservations": [
-      { "title": "Short title", "description": "Detailed explanation" }
+      { "title": "Short title", "description": "Detailed explanation", "confidence": "medium" }
     ],
     "recurringPatterns": [
-      { "title": "Short title", "description": "Detailed explanation", "prIds": ["pr-id-1", "pr-id-2"] }
+      { "title": "Short title", "description": "Detailed explanation", "confidence": "high", "prIds": ["pr-id-1"] }
     ]
   }
 }
 ```
 
-Set `"applied": true` for recommendations where you've already made the file changes (e.g., added a CLAUDE.md rule or created a skill).
+Set `appliedPath` to the file path you modified (e.g., `"CLAUDE.md"`, `".claude/rules/api-rules.md"`) when you've committed changes. Omit `appliedPath` for recommendations you haven't implemented.
 
 ## Principles
 
