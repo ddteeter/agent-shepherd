@@ -79,7 +79,7 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 - Shiki for syntax highlighting in diff viewer (not highlight.js)
 - Backend validates request bodies with Fastify schemas
 - Never introduce TODO comments in code -- either implement immediately or document in `docs/plans/`
-- When a skill exists for an agent task, prompts should reference the skill by name rather than duplicating its content
+- When a skill exists for an agent task, prompts should reference the skill by name rather than duplicating its content. Do not repeat skill instructions in prompt builders -- the skill is the single source of truth. If something needs to change about agent behavior, change the skill, not the prompt.
 
 ## Agent Orchestrator
 

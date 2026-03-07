@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { AgentActivityPanel } from './AgentActivityPanel.js';
 import type { ActivityEntry } from './AgentActivityPanel.js';
+import { AgentStatusSection } from './AgentStatusSection.js';
 
 type InsightConfidence = 'high' | 'medium' | 'low';
 
@@ -31,7 +31,6 @@ interface InsightsTabProps {
   hasComments: boolean;
   analyzerRunning: boolean;
   analyzerActivity: ActivityEntry[];
-  onRunAnalyzer: () => void;
   onCancelAnalyzer: () => void;
 }
 
@@ -96,31 +95,9 @@ function InsightCard({ item }: { item: InsightItem }) {
   );
 }
 
-export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerActivity, onRunAnalyzer, onCancelAnalyzer }: InsightsTabProps) {
-  // Analyzer running state
-  if (analyzerRunning) {
-    return (
-      <div>
-        <div className="flex items-center gap-2 text-sm px-4 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
-          <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-          <span style={{ color: 'var(--color-warning, #d29922)' }}>Analyzer running...</span>
-          <button
-            onClick={onCancelAnalyzer}
-            className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-          >
-            Cancel
-          </button>
-        </div>
-        <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
-          <AgentActivityPanel entries={analyzerActivity} />
-        </div>
-      </div>
-    );
-  }
-
+export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerActivity, onCancelAnalyzer }: InsightsTabProps) {
   // Empty state — no comments yet
-  if (!hasComments && !insights) {
+  if (!hasComments && !insights && !analyzerRunning) {
     return (
       <div className="p-6 text-center">
         <p className="text-sm opacity-70">
@@ -133,25 +110,24 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
   }
 
   return (
-    <div className="p-4">
+    <div>
+      <AgentStatusSection
+        active={analyzerRunning}
+        activity={analyzerActivity}
+        onCancel={onCancelAnalyzer}
+        label="Analyzer running..."
+      />
+
       {/* Run Analyzer button */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="px-4 py-4">
+      <div className="mb-4">
         <h3 className="text-sm font-medium">Workflow Insights</h3>
-        {hasComments && (
-          <button
-            onClick={onRunAnalyzer}
-            className="text-xs px-3 py-1 rounded border hover:opacity-80"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
-          >
-            Run Analyzer
-          </button>
-        )}
       </div>
 
       {/* No insights yet but has comments */}
       {!insights && (
         <p className="text-sm opacity-70">
-          No insights yet. Click "Run Analyzer" to analyze agent behavior and comment patterns.
+          No insights yet. Use the "Run Analyzer" button below to analyze agent behavior and comment patterns.
         </p>
       )}
 
@@ -207,6 +183,7 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

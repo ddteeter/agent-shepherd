@@ -113,13 +113,13 @@ Examples:
 
 ### 4. Agent Behavior Observations
 
-What the agent did wrong and why. Factual observations about agent behavior, correlated with transcript evidence.
+What the agent did wrong, why, and how to fix it. Every observation MUST include a concrete recommendation for improvement -- don't just describe the problem, prescribe the solution.
 
 Examples:
-- "Agent explored the codebase for 40% of the session instead of starting work"
-- "Agent added unnecessary error handling in 4 files (lines X, Y, Z)"
-- "Agent created 3 helper functions that are only used once"
-- "Agent didn't read the existing test file before writing new tests, resulting in inconsistent patterns"
+- "Agent explored the codebase for 40% of the session instead of starting work. Recommendation: Add a CLAUDE.md rule to start implementation within the first 3 tool calls for well-scoped tasks, or add acceptance criteria to the prompt so the agent doesn't need to explore."
+- "Agent added unnecessary error handling in 4 files (lines X, Y, Z). Recommendation: Add a CLAUDE.md rule: 'Only add try/catch at system boundaries (API handlers, CLI entry points). Internal functions should let errors propagate.'"
+- "Agent created 3 helper functions that are only used once. Recommendation: Add a CLAUDE.md rule against premature abstraction, or reference the existing 'avoid over-engineering' instruction more prominently."
+- "Agent didn't read the existing test file before writing new tests, resulting in inconsistent patterns. Recommendation: Add a CLAUDE.md rule: 'Before writing tests, read existing test files in the same directory to match conventions.'"
 
 ### 5. Recurring Pattern Alerts
 
@@ -174,6 +174,7 @@ Set `appliedPath` to the file path you modified (e.g., `"CLAUDE.md"`, `".claude/
 
 ## Principles
 
+- **Every insight must be actionable** -- Don't just observe problems, recommend solutions. If you can't suggest a concrete improvement, the observation isn't worth reporting. Every item across all categories must answer: "What should change to prevent this?"
 - **Be specific** -- "Add error handling" is useless. "The agent added try/catch blocks around internal database calls in 4 files, but these functions are only called internally and errors should propagate" is actionable.
 - **Cite evidence** -- Reference specific transcript lines, file paths, or comment text.
 - **Work additively** -- Read existing insights and build on them. Don't replace previous findings unless they're wrong.

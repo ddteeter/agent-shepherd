@@ -51,20 +51,6 @@ describe('Insights PromptBuilder', () => {
     expect(prompt).toContain('No session logs');
   });
 
-  it('includes confidence threshold guidance', () => {
-    const prompt = buildInsightsPrompt({
-      prId: 'pr-123',
-      prTitle: 'PR',
-      branch: 'feat/x',
-      projectId: 'proj-1',
-      transcriptPaths: [],
-    });
-    expect(prompt).toContain('confidence');
-    expect(prompt).toContain('`high`');
-    expect(prompt).toContain('`medium`');
-    expect(prompt).toContain('`low`');
-  });
-
   it('includes deduplication context when previousUpdatedAt is provided', () => {
     const prompt = buildInsightsPrompt({
       prId: 'pr-1',

@@ -4,8 +4,8 @@ import { api } from '../api.js';
 import { FileTree } from '../components/FileTree.js';
 import { DiffViewer } from '../components/DiffViewer.js';
 import { ReviewBar } from '../components/ReviewBar.js';
-import { AgentActivityPanel } from '../components/AgentActivityPanel.js';
 import type { ActivityEntry } from '../components/AgentActivityPanel.js';
+import { AgentStatusSection } from '../components/AgentStatusSection.js';
 import type { Comment } from '../components/CommentThread.js';
 import type { FileStatus } from '../components/DiffViewer.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
@@ -70,6 +70,9 @@ export function PRReview() {
       if ((msg.event === 'agent:completed' || msg.event === 'agent:cancelled') && msg.data?.source === 'insights') {
         setAnalyzerRunning(false);
         fetchInsights();
+      }
+      if (msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
+        fetchComments();
       }
       fetchCycles();
     }
@@ -522,50 +525,31 @@ export function PRReview() {
       <div className="flex border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
         <button
           onClick={() => setActiveTab('review')}
-          className={`px-4 py-2 text-sm ${activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
+          className={`px-4 py-2 text-sm flex items-center gap-1.5 ${activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
           style={activeTab === 'review' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
         >
           Review
+          {agentWorking && <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />}
         </button>
         <button
           onClick={() => setActiveTab('insights')}
-          className={`px-4 py-2 text-sm ${activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
+          className={`px-4 py-2 text-sm flex items-center gap-1.5 ${activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
           style={activeTab === 'insights' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
         >
           Insights
+          {analyzerRunning && <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />}
         </button>
       </div>
 
       {/* Main content area */}
       {activeTab === 'review' ? (
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Review agent status */}
-          {agentWorking && (
-            <div className="flex items-center gap-2 text-sm px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
-              <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-              <span style={{ color: 'var(--color-warning, #d29922)' }}>Agent working...</span>
-              <button
-                onClick={handleCancelAgent}
-                className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-          {agentErrored && (
-            <div className="flex items-center gap-2 text-sm px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
-              <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
-              <span style={{ color: 'var(--color-danger, #cf222e)' }}>
-                Agent error{agentError ? `: ${agentError}` : ''}
-              </span>
-            </div>
-          )}
-          {(agentWorking || agentActivity.length > 0) && (
-            <div className="px-4 py-2 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
-              <AgentActivityPanel entries={agentActivity} />
-            </div>
-          )}
+          <AgentStatusSection
+            active={agentWorking}
+            activity={agentActivity}
+            onCancel={handleCancelAgent}
+            error={agentErrored ? `Agent error${agentError ? `: ${agentError}` : ''}` : null}
+          />
           {cycles.length > 1 && (
             <div className="px-4 shrink-0">
               <CommentFilter
@@ -609,20 +593,42 @@ export function PRReview() {
             hasComments={topLevelComments.length > 0}
             analyzerRunning={analyzerRunning}
             analyzerActivity={insightsActivity}
-            onRunAnalyzer={handleRunAnalyzer}
             onCancelAnalyzer={handleCancelAnalyzer}
           />
         </div>
       )}
 
-      {/* Review submission bar */}
-      <ReviewBar
-        prId={prId || ''}
-        prStatus={pr.status}
-        commentCount={comments.length}
-        agentWorking={agentWorking}
-        onReview={handleReview}
-      />
+      {/* Bottom bar */}
+      {activeTab === 'review' ? (
+        <ReviewBar
+          prId={prId || ''}
+          prStatus={pr.status}
+          commentCount={comments.length}
+          agentWorking={agentWorking}
+          onReview={handleReview}
+        />
+      ) : (
+        <div className="px-6 py-3 border-t flex items-center justify-end" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
+          {analyzerRunning && (
+            <button
+              onClick={handleCancelAnalyzer}
+              className="px-4 py-1.5 text-sm rounded font-medium border hover:opacity-80"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              Cancel Analyzer
+            </button>
+          )}
+          {topLevelComments.length > 0 && !analyzerRunning && (
+            <button
+              onClick={handleRunAnalyzer}
+              className="btn-danger px-4 py-1.5 text-sm rounded font-medium"
+              style={{ backgroundColor: 'var(--color-btn-danger-bg)', color: 'var(--color-btn-danger-fg)' }}
+            >
+              Run Analyzer
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -21,12 +21,12 @@
   --color-diff-hunk-bg: #ddf4ff;
 
   /* Button colors */
-  --color-btn-approve-bg: #1a7f37;
-  --color-btn-approve-fg: #ffffff;
-  --color-btn-approve-hover: #22863a;
-  --color-btn-danger-bg: #cf222e;
-  --color-btn-danger-fg: #ffffff;
-  --color-btn-danger-hover: #a40e26;
+  --color-btn-approve-bg: rgba(26, 127, 55, 0.15);
+  --color-btn-approve-fg: #1a7f37;
+  --color-btn-approve-hover: rgba(26, 127, 55, 0.25);
+  --color-btn-danger-bg: rgba(207, 34, 46, 0.15);
+  --color-btn-danger-fg: #cf222e;
+  --color-btn-danger-hover: rgba(207, 34, 46, 0.25);
 
   /* List / file tree colors */
   --color-list-hover-bg: #e8eaed;
@@ -52,12 +52,12 @@
   --color-diff-hunk-bg: #121d2f;
 
   /* Button colors */
-  --color-btn-approve-bg: #176f2c;
-  --color-btn-approve-fg: #dcffe4;
-  --color-btn-approve-hover: #22863a;
-  --color-btn-danger-bg: #da3633;
-  --color-btn-danger-fg: #ffffff;
-  --color-btn-danger-hover: #b62324;
+  --color-btn-approve-bg: rgba(63, 185, 80, 0.15);
+  --color-btn-approve-fg: #3fb950;
+  --color-btn-approve-hover: rgba(63, 185, 80, 0.25);
+  --color-btn-danger-bg: rgba(248, 81, 73, 0.15);
+  --color-btn-danger-fg: #f85149;
+  --color-btn-danger-hover: rgba(248, 81, 73, 0.25);
 
   /* List / file tree colors */
   --color-list-hover-bg: #1a1f2b;

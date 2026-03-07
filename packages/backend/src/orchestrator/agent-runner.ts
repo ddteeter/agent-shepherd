@@ -25,7 +25,7 @@ export class AgentRunner {
   }
 
   async run(config: AgentRunConfig, callbacks: AgentRunCallbacks): Promise<void> {
-    const { prId, projectPath, prompt, source } = config;
+    const { prId, projectPath, prompt, source, additionalDirs } = config;
     const key = this.sessionKey(prId, source);
 
     if (!existsSync(projectPath)) {
@@ -35,7 +35,7 @@ export class AgentRunner {
       );
     }
 
-    const session = await this.adapter.startSession({ projectPath, prompt });
+    const session = await this.adapter.startSession({ projectPath, prompt, additionalDirs });
     this.activeSessions.set(key, session);
 
     this.broadcast('agent:working', { prId, source });

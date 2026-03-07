@@ -6,7 +6,7 @@ export const projects = sqliteTable('projects', {
   name: text('name').notNull(),
   path: text('path').notNull().unique(),
   baseBranch: text('base_branch').notNull().default('main'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now') || 'Z')`),
 });
 
 export const pullRequests = sqliteTable('pull_requests', {
@@ -19,8 +19,8 @@ export const pullRequests = sqliteTable('pull_requests', {
   status: text('status').notNull().default('open'),
   agentContext: text('agent_context'),
   workingDirectory: text('working_directory'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now') || 'Z')`),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now') || 'Z')`),
 });
 
 export const reviewCycles = sqliteTable('review_cycles', {
@@ -44,7 +44,7 @@ export const comments = sqliteTable('comments', {
   author: text('author').notNull(),
   parentCommentId: text('parent_comment_id').references((): any => comments.id),
   resolved: integer('resolved', { mode: 'boolean' }).notNull().default(false),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now') || 'Z')`),
 });
 
 export const diffSnapshots = sqliteTable('diff_snapshots', {
@@ -72,5 +72,5 @@ export const insights = sqliteTable('insights', {
   categories: text('categories').notNull().default('{}'),
   branchRef: text('branch_ref'),
   worktreePath: text('worktree_path'),
-  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now') || 'Z')`),
 });

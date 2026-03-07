@@ -32,8 +32,15 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     this.devMode = opts?.devMode ?? false;
   }
 
-  async startSession(opts: { projectPath: string; prompt: string }): Promise<AgentSession> {
-    const proc = spawn('claude', ['--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash(agent-shepherd:*)', 'Bash(git:*)', '-p'], {
+  async startSession(opts: { projectPath: string; prompt: string; additionalDirs?: string[] }): Promise<AgentSession> {
+    const args = ['--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash(agent-shepherd:*)', 'Bash(git:*)'];
+    if (opts.additionalDirs) {
+      for (const dir of opts.additionalDirs) {
+        args.push('--add-dir', dir);
+      }
+    }
+    args.push('-p');
+    const proc = spawn('claude', args, {
       cwd: opts.projectPath,
       stdio: ['pipe', 'pipe', 'pipe'],
     });

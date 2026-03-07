@@ -23,11 +23,7 @@ export function buildInsightsPrompt(input: InsightsPromptInput): string {
   if (transcriptPaths.length > 0) {
     sections.push(`## Session Transcripts
 
-The following formatted transcript files are available for analysis. These are readable markdown files with the full agent reasoning and tool call summaries. Each file has YAML frontmatter with the original JSONL path for reference. Entries are annotated with \`[line N]\` source line numbers.
-
 ${transcriptPaths.map((p, i) => `${i + 1}. ${p}`).join('\n')}
-
-If you need to see a specific file's contents, read the file directly from the repo rather than trying to extract it from the transcript.
 `);
   } else {
     sections.push(`## Session Transcripts
@@ -58,13 +54,6 @@ Your previous analysis was saved at ${input.previousUpdatedAt}. This is a follow
 ## Your Task
 
 Use the \`agent-shepherd:workflow-analyzer\` skill to analyze the agent's session transcripts and comment history. The skill contains the full methodology, output categories, confidence levels, and JSON format.
-
-### Important Notes
-
-- Every recommendation MUST include a \`confidence\` field (\`high\`, \`medium\`, or \`low\`).
-- Only make and commit file changes for CLAUDE.md and skill recommendations when confidence is \`high\`.
-- When committing changes, set \`appliedPath\` to the file you modified. Choose the best location per the skill's CLAUDE.md best practices guidance.
-- The \`insights update\` command replaces all existing insights for this PR. Call \`insights get\` first and include any previous findings you want to keep.
 `);
 
   return sections.join('\n');

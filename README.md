@@ -258,8 +258,32 @@ Agent Shepherd is designed to run locally on a developer's machine. The server b
 
 **Do not bind the server to `0.0.0.0` or expose it on a network.** Agent Shepherd has no user authentication system -- it assumes the only user is the developer on the local machine. Binding to `0.0.0.0` would expose your project files, git operations, and the ability to spawn agent sessions to anyone on the network.
 
+## Outside of Agent Shepherd Changes
+
+Sometimes you'll make changes directly on a PR branch outside the review UI — for example, working in Claude Code without going through the "Request Changes" flow. To capture those changes as a new review cycle:
+
+```bash
+# 1. Make your changes on the branch (commit them)
+# 2. Tell the agent to resubmit — it generates context automatically
+#    (or use the agent-shepherd:resubmit-pr skill)
+```
+
+The agent analyzes the diff and recent commits to generate a context file describing what changed and why, then runs `agent-shepherd resubmit <prId>`.
+
+**What happens:**
+- The current cycle is marked `superseded` (preserving its diff snapshot and comments for history)
+- A new cycle is created with a fresh diff snapshot
+- Unresolved comments from previous cycles remain visible — no need to recreate them
+- The inter-cycle diff defaults to comparing against the last reviewed cycle
+
+This flow is useful when:
+- You're iterating on a PR directly in Claude Code
+- You made manual fixes and want to re-review the result
+- The agent's changes weren't right and you took over
+
 ## Design Documents
 
 - [Architecture & Design](docs/plans/2026-02-24-agent-shepherd-design.md)
 - [Implementation Plan](docs/plans/2026-02-24-agent-shepherd-implementation.md)
 - [Multi-line Comments](docs/plans/2026-02-25-multi-line-comments.md)
+- [Resubmit: Outside-of-Flow Changes](docs/plans/2026-03-07-resubmit-design.md)

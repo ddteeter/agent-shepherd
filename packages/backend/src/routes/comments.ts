@@ -279,6 +279,8 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
     let created = 0;
 
+    const broadcast = (fastify as any).broadcast;
+
     // Create new comments (default author = 'agent')
     for (const c of comments) {
       const id = randomUUID();
@@ -294,6 +296,11 @@ export async function commentRoutes(fastify: FastifyInstance) {
           author: 'agent',
         })
         .run();
+
+      if (broadcast) {
+        const comment = db.select().from(schema.comments).where(eq(schema.comments.id, id)).get();
+        broadcast('comment:added', comment);
+      }
       created++;
     }
 
@@ -321,6 +328,11 @@ export async function commentRoutes(fastify: FastifyInstance) {
               parentCommentId: r.parentCommentId,
             })
             .run();
+
+          if (broadcast) {
+            const reply = db.select().from(schema.comments).where(eq(schema.comments.id, id)).get();
+            broadcast('comment:added', reply);
+          }
           created++;
 
           // Auto-unresolve parent if resolved
@@ -329,7 +341,6 @@ export async function commentRoutes(fastify: FastifyInstance) {
               .set({ resolved: false })
               .where(eq(schema.comments.id, r.parentCommentId))
               .run();
-            const broadcast = (fastify as any).broadcast;
             if (broadcast) broadcast('comment:updated', { ...parent, resolved: false });
           }
         }

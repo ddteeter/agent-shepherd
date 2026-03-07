@@ -9,6 +9,7 @@ export interface ActivityEntry {
 
 interface AgentActivityPanelProps {
   entries: ActivityEntry[];
+  active?: boolean;
 }
 
 function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
@@ -49,10 +50,18 @@ function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
   );
 }
 
-export function AgentActivityPanel({ entries }: AgentActivityPanelProps) {
-  const [expanded, setExpanded] = useState(true);
+export function AgentActivityPanel({ entries, active }: AgentActivityPanelProps) {
+  const [expanded, setExpanded] = useState(active !== false);
+  const prevActiveRef = useRef(active);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isVerbose = entries.some((e) => e.detail);
+
+  useEffect(() => {
+    if (prevActiveRef.current === true && active === false) {
+      setExpanded(false);
+    }
+    prevActiveRef.current = active;
+  }, [active]);
 
   useEffect(() => {
     if (expanded && scrollRef.current) {
