@@ -34,6 +34,14 @@ export const api = {
       return request<any>(`/prs/${id}/diff${qs ? `?${qs}` : ''}`);
     },
     cycles: (id: string) => request<any[]>(`/prs/${id}/cycles/details`),
+    fileGroups: (id: string, opts?: { cycle?: number }) => {
+      const params = new URLSearchParams();
+      if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
+      const qs = params.toString();
+      return request<{ fileGroups: any[] | null; cycleNumber: number }>(
+        `/prs/${id}/file-groups${qs ? `?${qs}` : ''}`,
+      );
+    },
     snapshotDiff: (id: string) =>
       request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
     review: (id: string, action: string) =>

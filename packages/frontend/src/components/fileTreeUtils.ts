@@ -113,3 +113,74 @@ function flattenTree(nodes: TreeNode[]): string[] {
 export function getFileTreeOrder(files: string[]): string[] {
   return flattenTree(buildFileTree(files));
 }
+
+export interface GroupTreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory' | 'group';
+  description?: string;
+  children?: GroupTreeNode[];
+}
+
+export function buildGroupedFileTree(
+  groups: Array<{ name: string; description?: string; files: string[] }>,
+  allFiles: string[],
+): GroupTreeNode[] {
+  const groupedFiles = new Set(groups.flatMap(g => g.files));
+  const result: GroupTreeNode[] = [];
+
+  for (const group of groups) {
+    const children: GroupTreeNode[] = group.files
+      .filter(f => allFiles.includes(f))
+      .map(f => ({ name: f, path: f, type: 'file' as const }));
+    result.push({
+      name: group.name,
+      path: `__group__${group.name}`,
+      type: 'group',
+      description: group.description,
+      children,
+    });
+  }
+
+  // Ungrouped files
+  const ungrouped = allFiles
+    .filter(f => !groupedFiles.has(f))
+    .sort((a, b) => a.localeCompare(b));
+
+  if (ungrouped.length > 0) {
+    result.push({
+      name: 'Other Changes',
+      path: '__group__Other Changes',
+      type: 'group',
+      children: ungrouped.map(f => ({ name: f, path: f, type: 'file' as const })),
+    });
+  }
+
+  return result;
+}
+
+export function getGroupedFileOrder(
+  groups: Array<{ name: string; files: string[] }>,
+  allFiles: string[],
+): string[] {
+  const allFileSet = new Set(allFiles);
+  const groupedFiles = new Set<string>();
+  const order: string[] = [];
+
+  for (const group of groups) {
+    for (const f of group.files) {
+      if (allFileSet.has(f)) {
+        order.push(f);
+        groupedFiles.add(f);
+      }
+    }
+  }
+
+  for (const f of allFiles) {
+    if (!groupedFiles.has(f)) {
+      order.push(f);
+    }
+  }
+
+  return order;
+}

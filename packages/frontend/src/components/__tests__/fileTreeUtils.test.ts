@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFileTree, getFileTreeOrder, type TreeNode } from '../fileTreeUtils';
+import { buildFileTree, getFileTreeOrder, buildGroupedFileTree, getGroupedFileOrder, type TreeNode } from '../fileTreeUtils';
 
 describe('buildFileTree', () => {
   it('returns empty array for empty input', () => {
@@ -177,5 +177,72 @@ describe('buildFileTree', () => {
       path: 'packages/frontend/package.json',
       type: 'file',
     });
+  });
+});
+
+describe('buildGroupedFileTree', () => {
+  it('creates tree nodes for each group with files inside', () => {
+    const groups = [
+      { name: 'Database', description: 'Schema changes', files: ['packages/backend/src/db/schema.ts'] },
+      { name: 'API', files: ['packages/backend/src/routes/prs.ts', 'packages/backend/src/routes/diff.ts'] },
+    ];
+    const allFiles = ['packages/backend/src/db/schema.ts', 'packages/backend/src/routes/prs.ts', 'packages/backend/src/routes/diff.ts'];
+
+    const result = buildGroupedFileTree(groups, allFiles);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe('Database');
+    expect(result[0].type).toBe('group');
+    expect(result[0].description).toBe('Schema changes');
+    expect(result[0].children).toHaveLength(1);
+    expect(result[0].children![0].name).toBe('packages/backend/src/db/schema.ts');
+    expect(result[0].children![0].type).toBe('file');
+
+    expect(result[1].name).toBe('API');
+    expect(result[1].children).toHaveLength(2);
+  });
+
+  it('adds ungrouped files to an "Other Changes" section', () => {
+    const groups = [
+      { name: 'API', files: ['src/routes/prs.ts'] },
+    ];
+    const allFiles = ['src/routes/prs.ts', 'src/utils.ts', 'README.md'];
+
+    const result = buildGroupedFileTree(groups, allFiles);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].name).toBe('API');
+    expect(result[1].name).toBe('Other Changes');
+    expect(result[1].children).toHaveLength(2);
+    expect(result[1].children!.map(c => c.name)).toEqual(['README.md', 'src/utils.ts']);
+  });
+
+  it('returns Other Changes group when groups array is empty', () => {
+    const result = buildGroupedFileTree([], ['src/index.ts']);
+    expect(result).toHaveLength(1);
+    expect(result[0].name).toBe('Other Changes');
+  });
+});
+
+describe('getGroupedFileOrder', () => {
+  it('returns files in group order', () => {
+    const groups = [
+      { name: 'Database', files: ['src/db/schema.ts'] },
+      { name: 'API', files: ['src/routes/prs.ts', 'src/routes/diff.ts'] },
+    ];
+    const allFiles = ['src/db/schema.ts', 'src/routes/prs.ts', 'src/routes/diff.ts'];
+
+    const order = getGroupedFileOrder(groups, allFiles);
+    expect(order).toEqual(['src/db/schema.ts', 'src/routes/prs.ts', 'src/routes/diff.ts']);
+  });
+
+  it('appends ungrouped files at the end', () => {
+    const groups = [
+      { name: 'API', files: ['src/routes/prs.ts'] },
+    ];
+    const allFiles = ['src/routes/prs.ts', 'src/utils.ts'];
+
+    const order = getGroupedFileOrder(groups, allFiles);
+    expect(order).toEqual(['src/routes/prs.ts', 'src/utils.ts']);
   });
 });
