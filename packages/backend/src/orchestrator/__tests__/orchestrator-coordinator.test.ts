@@ -58,6 +58,7 @@ const mockSchema = {
   projects: { id: 'projects.id' },
   reviewCycles: { id: 'reviewCycles.id', prId: 'reviewCycles.prId' },
   comments: { reviewCycleId: 'comments.reviewCycleId' },
+  insights: { prId: 'insights.prId' },
 } as any;
 
 describe('Orchestrator (thin coordinator)', () => {
