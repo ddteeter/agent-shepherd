@@ -3,7 +3,7 @@ import { CommentForm } from './CommentForm.js';
 import { CommentThread } from './CommentThread.js';
 import type { Comment } from './CommentThread.js';
 import { useHighlighter, getLangFromPath, type TokenizedLine } from '../hooks/useHighlighter.js';
-import { getFileTreeOrder } from './fileTreeUtils.js';
+import { getFileTreeOrder, getGroupedFileOrder } from './fileTreeUtils.js';
 import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 
 interface DiffViewerProps {
@@ -22,6 +22,8 @@ interface DiffViewerProps {
   canEditComments?: boolean;
   globalCommentForm?: boolean;
   onToggleGlobalCommentForm?: () => void;
+  fileGroups?: Array<{ name: string; description?: string; files: string[] }> | null;
+  viewMode?: 'directory' | 'logical';
 }
 
 interface DiffHunk {
@@ -382,7 +384,7 @@ function FileDiff({
   );
 }
 
-export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFileChange, comments = [], threadStatusMap, onAddComment, onReplyComment, onResolveComment, onEditComment, onDeleteComment, canEditComments, globalCommentForm, onToggleGlobalCommentForm }: DiffViewerProps) {
+export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFileChange, comments = [], threadStatusMap, onAddComment, onReplyComment, onResolveComment, onEditComment, onDeleteComment, canEditComments, globalCommentForm, onToggleGlobalCommentForm, fileGroups, viewMode }: DiffViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [commentFormLine, setCommentFormLine] = useState<{ file: string; startLine: number; endLine: number } | null>(null);
@@ -405,13 +407,30 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
   // Memoize expensive diff parsing, sorted to match file tree display order
   const parsedFiles = useMemo(() => {
     const parsed = parseDiff(diff);
+    if (viewMode === 'logical' && fileGroups) {
+      const groupedOrder = getGroupedFileOrder(fileGroups, files);
+      const orderIndex = new Map(groupedOrder.map((f, i) => [f, i]));
+      return parsed.sort((a, b) => (orderIndex.get(a.path) ?? Infinity) - (orderIndex.get(b.path) ?? Infinity));
+    }
     const treeOrder = getFileTreeOrder(files);
     const orderIndex = new Map(treeOrder.map((f, i) => [f, i]));
     return parsed.sort((a, b) => (orderIndex.get(a.path) ?? Infinity) - (orderIndex.get(b.path) ?? Infinity));
-  }, [diff, files]);
+  }, [diff, files, fileGroups, viewMode]);
 
   // Stable file paths list for the highlighter
   const filePaths = useMemo(() => parsedFiles.map(f => f.path), [parsedFiles]);
+
+  // Map each file to its group for rendering group headers
+  const fileToGroup = useMemo(() => {
+    if (!fileGroups || viewMode !== 'logical') return null;
+    const map = new Map<string, { name: string; description?: string }>();
+    for (const group of fileGroups) {
+      for (const f of group.files) {
+        map.set(f, { name: group.name, description: group.description });
+      }
+    }
+    return map;
+  }, [fileGroups, viewMode]);
 
   // Initialize shiki highlighter with languages needed for these files
   const { tokenizeLine, syntaxTheme, setSyntaxTheme } = useHighlighter(filePaths);
@@ -724,9 +743,35 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
         </div>
       )}
 
-      {parsedFiles.map((file) => (
+      {parsedFiles.map((file, idx) => (
+        <div key={file.path}>
+          {(() => {
+            if (!fileToGroup) return null;
+            const group = fileToGroup.get(file.path);
+            const prevFile = idx > 0 ? parsedFiles[idx - 1] : null;
+            const prevGroup = prevFile ? fileToGroup.get(prevFile.path) : null;
+            const isNewGroup = group && (!prevGroup || prevGroup.name !== group.name);
+            const isUngrouped = !group && (idx === 0 || (prevFile && fileToGroup.has(prevFile.path)));
+            if (isNewGroup) {
+              return (
+                <div className="px-4 py-3 mb-2 border-b" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, var(--color-surface))' }}>
+                  <div className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{group.name}</div>
+                  {group.description && (
+                    <div className="text-xs mt-0.5 opacity-60">{group.description}</div>
+                  )}
+                </div>
+              );
+            }
+            if (isUngrouped) {
+              return (
+                <div className="px-4 py-3 mb-2 border-b" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, var(--color-surface))' }}>
+                  <div className="text-sm font-semibold opacity-60">Other Changes</div>
+                </div>
+              );
+            }
+            return null;
+          })()}
         <div
-          key={file.path}
           ref={(el) => { setFileRef(file.path, el); }}
           data-file-path={file.path}
           className="mb-6 border rounded overflow-hidden"
@@ -801,6 +846,7 @@ export function DiffViewer({ diff, files, scrollToFile, scrollKey, onVisibleFile
               {file.lineCount} lines
             </div>
           )}
+        </div>
         </div>
       ))}
 

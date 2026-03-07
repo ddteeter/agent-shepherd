@@ -48,6 +48,8 @@ export function PRReview() {
   const [insightsActivity, setInsightsActivity] = useState<ActivityEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'review' | 'insights'>('review');
   const [analyzerRunning, setAnalyzerRunning] = useState(false);
+  const [fileGroups, setFileGroups] = useState<Array<{ name: string; description?: string; files: string[] }> | null>(null);
+  const [viewMode, setViewMode] = useState<'directory' | 'logical'>('directory');
 
   const { connected } = useWebSocket((msg) => {
     if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
@@ -140,6 +142,13 @@ export function PRReview() {
         diff = await api.prs.diff(prId, { cycle: cycleNum });
       }
       setDiffData(diff);
+      if (diff.fileGroups) {
+        setFileGroups(diff.fileGroups);
+        setViewMode('logical');
+      } else {
+        setFileGroups(null);
+        setViewMode('directory');
+      }
       setScrollToFile(null);
       setVisibleFile(null);
     } catch (err) {
@@ -159,6 +168,10 @@ export function PRReview() {
       setDiffData(diff);
       if (prData.agents?.insights) {
         setAnalyzerRunning(true);
+      }
+      if (diff.fileGroups) {
+        setFileGroups(diff.fileGroups);
+        setViewMode('logical');
       }
     }).catch((err) => {
       setError(err instanceof Error ? err.message : 'Failed to load PR');
@@ -638,6 +651,9 @@ export function PRReview() {
             onSelectFile={handleFileSelect}
             fileStatuses={fileStatuses}
             commentCounts={commentCounts}
+            fileGroups={fileGroups}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
           />
           <DiffViewer
             diff={diffData.diff}
@@ -655,6 +671,8 @@ export function PRReview() {
             canEditComments={selectedCycle === 'current'}
             globalCommentForm={globalCommentForm}
             onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
+            fileGroups={fileGroups}
+            viewMode={viewMode}
           />
           </>
           )}
