@@ -7,7 +7,8 @@ export type ReviewCycleStatus =
   | 'agent_working'
   | 'agent_completed'
   | 'agent_error'
-  | 'approved';
+  | 'approved'
+  | 'superseded';
 
 export type CommentSeverity = 'suggestion' | 'request' | 'must-fix';
 
@@ -42,6 +43,7 @@ export interface ReviewCycle {
   status: ReviewCycleStatus;
   reviewedAt: string | null;
   agentCompletedAt: string | null;
+  context: string | null;
 }
 
 export interface Comment {
