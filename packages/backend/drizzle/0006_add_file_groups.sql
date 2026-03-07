@@ -1,0 +1,1 @@
+ALTER TABLE `diff_snapshots` ADD `file_groups` text;

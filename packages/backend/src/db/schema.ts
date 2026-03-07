@@ -52,6 +52,7 @@ export const diffSnapshots = sqliteTable('diff_snapshots', {
   id: text('id').primaryKey(),
   reviewCycleId: text('review_cycle_id').notNull().references(() => reviewCycles.id),
   diffData: text('diff_data').notNull(),
+  fileGroups: text('file_groups'),
 });
 
 export const globalConfig = sqliteTable('global_config', {
