@@ -7,6 +7,7 @@ export function migrateInsightCategories(categories: Record<string, any[]>): Rec
   const migrate = (items: any[]) =>
     items.map(({ applied, ...rest }) => ({
       ...rest,
+      confidence: rest.confidence ?? 'medium',
       ...(applied === true ? { appliedPath: 'CLAUDE.md' } : {}),
     }));
 

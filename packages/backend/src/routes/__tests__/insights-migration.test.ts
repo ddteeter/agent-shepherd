@@ -17,6 +17,7 @@ describe('migrateInsightCategories', () => {
     expect(result.claudeMdRecommendations[0]).toEqual({
       title: 'Test',
       description: 'Desc',
+      confidence: 'medium',
       appliedPath: 'CLAUDE.md',
     });
     expect(result.claudeMdRecommendations[0]).not.toHaveProperty('applied');
@@ -37,6 +38,7 @@ describe('migrateInsightCategories', () => {
     expect(result.claudeMdRecommendations[0]).toEqual({
       title: 'Test',
       description: 'Desc',
+      confidence: 'medium',
     });
   });
 

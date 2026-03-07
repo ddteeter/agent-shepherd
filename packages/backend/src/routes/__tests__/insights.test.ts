@@ -40,7 +40,7 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights creates insights on first call (upsert)', async () => {
     const categories = {
-      claudeMdRecommendations: [{ title: 'Add lint rule', description: 'Enable no-unused-vars' }],
+      claudeMdRecommendations: [{ title: 'Add lint rule', description: 'Enable no-unused-vars', confidence: 'high' }],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
@@ -65,15 +65,15 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights updates existing insights (upsert)', async () => {
     const categories1 = {
-      claudeMdRecommendations: [{ title: 'Rule A', description: 'Desc A' }],
+      claudeMdRecommendations: [{ title: 'Rule A', description: 'Desc A', confidence: 'high' }],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };
     const categories2 = {
-      claudeMdRecommendations: [{ title: 'Rule B', description: 'Desc B' }],
-      skillRecommendations: [{ title: 'Skill 1', description: 'Do this' }],
+      claudeMdRecommendations: [{ title: 'Rule B', description: 'Desc B', confidence: 'medium' }],
+      skillRecommendations: [{ title: 'Skill 1', description: 'Do this', confidence: 'low' }],
       promptEngineering: [],
       agentBehaviorObservations: [],
       recurringPatterns: [],
@@ -197,7 +197,7 @@ describe('Insights API', () => {
     const categories = {
       claudeMdRecommendations: [],
       skillRecommendations: [],
-      promptEngineering: [{ title: 'Better prompts', description: 'Use XML tags' }],
+      promptEngineering: [{ title: 'Better prompts', description: 'Use XML tags', confidence: 'high' }],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };

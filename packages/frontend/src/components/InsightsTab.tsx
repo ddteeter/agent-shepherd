@@ -15,7 +15,6 @@ interface RecurringPatternItem {
   title: string;
   description: string;
   confidence: InsightConfidence;
-  appliedPath?: string;
   prIds: string[];
 }
 
