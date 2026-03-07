@@ -9,15 +9,16 @@ You are analyzing an AI coding agent's work to produce workflow improvement reco
 
 ## Data Sources
 
-### 1. Session Transcripts (JSONL files)
+### 1. Session Transcripts (formatted markdown)
 
-Read the session log files provided in your prompt. These are JSONL files where each line is a JSON object. Key fields to look for:
+Read the formatted transcript files provided in your prompt. These are readable markdown files pre-processed from raw JSONL session logs. Each file includes:
 
-- `type: "user"` -- human prompts and instructions
-- `type: "assistant"` -- agent responses and reasoning
-- `type: "tool_use"` -- tool calls (file reads, edits, bash commands)
-- `type: "tool_result"` -- tool call results
-- `type: "error"` -- errors encountered
+- **YAML frontmatter** with `source` (original JSONL path), `session_id`, `branch`, and `started_at`
+- **`## Assistant [line N]`** sections containing the agent's full reasoning text and tool call summaries (tool name + key params, with large content values summarized by size)
+- **`## User [line N]`** sections containing human prompts and tool result previews (first ~200 chars + total size)
+- **`[line N]` annotations** referencing source line numbers in the original JSONL for traceability
+
+If you need to see a specific file's actual contents, read the file directly from the repo rather than trying to extract it from the transcript.
 
 When reading transcripts, focus on:
 - **Initial prompt quality**: Was the human's request clear? Did it include acceptance criteria?
