@@ -12,6 +12,7 @@ import { startCommand } from './commands/start.js';
 import { reviewCommand } from './commands/review.js';
 import { insightsCommand } from './commands/insights.js';
 import { resubmitCommand } from './commands/resubmit.js';
+import { fileGroupsCommand } from './commands/file-groups.js';
 
 const program = new Command();
 const client = new ApiClient(process.env.SHEPHERD_URL || 'http://localhost:3847');
@@ -32,5 +33,6 @@ startCommand(program);
 reviewCommand(program, client);
 insightsCommand(program, client);
 resubmitCommand(program, client);
+fileGroupsCommand(program, client);
 
 program.parse();

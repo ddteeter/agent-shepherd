@@ -12,6 +12,7 @@ export function submitCommand(program: Command, client: ApiClient) {
     .option('-d, --description <desc>', 'PR description', '')
     .option('-s, --source-branch <branch>', 'Source branch (auto-detected if omitted)')
     .option('-c, --context-file <path>', 'Path to JSON file with agent context')
+    .option('--file-groups <path>', 'Path to JSON file with logical file groupings')
     .action(async (opts) => {
       let agentContext: string | undefined;
       if (opts.contextFile) {
@@ -27,12 +28,19 @@ export function submitCommand(program: Command, client: ApiClient) {
         }
       }
 
+      let fileGroups: any[] | undefined;
+      if (opts.fileGroups) {
+        const raw = await readFile(opts.fileGroups, 'utf-8');
+        fileGroups = JSON.parse(raw);
+      }
+
       const pr = await client.post(`/api/projects/${opts.project}/prs`, {
         title: opts.title || 'Agent PR',
         description: opts.description,
         sourceBranch,
         agentContext,
         workingDirectory: process.cwd(),
+        fileGroups,
       });
 
       console.log(`PR created: ${(pr as any).id}`);
