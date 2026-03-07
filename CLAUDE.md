@@ -8,7 +8,7 @@ Human-in-the-loop PR review app for AI coding agents. Monorepo with four npm wor
 
 - **Backend** (`packages/backend`): Fastify server, SQLite/Drizzle ORM, WebSocket, agent orchestrator
 - **Frontend** (`packages/frontend`): React 19 + Vite + Tailwind CSS 4, Shiki syntax highlighting
-- **CLI** (`packages/cli`): Commander.js CLI (`shepherd`) used by agents and humans
+- **CLI** (`packages/cli`): Commander.js CLI (`agent-shepherd`) used by agents and humans
 - **Shared** (`packages/shared`): TypeScript types consumed by all other packages
 
 ## Key Paths
@@ -50,11 +50,11 @@ npx drizzle-kit generate --name <descriptive_name>
 
 ## Review Flow
 
-1. Agent submits PR via `shepherd submit` (creates PR + first ReviewCycle + DiffSnapshot)
+1. Agent submits PR via `agent-shepherd submit` (creates PR + first ReviewCycle + DiffSnapshot)
 2. Human reviews in web UI, adds inline comments with severity (`must-fix` / `request` / `suggestion`)
 3. Human submits review: "Approve" or "Request Changes"
 4. On request changes: orchestrator builds prompt from comments, spawns new agent session
-5. Agent makes changes, replies via `shepherd batch`, calls `shepherd ready`
+5. Agent makes changes, replies via `agent-shepherd batch`, calls `agent-shepherd ready`
 6. New ReviewCycle + DiffSnapshot created, human re-reviews
 
 ## API Structure
@@ -78,6 +78,8 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 - Frontend uses CSS custom properties for theming + Tailwind utility classes
 - Shiki for syntax highlighting in diff viewer (not highlight.js)
 - Backend validates request bodies with Fastify schemas
+- Never introduce TODO comments in code -- either implement immediately or document in `docs/plans/`
+- When a skill exists for an agent task, prompts should reference the skill by name rather than duplicating its content
 
 ## Agent Orchestrator
 
