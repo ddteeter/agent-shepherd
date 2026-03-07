@@ -31,10 +31,10 @@ function createMockAdapter(session: AgentSession): AgentAdapter {
 }
 
 describe('AgentRunner', () => {
-  let broadcast: ReturnType<typeof vi.fn>;
+  let broadcast: ReturnType<typeof vi.fn<(event: string, data: unknown) => void>>;
 
   beforeEach(() => {
-    broadcast = vi.fn();
+    broadcast = vi.fn<(event: string, data: unknown) => void>();
   });
 
   it('spawns agent and tracks session (hasActiveSession returns true)', async () => {

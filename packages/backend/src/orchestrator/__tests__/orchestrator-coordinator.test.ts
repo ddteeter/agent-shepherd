@@ -63,12 +63,12 @@ const mockSchema = {
 describe('Orchestrator (thin coordinator)', () => {
   let adapter: AgentAdapter;
   let db: ReturnType<typeof createMockDb>;
-  let broadcast: ReturnType<typeof vi.fn>;
+  let broadcast: ReturnType<typeof vi.fn<(event: string, data: any) => void>>;
 
   beforeEach(() => {
     adapter = createMockAdapter();
     db = createMockDb();
-    broadcast = vi.fn();
+    broadcast = vi.fn<(event: string, data: any) => void>();
   });
 
   it('runInsights delegates to InsightsAnalyzer', async () => {
