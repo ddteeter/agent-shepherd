@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { execSync } from 'child_process';
 import { readFile } from 'fs/promises';
 import { ApiClient } from '../api-client.js';
 
@@ -17,10 +18,19 @@ export function submitCommand(program: Command, client: ApiClient) {
         agentContext = await readFile(opts.contextFile, 'utf-8');
       }
 
+      let sourceBranch = opts.sourceBranch;
+      if (!sourceBranch) {
+        try {
+          sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
+        } catch {
+          sourceBranch = 'HEAD';
+        }
+      }
+
       const pr = await client.post(`/api/projects/${opts.project}/prs`, {
         title: opts.title || 'Agent PR',
         description: opts.description,
-        sourceBranch: opts.sourceBranch || 'HEAD',
+        sourceBranch,
         agentContext,
         workingDirectory: process.cwd(),
       });
