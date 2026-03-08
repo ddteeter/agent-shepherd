@@ -69,4 +69,21 @@ describe('Session token auth', () => {
     });
     expect(response.statusCode).toBe(200);
   });
+
+  it('rejects WebSocket requests with wrong token', async () => {
+    const response = await server.inject({
+      method: 'GET',
+      url: '/ws?token=wrong',
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('allows non-API/non-WS routes without auth', async () => {
+    const response = await server.inject({
+      method: 'GET',
+      url: '/some-static-route',
+    });
+    // Will be 404 since no static files, but not 401
+    expect(response.statusCode).not.toBe(401);
+  });
 });
