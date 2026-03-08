@@ -164,6 +164,8 @@ agent-shepherd file-groups ${prId}
 # If file groups exist: save them to a file, add any new files you touched
 # to the appropriate groups, then include --file-groups on ready:
 agent-shepherd ready ${prId} --file-groups updated-groups.json
+# Clean up the temporary file after submitting:
+rm updated-groups.json
 
 # If no file groups exist, just signal ready:
 agent-shepherd ready ${prId}

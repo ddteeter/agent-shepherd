@@ -44,34 +44,34 @@ fileGroups: FileGroup[] | null;
 
 ## CLI Changes
 
-### `shepherd submit`
+### `agent-shepherd submit`
 
 New optional flag:
 
 ```bash
-shepherd submit --file-groups groups.json
+agent-shepherd submit --file-groups groups.json
 ```
 
 Reads the JSON file and sends it with the PR creation payload.
 
-### `shepherd ready`
+### `agent-shepherd ready`
 
 New optional flag:
 
 ```bash
-shepherd ready --file-groups groups.json
+agent-shepherd ready --file-groups groups.json
 ```
 
 Sends updated groups with the new review cycle. **Validation:** if the previous cycle had file groups but `--file-groups` is not provided, `ready` returns an error:
 
-> This PR has file groups from the previous cycle. You must provide --file-groups. Run `shepherd file-groups <pr-id>` to fetch the current groups and update them.
+> This PR has file groups from the previous cycle. You must provide --file-groups. Run `agent-shepherd file-groups <pr-id>` to fetch the current groups and update them.
 
-### `shepherd file-groups`
+### `agent-shepherd file-groups`
 
 New command to fetch current groups:
 
 ```bash
-shepherd file-groups <pr-id>
+agent-shepherd file-groups <pr-id>
 ```
 
 Returns the file groups from the most recent cycle's diff snapshot as JSON. Used by agents during fix cycles to fetch existing groups before adjusting.
@@ -140,8 +140,8 @@ Updated to teach agents to create `file-groups.json`:
 - Keep group count reasonable (2-6 for most PRs)
 
 **Fix-cycle instructions:**
-1. Run `shepherd file-groups <pr-id>` to fetch current groups
+1. Run `agent-shepherd file-groups <pr-id>` to fetch current groups
 2. Review which files you've changed or added
 3. Add new files to the most appropriate existing group, or create a new group if they represent a distinct concern
 4. Keep existing group names/descriptions stable unless changes fundamentally alter them
-5. Provide the complete updated groups via `shepherd ready --file-groups updated-groups.json`
+5. Provide the complete updated groups via `agent-shepherd ready --file-groups updated-groups.json`

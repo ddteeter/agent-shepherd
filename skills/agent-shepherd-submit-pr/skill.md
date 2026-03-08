@@ -36,7 +36,7 @@ Do NOT use `git add .` blindly. Review what you are staging. Avoid committing ge
 
 The `submit` command automatically captures your current working directory (`cwd`). This is used by the orchestrator to re-dispatch agents to the correct location during multi-cycle reviews.
 
-If you're working in a git worktree, make sure you run `shepherd submit` from inside the worktree directory, not the main repository checkout. The working directory is captured automatically — no flag needed.
+If you're working in a git worktree, make sure you run `agent-shepherd submit` from inside the worktree directory, not the main repository checkout. The working directory is captured automatically — no flag needed.
 
 ### 2. Find Your Project ID
 
@@ -194,19 +194,20 @@ The description appears in the review UI alongside the diff. Keep it concise but
 
 ## Fix Cycles: Updating File Groups
 
-When responding to review feedback (`shepherd ready`), you must provide updated file groups if the initial PR had them. If you forget, the command will fail with an error telling you what to do.
+When responding to review feedback (`agent-shepherd ready`), you must provide updated file groups if the initial PR had them. If you forget, the command will fail with an error telling you what to do.
 
 1. Fetch the current groups:
    ```bash
-   shepherd file-groups <pr-id>
+   agent-shepherd file-groups <pr-id>
    ```
 2. Review which files you've changed or added during fixes
 3. Add new files to the most appropriate existing group, or create a new group if they represent a distinct concern
 4. Keep existing group names and descriptions stable unless your changes fundamentally alter them
 5. Save the updated groups and provide them:
    ```bash
-   shepherd ready <pr-id> --file-groups updated-groups.json
+   agent-shepherd ready <pr-id> --file-groups updated-groups.json
    ```
+6. Clean up the temporary groups file: `rm updated-groups.json`
 
 ## Common Mistakes to Avoid
 
@@ -214,4 +215,4 @@ When responding to review feedback (`shepherd ready`), you must provide updated 
 2. **Using the default title.** "Agent PR" tells the reviewer nothing. Always provide a descriptive title.
 3. **Skipping the context file.** If the review requires changes (which it often does), the context file is critical for maintaining continuity across review cycles. Always provide one.
 4. **Committing secrets or .env files.** Review your staged files before committing.
-5. **Forgetting file groups on `shepherd ready`.** If the initial PR had file groups, every subsequent `shepherd ready` must include `--file-groups`. Use `shepherd file-groups <pr-id>` to fetch the current groups.
+5. **Forgetting file groups on `agent-shepherd ready`.** If the initial PR had file groups, every subsequent `agent-shepherd ready` must include `--file-groups`. Use `agent-shepherd file-groups <pr-id>` to fetch the current groups.
