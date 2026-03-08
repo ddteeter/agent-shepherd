@@ -39,6 +39,7 @@ export function PRReview() {
   const [cycles, setCycles] = useState<ReviewCycle[]>([]);
   const [selectedCycle, setSelectedCycle] = useState<string>('current');
   const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
   const [globalCommentForm, setGlobalCommentForm] = useState(false);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [agentActivity, setAgentActivity] = useState<ActivityEntry[]>([]);
@@ -126,6 +127,7 @@ export function PRReview() {
   const fetchDiff = useCallback(async (cycleValue: string) => {
     if (!prId) return;
     setDiffLoading(true);
+    setDiffError(null);
     try {
       let diff;
       if (cycleValue === 'current') {
@@ -141,7 +143,7 @@ export function PRReview() {
       setScrollToFile(null);
       setVisibleFile(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load diff');
+      setDiffError(err instanceof Error ? err.message : 'Failed to load diff');
     } finally {
       setDiffLoading(false);
     }
@@ -307,6 +309,7 @@ export function PRReview() {
   const fileStatuses = useMemo(() => {
     if (!diffData) return {};
     const statuses: Record<string, FileStatus> = {};
+    if (typeof diffData.diff !== 'string') return {};
     const lines = diffData.diff.split('\n');
     let fromNull = false;
     let minusPath = '';
@@ -517,6 +520,9 @@ export function PRReview() {
               </select>
               {diffLoading && (
                 <span className="text-sm opacity-50">Loading...</span>
+              )}
+              {diffError && (
+                <span className="text-sm text-red-500">Failed to load diff</span>
               )}
             </div>
           )}

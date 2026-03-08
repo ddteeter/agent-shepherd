@@ -181,6 +181,38 @@ describe('Diff API', () => {
     expect(diffRes.json().isSnapshot).toBe(true);
   });
 
+  it('GET /api/prs/:id/diff?cycle=N returns snapshot for superseded cycle after resubmit', async () => {
+    // Cycle 1 has a snapshot from PR creation. Now resubmit to supersede it.
+    const resubmitRes = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/resubmit`,
+      payload: { context: 'Fixed manually outside review flow' },
+    });
+    expect(resubmitRes.statusCode).toBe(200);
+    expect(resubmitRes.json().cycleNumber).toBe(2);
+
+    // Verify cycle 1 is now superseded
+    const cyclesRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/cycles/details`,
+    });
+    const cycles = cyclesRes.json();
+    const cycle1 = cycles.find((c: any) => c.cycleNumber === 1);
+    expect(cycle1.status).toBe('superseded');
+    expect(cycle1.hasDiffSnapshot).toBe(true);
+
+    // Fetching the superseded cycle's diff should still work
+    const diffRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff?cycle=1`,
+    });
+    expect(diffRes.statusCode).toBe(200);
+    const body = diffRes.json();
+    expect(body.diff).toContain('+const y = 2;');
+    expect(body.isSnapshot).toBe(true);
+    expect(body.cycleNumber).toBe(1);
+  });
+
   it('GET /api/prs/:id/cycles/details returns 404 for non-existent PR', async () => {
     const response = await inject({
       method: 'GET',

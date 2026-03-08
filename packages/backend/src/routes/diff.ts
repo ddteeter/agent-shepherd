@@ -206,6 +206,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
 
 /** Extract file paths from a unified diff string */
 export function extractFilesFromDiff(diff: string): string[] {
+  if (typeof diff !== 'string') return [];
   const files: string[] = [];
   const lines = diff.split('\n');
   for (const line of lines) {
