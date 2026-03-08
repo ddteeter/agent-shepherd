@@ -36,7 +36,17 @@ npm run dev --workspace=packages/backend     # Backend only (port 3000)
 npm run dev --workspace=packages/frontend    # Frontend only (port 5173)
 npm run build                                # Build all packages
 npm run test                                 # Run tests (Vitest)
+npm run test:coverage                        # Run tests with coverage (80% threshold enforced)
 ```
+
+## Test Coverage Requirements
+
+- **Target: 80% coverage** across lines, functions, branches, and statements per package
+- Run `npm run test:coverage` to check coverage before submitting
+- When adding new features or modifying code, write tests that maintain 80% coverage
+- Use `npm run test:coverage --workspace=packages/<name>` to check per-package coverage
+- Coverage thresholds are enforced in vitest configs — tests will fail if coverage drops below 80%
+- Place test files in `__tests__/` directories adjacent to the source files they test
 
 ## Database
 

@@ -32,6 +32,7 @@
     "link-skills": "for skill in skills/*/; do ln -sfn \"$(pwd)/$skill\" ~/.claude/skills/$(basename $skill); done",
     "teardown:dev": "npm unlink && for skill in skills/*/; do rm -f ~/.claude/skills/$(basename $skill); done",
     "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "prepublishOnly": "npm run build"
   },
