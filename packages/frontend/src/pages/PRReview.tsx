@@ -613,6 +613,19 @@ export function PRReview() {
             </div>
           )}
           <div className="flex flex-1 overflow-hidden">
+          {diffError ? (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <div className="text-center">
+                <p className="text-sm opacity-70">Failed to load diff for this cycle.</p>
+                <p className="text-xs opacity-50 mt-1">{diffError}</p>
+              </div>
+            </div>
+          ) : typeof diffData.diff !== 'string' ? (
+            <div className="flex-1 flex items-center justify-center p-6">
+              <p className="text-sm opacity-70">Diff snapshot is unavailable for this cycle.</p>
+            </div>
+          ) : (
+          <>
           <FileTree
             files={diffData.files}
             selectedFile={visibleFile}
@@ -637,6 +650,8 @@ export function PRReview() {
             globalCommentForm={globalCommentForm}
             onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
           />
+          </>
+          )}
           </div>
         </div>
       ) : (

@@ -48,6 +48,7 @@ interface FileDiff {
 }
 
 function parseDiff(rawDiff: string): FileDiff[] {
+  if (typeof rawDiff !== 'string') return [];
   const files: FileDiff[] = [];
   const lines = rawDiff.split('\n');
   let currentFile: FileDiff | null = null;
