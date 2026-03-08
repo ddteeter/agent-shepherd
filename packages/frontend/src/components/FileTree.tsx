@@ -369,17 +369,6 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
             <div className="flex gap-0.5">
               <button
                 className={`px-1.5 py-0.5 text-xs rounded ${
-                  viewMode === 'directory'
-                    ? 'font-medium'
-                    : 'opacity-60 hover:opacity-100'
-                }`}
-                style={viewMode === 'directory' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
-                onClick={() => onViewModeChange('directory')}
-              >
-                Directory
-              </button>
-              <button
-                className={`px-1.5 py-0.5 text-xs rounded ${
                   viewMode === 'logical'
                     ? 'font-medium'
                     : 'opacity-60 hover:opacity-100'
@@ -388,6 +377,17 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
                 onClick={() => onViewModeChange('logical')}
               >
                 Logical
+              </button>
+              <button
+                className={`px-1.5 py-0.5 text-xs rounded ${
+                  viewMode === 'directory'
+                    ? 'font-medium'
+                    : 'opacity-60 hover:opacity-100'
+                }`}
+                style={viewMode === 'directory' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
+                onClick={() => onViewModeChange('directory')}
+              >
+                Directory
               </button>
             </div>
           )}
