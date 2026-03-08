@@ -369,37 +369,37 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
     >
       <div className="flex-1 flex flex-col min-w-0">
         <div
-          className="p-3 text-sm font-medium border-b"
+          className="flex items-center justify-between px-3 py-2 text-sm font-medium border-b"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          Files ({files.length})
+          <span>Files ({files.length})</span>
+          {fileGroups && onViewModeChange && (
+            <div className="flex gap-0.5">
+              <button
+                className={`px-1.5 py-0.5 text-xs rounded ${
+                  viewMode === 'directory'
+                    ? 'font-medium'
+                    : 'opacity-60 hover:opacity-100'
+                }`}
+                style={viewMode === 'directory' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
+                onClick={() => onViewModeChange('directory')}
+              >
+                Directory
+              </button>
+              <button
+                className={`px-1.5 py-0.5 text-xs rounded ${
+                  viewMode === 'logical'
+                    ? 'font-medium'
+                    : 'opacity-60 hover:opacity-100'
+                }`}
+                style={viewMode === 'logical' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
+                onClick={() => onViewModeChange('logical')}
+              >
+                Logical
+              </button>
+            </div>
+          )}
         </div>
-        {fileGroups && onViewModeChange && (
-          <div className="flex gap-1 px-3 py-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
-            <button
-              className={`px-2 py-1 text-xs rounded ${
-                viewMode === 'directory'
-                  ? 'font-medium'
-                  : 'opacity-60 hover:opacity-100'
-              }`}
-              style={viewMode === 'directory' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
-              onClick={() => onViewModeChange('directory')}
-            >
-              Directory
-            </button>
-            <button
-              className={`px-2 py-1 text-xs rounded ${
-                viewMode === 'logical'
-                  ? 'font-medium'
-                  : 'opacity-60 hover:opacity-100'
-              }`}
-              style={viewMode === 'logical' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
-              onClick={() => onViewModeChange('logical')}
-            >
-              Logical
-            </button>
-          </div>
-        )}
         <div ref={scrollRef} className="overflow-auto flex-1">
           <ul className="flex flex-col w-max min-w-full">
             {viewMode === 'logical' && groupedTree ? (
