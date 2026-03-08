@@ -11,8 +11,6 @@ export default defineConfig({
         'src/**/__tests__/**',
         'src/**/*.test.ts',
         'src/index.ts',
-        'src/orchestrator/types.ts',
-        'src/orchestrator/session-log/provider.ts',
       ],
       all: true,
       thresholds: {
