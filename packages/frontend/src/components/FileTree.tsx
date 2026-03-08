@@ -179,14 +179,6 @@ function GroupedTreeNodeList({
               </button>
               {!isCollapsed && (
                 <>
-                  {node.description && (
-                    <div
-                      className="text-xs opacity-50 px-3 pb-1"
-                      style={{ paddingLeft: depth * 16 + 28 }}
-                    >
-                      {node.description}
-                    </div>
-                  )}
                   {node.children && (
                     <ul>
                       {node.children.map((child) => {
