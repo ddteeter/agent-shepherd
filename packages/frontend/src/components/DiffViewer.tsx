@@ -187,7 +187,7 @@ function FileDiff({
   const lang = getLangFromPath(file.path);
   const isLarge = file.lineCount > COLLAPSE_THRESHOLD;
   const [expanded, setExpanded] = useState(!isLarge);
-  const [hoveredLineIdx, setHoveredLineIdx] = useState<number | null>(null);
+  const [hoveredLineKey, setHoveredLineKey] = useState<string | null>(null);
 
   if (!expanded) {
     return (
@@ -287,11 +287,11 @@ function FileDiff({
                       }}
                       onClick={onAddComment ? (e) => onLineClick(file.path, lineNo, e.shiftKey) : undefined}
                       onMouseDown={onAddComment ? (e) => { if (!e.shiftKey) { e.preventDefault(); onDragStart(file.path, lineNo); } } : undefined}
-                      onMouseEnter={() => { setHoveredLineIdx(lineIdx); onDragOver(file.path, lineNo); }}
-                      onMouseLeave={() => setHoveredLineIdx((prev) => prev === lineIdx ? null : prev)}
+                      onMouseEnter={() => { setHoveredLineKey(`${hunkIdx}:${lineIdx}`); onDragOver(file.path, lineNo); }}
+                      onMouseLeave={() => setHoveredLineKey((prev) => prev === `${hunkIdx}:${lineIdx}` ? null : prev)}
                       onMouseUp={onFinalizeDrag}
                     >
-                      {onAddComment && !isInSelectedRange && !buttonsHidden && hoveredLineIdx === lineIdx && (
+                      {onAddComment && !isInSelectedRange && !buttonsHidden && hoveredLineKey === `${hunkIdx}:${lineIdx}` && (
                         <span
                           className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-xs rounded-sm"
                           style={{ backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-accent)', border: '1px solid var(--color-border)', transform: 'translateX(-2px)' }}
