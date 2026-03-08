@@ -81,6 +81,7 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 - Never introduce TODO comments in code -- either implement immediately or document in `docs/plans/`
 - Do not add code comments that merely restate what the code does -- comments should explain WHY, not WHAT. If a function or route name is self-descriptive, no comment is needed.
 - When a skill exists for an agent task, prompts should reference the skill by name rather than duplicating its content. Do not repeat skill instructions in prompt builders -- the skill is the single source of truth. If something needs to change about agent behavior, change the skill, not the prompt.
+- **Build must be clean before completing work.** Always run `npm run build` and verify zero TypeScript errors across all packages before considering a feature done. Do not rely on tests alone -- tests can pass while `tsc` reports type errors.
 
 ## Agent Orchestrator
 
