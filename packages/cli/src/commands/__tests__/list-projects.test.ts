@@ -28,7 +28,7 @@ describe('listProjectsCommand', () => {
     ]);
     await program.parseAsync(['node', 'test', 'list-projects']);
 
-    const allOutput = logSpy.mock.calls.map(c => c[0]).join('\n');
+    const allOutput = logSpy.mock.calls.map((c: string[]) => c[0]).join('\n');
     expect(allOutput).toContain('ID');
     expect(allOutput).toContain('Name');
     expect(allOutput).toContain('myproject');
