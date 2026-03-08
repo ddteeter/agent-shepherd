@@ -1,5 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 
+// Mock scrollIntoView for jsdom
+Element.prototype.scrollIntoView = Element.prototype.scrollIntoView || function () {};
+
 // Mock IntersectionObserver for tests that render DiffViewer.
 // Immediately reports all observed elements as intersecting so content renders.
 globalThis.IntersectionObserver = class IntersectionObserver {

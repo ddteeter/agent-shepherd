@@ -305,4 +305,179 @@ describe('CommentThread — status badges', () => {
     // Action buttons should be hidden
     expect(screen.queryByText('Reply')).not.toBeInTheDocument();
   });
+
+  it('expands resolved thread on click (user toggle)', async () => {
+    const user = userEvent.setup();
+    render(
+      <CommentThread
+        comment={makeComment({ resolved: true, body: 'Resolved comment' })}
+        replies={[makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1', body: 'Agent reply' })]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        threadStatus="resolved"
+      />,
+    );
+    expect(screen.queryByText('Agent reply')).not.toBeInTheDocument();
+
+    // Click on the comment area to toggle
+    await user.click(screen.getByText('Resolved comment'));
+    expect(screen.getByText('Agent reply')).toBeInTheDocument();
+  });
+});
+
+describe('CommentThread — replies', () => {
+  it('renders replies with author badges', () => {
+    render(
+      <CommentThread
+        comment={makeComment()}
+        replies={[
+          makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1', body: 'Agent reply here' }),
+          makeComment({ id: 'r2', author: 'human', parentCommentId: 'c1', body: 'Human reply here' }),
+        ]}
+        onReply={() => {}}
+        onResolve={() => {}}
+      />,
+    );
+    expect(screen.getByText('Agent reply here')).toBeInTheDocument();
+    expect(screen.getByText('Human reply here')).toBeInTheDocument();
+  });
+
+  it('opens and submits reply form', async () => {
+    const user = userEvent.setup();
+    const onReply = vi.fn();
+    render(
+      <CommentThread
+        comment={makeComment({ id: 'c1' })}
+        replies={[]}
+        onReply={onReply}
+        onResolve={() => {}}
+      />,
+    );
+    // Click the action bar "Reply" button to open the form
+    const replyButtons = screen.getAllByText('Reply');
+    await user.click(replyButtons[0]);
+    const textarea = screen.getByPlaceholderText('Write a reply...');
+    await user.type(textarea, 'My reply');
+    // Now the form has its own Reply submit button
+    const submitButtons = screen.getAllByText('Reply');
+    await user.click(submitButtons[submitButtons.length - 1]);
+    expect(onReply).toHaveBeenCalledWith('c1', 'My reply');
+  });
+
+  it('calls onResolve when Resolve is clicked', async () => {
+    const user = userEvent.setup();
+    const onResolve = vi.fn();
+    render(
+      <CommentThread
+        comment={makeComment({ id: 'c1' })}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={onResolve}
+      />,
+    );
+    await user.click(screen.getByText('Resolve'));
+    expect(onResolve).toHaveBeenCalledWith('c1');
+  });
+
+  it('hides Resolve button when comment is already resolved', () => {
+    render(
+      <CommentThread
+        comment={makeComment({ resolved: true })}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+      />,
+    );
+    expect(screen.queryByText('Resolve')).not.toBeInTheDocument();
+  });
+});
+
+describe('CommentThread — delete', () => {
+  it('shows Delete button for human comments when canEdit and onDelete provided', () => {
+    render(
+      <CommentThread
+        comment={makeComment({ author: 'human' })}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        onDelete={() => {}}
+        canEdit={true}
+      />,
+    );
+    expect(screen.getByText('Delete')).toBeInTheDocument();
+  });
+
+  it('calls onDelete when Delete is clicked', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(
+      <CommentThread
+        comment={makeComment({ id: 'c1', author: 'human' })}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        onDelete={onDelete}
+        canEdit={true}
+      />,
+    );
+    await user.click(screen.getByText('Delete'));
+    expect(onDelete).toHaveBeenCalledWith('c1');
+  });
+
+  it('does not show Delete for agent comments', () => {
+    render(
+      <CommentThread
+        comment={makeComment({ author: 'agent' })}
+        replies={[]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        onDelete={() => {}}
+        canEdit={true}
+      />,
+    );
+    expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+  });
+});
+
+describe('CommentThread — reply editing', () => {
+  it('edits a reply', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(
+      <CommentThread
+        comment={makeComment()}
+        replies={[makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1', body: 'Old reply' })]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        onEdit={onEdit}
+        canEdit={true}
+      />,
+    );
+    // There will be two Edit buttons: one for the main comment, one for the reply
+    const editButtons = screen.getAllByText('Edit');
+    await user.click(editButtons[1]);
+    const textarea = screen.getByDisplayValue('Old reply');
+    await user.clear(textarea);
+    await user.type(textarea, 'New reply');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(onEdit).toHaveBeenCalledWith('r1', 'New reply');
+  });
+
+  it('deletes a reply', async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    render(
+      <CommentThread
+        comment={makeComment()}
+        replies={[makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1', body: 'Reply' })]}
+        onReply={() => {}}
+        onResolve={() => {}}
+        onDelete={onDelete}
+        canEdit={true}
+      />,
+    );
+    const deleteButtons = screen.getAllByText('Delete');
+    await user.click(deleteButtons[1]);
+    expect(onDelete).toHaveBeenCalledWith('r1');
+  });
 });
