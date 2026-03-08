@@ -117,7 +117,21 @@ export async function diffRoutes(fastify: FastifyInstance) {
     const diff = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
     const files = await gitService.getChangedFiles(pr.baseBranch, pr.sourceBranch);
 
-    return { diff, files, fileGroups: null };
+    // Look up file groups from the latest cycle's snapshot
+    const latestCycle = getLatestCycle(db, id);
+    let fileGroups = null;
+    if (latestCycle) {
+      const snapshot = db
+        .select()
+        .from(schema.diffSnapshots)
+        .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
+        .get();
+      if (snapshot?.fileGroups) {
+        fileGroups = JSON.parse(snapshot.fileGroups as string);
+      }
+    }
+
+    return { diff, files, fileGroups };
   });
 
   // GET /api/prs/:id/file-groups — Get file groups for a PR cycle
