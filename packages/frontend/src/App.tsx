@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard.js';
 import { ProjectView } from './pages/ProjectView.js';
 import { PRReview } from './pages/PRReview.js';
 import { THEME_GROUPS, AVAILABLE_THEMES, getStoredSyntaxTheme } from './hooks/useHighlighter.js';
 import { useSyntaxThemeColors } from './hooks/useSyntaxThemeColors.js';
+import logoIcon from './icons/agent-shepherd-logo-192-192.png';
 
 export function App() {
   const [syntaxTheme, setSyntaxThemeState] = useState(getStoredSyntaxTheme);
@@ -21,7 +22,10 @@ export function App() {
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
       <header className="border-b px-6 py-3 shrink-0 flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
-        <h1 className="text-xl font-semibold">Agent Shepherd</h1>
+        <Link to="/" className="text-xl font-semibold flex items-center gap-2 no-underline" style={{ color: 'inherit' }}>
+          <img src={logoIcon} alt="" className="h-6 w-6 rounded-sm" />
+          Agent Shepherd
+        </Link>
         <div className="flex items-center gap-3">
           <select
             value={syntaxTheme}

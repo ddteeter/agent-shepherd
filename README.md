@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="packages/frontend/src/icons/agent-shepherd-logo-192-192.png" alt="Agent Shepherd" />
+</p>
+
 # Agent Shepherd
 
 A local human-in-the-loop PR review application for AI coding agents. Agent Shepherd bridges autonomous code generation and human oversight by enabling a structured review cycle -- an AI agent implements code, a human reviews it with inline comments, and they iterate until approval.
