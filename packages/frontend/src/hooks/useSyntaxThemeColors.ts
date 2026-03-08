@@ -7,20 +7,41 @@ const COLOR_MAP: [string, string[]][] = [
   ['--color-bg-secondary', ['sideBar.background', 'editorWidget.background']],
   ['--color-text', ['editor.foreground']],
   ['--color-border', ['panel.border', 'editorGroup.border', 'sideBar.border']],
-  ['--color-accent', ['textLink.foreground', 'focusBorder', 'button.background']],
+  [
+    '--color-accent',
+    ['textLink.foreground', 'focusBorder', 'button.background'],
+  ],
   ['--color-success', ['terminal.ansiGreen']],
   ['--color-warning', ['terminal.ansiYellow', 'editorWarning.foreground']],
   ['--color-danger', ['terminal.ansiRed', 'editorError.foreground']],
-  ['--color-diff-add-bg', ['diffEditor.insertedLineBackground', 'diffEditor.insertedTextBackground']],
-  ['--color-diff-add-line', ['editorGutter.addedBackground', 'terminal.ansiGreen']],
-  ['--color-diff-remove-bg', ['diffEditor.removedLineBackground', 'diffEditor.removedTextBackground']],
-  ['--color-diff-remove-line', ['editorGutter.deletedBackground', 'terminal.ansiRed']],
+  [
+    '--color-diff-add-bg',
+    ['diffEditor.insertedLineBackground', 'diffEditor.insertedTextBackground'],
+  ],
+  [
+    '--color-diff-add-line',
+    ['editorGutter.addedBackground', 'terminal.ansiGreen'],
+  ],
+  [
+    '--color-diff-remove-bg',
+    ['diffEditor.removedLineBackground', 'diffEditor.removedTextBackground'],
+  ],
+  [
+    '--color-diff-remove-line',
+    ['editorGutter.deletedBackground', 'terminal.ansiRed'],
+  ],
   ['--color-diff-hunk-bg', ['editor.selectionBackground']],
   ['--color-btn-approve-bg', ['button.background']],
   ['--color-btn-approve-fg', ['button.foreground']],
   ['--color-btn-approve-hover', ['button.hoverBackground']],
-  ['--color-btn-danger-bg', ['statusBarItem.errorBackground', 'errorForeground']],
-  ['--color-btn-danger-fg', ['statusBarItem.errorForeground', 'button.foreground']],
+  [
+    '--color-btn-danger-bg',
+    ['statusBarItem.errorBackground', 'errorForeground'],
+  ],
+  [
+    '--color-btn-danger-fg',
+    ['statusBarItem.errorForeground', 'button.foreground'],
+  ],
   ['--color-btn-danger-hover', ['button.hoverBackground']],
   ['--color-list-hover-bg', ['list.hoverBackground']],
   ['--color-list-active-bg', ['list.activeSelectionBackground']],
@@ -62,6 +83,8 @@ export function useSyntaxThemeColors(themeId: string) {
       }
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [themeId]);
 }

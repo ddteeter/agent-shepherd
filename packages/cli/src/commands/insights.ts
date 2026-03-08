@@ -33,15 +33,22 @@ export function insightsCommand(program: Command, client: ApiClient) {
         chunks.push(chunk);
       }
       const payload = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-      const result = await client.put<any>(`/api/prs/${prId}/insights`, payload);
-      console.log(`Insights updated for PR ${prId} (${Object.keys(result.categories).length} categories)`);
+      const result = await client.put<any>(
+        `/api/prs/${prId}/insights`,
+        payload,
+      );
+      console.log(
+        `Insights updated for PR ${prId} (${Object.keys(result.categories).length} categories)`,
+      );
     });
 
   insights
     .command('history <project-id>')
     .description('Get all comments across PRs for a project')
     .action(async (projectId: string) => {
-      const comments = await client.get<any[]>(`/api/projects/${projectId}/comments/history`);
+      const comments = await client.get<any[]>(
+        `/api/projects/${projectId}/comments/history`,
+      );
       console.log(JSON.stringify(comments, null, 2));
     });
 }

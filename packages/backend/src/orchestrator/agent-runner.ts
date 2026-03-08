@@ -1,5 +1,11 @@
 import { existsSync } from 'fs';
-import type { AgentAdapter, AgentSession, AgentRunConfig, AgentRunCallbacks, AgentSource } from './types.js';
+import type {
+  AgentAdapter,
+  AgentSession,
+  AgentRunConfig,
+  AgentRunCallbacks,
+  AgentSource,
+} from './types.js';
 
 interface AgentRunnerDeps {
   adapter: AgentAdapter;
@@ -24,18 +30,25 @@ export class AgentRunner {
     return this.activeSessions.has(this.sessionKey(prId, source));
   }
 
-  async run(config: AgentRunConfig, callbacks: AgentRunCallbacks): Promise<void> {
+  async run(
+    config: AgentRunConfig,
+    callbacks: AgentRunCallbacks,
+  ): Promise<void> {
     const { prId, projectPath, prompt, source, additionalDirs } = config;
     const key = this.sessionKey(prId, source);
 
     if (!existsSync(projectPath)) {
       throw new Error(
         `Working directory does not exist: ${projectPath}\n` +
-        'The worktree may have been removed. Recreate it and try again.'
+          'The worktree may have been removed. Recreate it and try again.',
       );
     }
 
-    const session = await this.adapter.startSession({ projectPath, prompt, additionalDirs });
+    const session = await this.adapter.startSession({
+      projectPath,
+      prompt,
+      additionalDirs,
+    });
     this.activeSessions.set(key, session);
 
     this.broadcast('agent:working', { prId, source });

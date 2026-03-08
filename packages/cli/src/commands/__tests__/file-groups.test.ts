@@ -33,8 +33,17 @@ describe('fileGroupsCommand', () => {
 
   it('passes cycle query param when provided', async () => {
     client.get.mockResolvedValue({ fileGroups: [], cycleNumber: 3 });
-    await program.parseAsync(['node', 'test', 'file-groups', 'pr-1', '--cycle', '3']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'file-groups',
+      'pr-1',
+      '--cycle',
+      '3',
+    ]);
 
-    expect(client.get).toHaveBeenCalledWith('/api/prs/pr-1/file-groups?cycle=3');
+    expect(client.get).toHaveBeenCalledWith(
+      '/api/prs/pr-1/file-groups?cycle=3',
+    );
   });
 });

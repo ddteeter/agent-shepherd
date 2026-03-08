@@ -15,6 +15,7 @@
 The shared `Comment` type (`packages/shared/src/types.ts:46-58`) has `reviewCycleId`, but the frontend's local `Comment` interface (`packages/frontend/src/components/CommentThread.tsx:4-15`) omits it. The API already returns this field.
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/CommentThread.tsx:4-15`
 - Verify: `packages/frontend/src/components/__tests__/CommentThread.test.tsx` (update `makeComment` helper)
 
@@ -73,6 +74,7 @@ git commit -m "feat: add reviewCycleId to frontend Comment type"
 Pure utility function that computes thread statuses from comments + current cycle ID. Fully testable with no React dependency.
 
 **Files:**
+
 - Create: `packages/frontend/src/utils/commentThreadStatus.ts`
 - Create: `packages/frontend/src/utils/__tests__/commentThreadStatus.test.ts`
 
@@ -82,7 +84,11 @@ Create `packages/frontend/src/utils/__tests__/commentThreadStatus.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { getThreadStatus, groupThreads, type ThreadStatus } from '../commentThreadStatus.js';
+import {
+  getThreadStatus,
+  groupThreads,
+  type ThreadStatus,
+} from '../commentThreadStatus.js';
 import type { Comment } from '../../components/CommentThread.js';
 
 function makeComment(overrides: Partial<Comment> = {}): Comment {
@@ -111,14 +117,18 @@ describe('getThreadStatus', () => {
 
   it('returns "agent-replied" when thread has agent reply and is not resolved', () => {
     const comment = makeComment({ reviewCycleId: 'cycle-1' });
-    const replies = [makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' })];
+    const replies = [
+      makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' }),
+    ];
     expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('agent-replied');
   });
 
   it('returns "needs-attention" when no agent reply and from a previous cycle', () => {
     const comment = makeComment({ reviewCycleId: 'cycle-1' });
     const replies: Comment[] = [];
-    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('needs-attention');
+    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe(
+      'needs-attention',
+    );
   });
 
   it('returns "new" when comment is from the current cycle', () => {
@@ -135,14 +145,20 @@ describe('getThreadStatus', () => {
 
   it('resolved takes priority over agent-replied', () => {
     const comment = makeComment({ resolved: true, reviewCycleId: 'cycle-1' });
-    const replies = [makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' })];
+    const replies = [
+      makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' }),
+    ];
     expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('resolved');
   });
 
   it('human-only replies do not count as agent-replied', () => {
     const comment = makeComment({ reviewCycleId: 'cycle-1' });
-    const replies = [makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1' })];
-    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('needs-attention');
+    const replies = [
+      makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1' }),
+    ];
+    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe(
+      'needs-attention',
+    );
   });
 });
 
@@ -175,7 +191,11 @@ Create `packages/frontend/src/utils/commentThreadStatus.ts`:
 ```typescript
 import type { Comment } from '../components/CommentThread.js';
 
-export type ThreadStatus = 'resolved' | 'agent-replied' | 'needs-attention' | 'new';
+export type ThreadStatus =
+  | 'resolved'
+  | 'agent-replied'
+  | 'needs-attention'
+  | 'new';
 
 export interface CommentThread {
   comment: Comment;
@@ -245,6 +265,7 @@ git commit -m "feat: add thread status derivation utility"
 A segmented control for filtering comment threads by status.
 
 **Files:**
+
 - Create: `packages/frontend/src/components/CommentFilter.tsx`
 - Create: `packages/frontend/src/components/__tests__/CommentFilter.test.tsx`
 
@@ -311,13 +332,25 @@ interface CommentFilterProps {
   };
 }
 
-const filters: { value: CommentFilterValue; label: string; countKey: keyof CommentFilterProps['counts'] }[] = [
+const filters: {
+  value: CommentFilterValue;
+  label: string;
+  countKey: keyof CommentFilterProps['counts'];
+}[] = [
   { value: 'all', label: 'All', countKey: 'all' },
-  { value: 'needs-attention', label: 'Needs Attention', countKey: 'needsAttention' },
+  {
+    value: 'needs-attention',
+    label: 'Needs Attention',
+    countKey: 'needsAttention',
+  },
   { value: 'agent-replied', label: 'Agent Replied', countKey: 'agentReplied' },
 ];
 
-export function CommentFilter({ activeFilter, onFilterChange, counts }: CommentFilterProps) {
+export function CommentFilter({
+  activeFilter,
+  onFilterChange,
+  counts,
+}: CommentFilterProps) {
   return (
     <div className="flex gap-1 p-2" role="group" aria-label="Comment filter">
       {filters.map(({ value, label, countKey }) => {
@@ -329,8 +362,12 @@ export function CommentFilter({ activeFilter, onFilterChange, counts }: CommentF
             onClick={() => onFilterChange(value)}
             className="text-xs px-2.5 py-1 rounded border font-medium transition-colors"
             style={{
-              borderColor: isActive ? 'var(--color-accent)' : 'var(--color-border)',
-              backgroundColor: isActive ? 'rgba(9, 105, 218, 0.1)' : 'transparent',
+              borderColor: isActive
+                ? 'var(--color-accent)'
+                : 'var(--color-border)',
+              backgroundColor: isActive
+                ? 'rgba(9, 105, 218, 0.1)'
+                : 'transparent',
               color: isActive ? 'var(--color-accent)' : 'var(--color-text)',
             }}
           >
@@ -362,6 +399,7 @@ git commit -m "feat: add CommentFilter segmented control component"
 Add an optional `status` prop to `CommentThread` that renders a colored badge and controls dimming/collapsing for resolved threads.
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/CommentThread.tsx`
 - Modify: `packages/frontend/src/components/__tests__/CommentThread.test.tsx`
 
@@ -437,11 +475,13 @@ Expected: FAIL (threadStatus prop not recognized, badges not rendered)
 In `packages/frontend/src/components/CommentThread.tsx`:
 
 1. Import the `ThreadStatus` type:
+
 ```typescript
 import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 ```
 
 2. Add `threadStatus?: ThreadStatus` to `CommentThreadProps`:
+
 ```typescript
 interface CommentThreadProps {
   comment: Comment;
@@ -456,6 +496,7 @@ interface CommentThreadProps {
 ```
 
 3. Add `threadStatus` to the destructured props:
+
 ```typescript
 export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false, threadStatus }: CommentThreadProps) {
 ```
@@ -463,6 +504,7 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
 4. Add the status badge in the header (after the resolved span, before the edit button), and add opacity to the outer div for resolved:
 
 In the outer `<div>`, add conditional opacity:
+
 ```tsx
 <div
   className="my-2 mx-4 border rounded text-sm"
@@ -475,23 +517,34 @@ In the outer `<div>`, add conditional opacity:
 ```
 
 Add the badge after the existing `{comment.resolved && ...}` span (around line 80):
+
 ```tsx
-{threadStatus === 'agent-replied' && (
-  <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{
-    backgroundColor: 'rgba(9, 105, 218, 0.15)',
-    color: 'var(--color-accent)',
-  }}>
-    Agent Replied
-  </span>
-)}
-{threadStatus === 'needs-attention' && (
-  <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{
-    backgroundColor: 'rgba(210, 153, 34, 0.15)',
-    color: 'var(--color-warning, #d29922)',
-  }}>
-    Unaddressed
-  </span>
-)}
+{
+  threadStatus === 'agent-replied' && (
+    <span
+      className="text-xs px-1.5 py-0.5 rounded font-medium"
+      style={{
+        backgroundColor: 'rgba(9, 105, 218, 0.15)',
+        color: 'var(--color-accent)',
+      }}
+    >
+      Agent Replied
+    </span>
+  );
+}
+{
+  threadStatus === 'needs-attention' && (
+    <span
+      className="text-xs px-1.5 py-0.5 rounded font-medium"
+      style={{
+        backgroundColor: 'rgba(210, 153, 34, 0.15)',
+        color: 'var(--color-warning, #d29922)',
+      }}
+    >
+      Unaddressed
+    </span>
+  );
+}
 ```
 
 **Step 4: Run tests to verify they pass**
@@ -513,11 +566,13 @@ git commit -m "feat: add status badge and resolved dimming to CommentThread"
 Connect everything: add filter state, compute thread statuses, filter comments, update counts.
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 
 **Step 1: Add imports**
 
 At top of `PRReview.tsx`, add:
+
 ```typescript
 import { CommentFilter } from '../components/CommentFilter.js';
 import type { CommentFilterValue } from '../components/CommentFilter.js';
@@ -528,6 +583,7 @@ import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 **Step 2: Add filter state**
 
 After the existing state declarations (around line 38), add:
+
 ```typescript
 const [commentFilter, setCommentFilter] = useState<CommentFilterValue>('all');
 ```
@@ -542,7 +598,11 @@ const threadStatusMap = useMemo(() => {
   if (!latestCycle) return map;
   const threads = groupThreads(comments);
   for (const thread of threads) {
-    const status = getThreadStatus(thread.comment, thread.replies, latestCycle.id);
+    const status = getThreadStatus(
+      thread.comment,
+      thread.replies,
+      latestCycle.id,
+    );
     map.set(thread.comment.id, status);
   }
   return map;
@@ -605,6 +665,7 @@ const commentCounts = useMemo(() => {
 **Step 7: Pass filtered comments and threadStatusMap to DiffViewer**
 
 Update the DiffViewer props:
+
 ```tsx
 <DiffViewer
   diff={diffData.diff}
@@ -630,13 +691,15 @@ Update the DiffViewer props:
 Place the CommentFilter between the PR header and the main content area. Inside the header div (after the agent status section, around line 436), add:
 
 ```tsx
-{cycles.length > 1 && (
-  <CommentFilter
-    activeFilter={commentFilter}
-    onFilterChange={setCommentFilter}
-    counts={filterCounts}
-  />
-)}
+{
+  cycles.length > 1 && (
+    <CommentFilter
+      activeFilter={commentFilter}
+      onFilterChange={setCommentFilter}
+      counts={filterCounts}
+    />
+  );
+}
 ```
 
 Only show when there are multiple cycles (first cycle has no filtering to do).
@@ -660,11 +723,13 @@ git commit -m "feat: wire comment filter state and thread status computation"
 DiffViewer needs to accept the status map and forward the appropriate status to each CommentThread it renders.
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/DiffViewer.tsx`
 
 **Step 1: Add threadStatusMap prop to DiffViewerProps**
 
 In `DiffViewer.tsx`, add to the `DiffViewerProps` interface:
+
 ```typescript
 threadStatusMap?: Map<string, import('../utils/commentThreadStatus.js').ThreadStatus>;
 ```
@@ -684,6 +749,7 @@ There are three places where `<CommentThread>` is rendered in DiffViewer:
 3. **Line-level comments** (around line 326): Same — passed through `FileDiff` to `<CommentThread>`.
 
 For the `FileDiff` sub-component (defined inside DiffViewer), add `threadStatusMap` to its props and pass it down. Then in each CommentThread usage:
+
 ```tsx
 <CommentThread
   key={comment.id}
@@ -706,6 +772,7 @@ Expected: PASS (existing DiffViewer tests pass — the new prop is optional)
 **Step 5: Manual verification**
 
 Run: `npm run dev`
+
 - Open a PR with multiple review cycles
 - Verify badges appear on comment threads
 - Verify filter bar appears when cycles > 1
@@ -739,11 +806,11 @@ Expected: Clean build with no TypeScript errors
 
 ## Summary of Changes
 
-| File | Change |
-|------|--------|
+| File                                                 | Change                                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `packages/frontend/src/components/CommentThread.tsx` | Add `reviewCycleId` to Comment type, add `threadStatus` prop with badge + dimming |
-| `packages/frontend/src/utils/commentThreadStatus.ts` | New: thread status derivation logic |
-| `packages/frontend/src/components/CommentFilter.tsx` | New: filter bar segmented control |
-| `packages/frontend/src/pages/PRReview.tsx` | Add filter state, compute statuses, filter comments, update counts |
-| `packages/frontend/src/components/DiffViewer.tsx` | Accept + pass through `threadStatusMap` |
-| Test files | New tests for utility + filter component, updated CommentThread tests |
+| `packages/frontend/src/utils/commentThreadStatus.ts` | New: thread status derivation logic                                               |
+| `packages/frontend/src/components/CommentFilter.tsx` | New: filter bar segmented control                                                 |
+| `packages/frontend/src/pages/PRReview.tsx`           | Add filter state, compute statuses, filter comments, update counts                |
+| `packages/frontend/src/components/DiffViewer.tsx`    | Accept + pass through `threadStatusMap`                                           |
+| Test files                                           | New tests for utility + filter component, updated CommentThread tests             |

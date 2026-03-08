@@ -41,11 +41,33 @@ function renderWithRouter() {
 describe('ProjectView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockApi.projects.get.mockResolvedValue({ id: 'proj-1', name: 'Test Project', path: '/tmp/test' });
+    mockApi.projects.get.mockResolvedValue({
+      id: 'proj-1',
+      name: 'Test Project',
+      path: '/tmp/test',
+    });
     mockApi.prs.list.mockResolvedValue([
-      { id: 'pr-1', title: 'Add feature', sourceBranch: 'feat/x', baseBranch: 'main', status: 'open' },
-      { id: 'pr-2', title: 'Old PR', sourceBranch: 'fix/y', baseBranch: 'main', status: 'approved' },
-      { id: 'pr-3', title: 'Closed PR', sourceBranch: 'fix/z', baseBranch: 'main', status: 'closed' },
+      {
+        id: 'pr-1',
+        title: 'Add feature',
+        sourceBranch: 'feat/x',
+        baseBranch: 'main',
+        status: 'open',
+      },
+      {
+        id: 'pr-2',
+        title: 'Old PR',
+        sourceBranch: 'fix/y',
+        baseBranch: 'main',
+        status: 'approved',
+      },
+      {
+        id: 'pr-3',
+        title: 'Closed PR',
+        sourceBranch: 'fix/z',
+        baseBranch: 'main',
+        status: 'closed',
+      },
     ]);
   });
 
@@ -184,7 +206,13 @@ describe('ProjectView', () => {
   it('shows empty state when no PRs match tab', async () => {
     const user = userEvent.setup();
     mockApi.prs.list.mockResolvedValue([
-      { id: 'pr-1', title: 'Add feature', sourceBranch: 'feat/x', baseBranch: 'main', status: 'open' },
+      {
+        id: 'pr-1',
+        title: 'Add feature',
+        sourceBranch: 'feat/x',
+        baseBranch: 'main',
+        status: 'open',
+      },
     ]);
     renderWithRouter();
     await waitFor(() => screen.getByText('Add feature'));

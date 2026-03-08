@@ -13,16 +13,20 @@
 ### Task 1: Update DiffViewerProps and DiffViewer State
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/DiffViewer.tsx:7-17` (DiffViewerProps interface)
 - Modify: `packages/frontend/src/components/DiffViewer.tsx:237-241` (state declarations)
 
 **Step 1: Widen onAddComment in DiffViewerProps**
 
 Change line 14 from:
+
 ```tsx
 onAddComment?: (data: { filePath: string; line: number; body: string; severity: string }) => void;
 ```
+
 to:
+
 ```tsx
 onAddComment?: (data: { filePath: string; startLine: number; endLine: number; body: string; severity: string }) => void;
 ```
@@ -30,13 +34,26 @@ onAddComment?: (data: { filePath: string; startLine: number; endLine: number; bo
 **Step 2: Update commentFormLine state type and add drag/anchor state**
 
 Change line 240 from:
+
 ```tsx
-const [commentFormLine, setCommentFormLine] = useState<{ file: string; line: number } | null>(null);
+const [commentFormLine, setCommentFormLine] = useState<{
+  file: string;
+  line: number;
+} | null>(null);
 ```
+
 to:
+
 ```tsx
-const [commentFormLine, setCommentFormLine] = useState<{ file: string; startLine: number; endLine: number } | null>(null);
-const [rangeAnchor, setRangeAnchor] = useState<{ file: string; line: number } | null>(null);
+const [commentFormLine, setCommentFormLine] = useState<{
+  file: string;
+  startLine: number;
+  endLine: number;
+} | null>(null);
+const [rangeAnchor, setRangeAnchor] = useState<{
+  file: string;
+  line: number;
+} | null>(null);
 const isDragging = useRef(false);
 const dragAnchor = useRef<{ file: string; line: number } | null>(null);
 ```
@@ -58,60 +75,84 @@ git commit -m "refactor: widen DiffViewer comment types to support line ranges"
 ### Task 2: Update DiffViewer Callbacks and Comment Grouping
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/DiffViewer.tsx:299-323` (useMemo + handleAddComment)
 
 **Step 1: Add commentRangeLines to the existing useMemo**
 
 Replace lines 300-318:
-```tsx
-const { commentsByFileLine, repliesByParent, commentRangeLines } = useMemo(() => {
-  const byFileLine = new Map<string, Comment[]>();
-  const byParent = new Map<string, Comment[]>();
-  const rangeLines = new Set<string>();
 
-  for (const comment of comments) {
-    if (comment.parentCommentId) {
-      const existing = byParent.get(comment.parentCommentId) || [];
-      existing.push(comment);
-      byParent.set(comment.parentCommentId, existing);
-    } else {
-      const key = `${comment.filePath}:${comment.startLine}`;
-      const existing = byFileLine.get(key) || [];
-      existing.push(comment);
-      byFileLine.set(key, existing);
-      if (comment.startLine !== comment.endLine) {
-        for (let l = comment.startLine; l <= comment.endLine; l++) {
-          rangeLines.add(`${comment.filePath}:${l}`);
+```tsx
+const { commentsByFileLine, repliesByParent, commentRangeLines } =
+  useMemo(() => {
+    const byFileLine = new Map<string, Comment[]>();
+    const byParent = new Map<string, Comment[]>();
+    const rangeLines = new Set<string>();
+
+    for (const comment of comments) {
+      if (comment.parentCommentId) {
+        const existing = byParent.get(comment.parentCommentId) || [];
+        existing.push(comment);
+        byParent.set(comment.parentCommentId, existing);
+      } else {
+        const key = `${comment.filePath}:${comment.startLine}`;
+        const existing = byFileLine.get(key) || [];
+        existing.push(comment);
+        byFileLine.set(key, existing);
+        if (comment.startLine !== comment.endLine) {
+          for (let l = comment.startLine; l <= comment.endLine; l++) {
+            rangeLines.add(`${comment.filePath}:${l}`);
+          }
         }
       }
     }
-  }
 
-  return { commentsByFileLine: byFileLine, repliesByParent: byParent, commentRangeLines: rangeLines };
-}, [comments]);
+    return {
+      commentsByFileLine: byFileLine,
+      repliesByParent: byParent,
+      commentRangeLines: rangeLines,
+    };
+  }, [comments]);
 ```
 
 **Step 2: Replace handleAddComment and add interaction handlers**
 
 Replace lines 320-323 with:
+
 ```tsx
-const handleAddComment = useCallback((filePath: string, startLine: number, endLine: number, body: string, severity: string) => {
-  onAddComment?.({ filePath, startLine, endLine, body, severity });
-  setCommentFormLine(null);
-  setRangeAnchor(null);
-}, [onAddComment]);
+const handleAddComment = useCallback(
+  (
+    filePath: string,
+    startLine: number,
+    endLine: number,
+    body: string,
+    severity: string,
+  ) => {
+    onAddComment?.({ filePath, startLine, endLine, body, severity });
+    setCommentFormLine(null);
+    setRangeAnchor(null);
+  },
+  [onAddComment],
+);
 
 // Shift-click: extend range from anchor. Normal click: set anchor + open single-line form.
-const handleLineClick = useCallback((filePath: string, lineNo: number, shiftKey: boolean) => {
-  if (shiftKey && rangeAnchor && rangeAnchor.file === filePath) {
-    const start = Math.min(rangeAnchor.line, lineNo);
-    const end = Math.max(rangeAnchor.line, lineNo);
-    setCommentFormLine({ file: filePath, startLine: start, endLine: end });
-  } else {
-    setRangeAnchor({ file: filePath, line: lineNo });
-    setCommentFormLine({ file: filePath, startLine: lineNo, endLine: lineNo });
-  }
-}, [rangeAnchor]);
+const handleLineClick = useCallback(
+  (filePath: string, lineNo: number, shiftKey: boolean) => {
+    if (shiftKey && rangeAnchor && rangeAnchor.file === filePath) {
+      const start = Math.min(rangeAnchor.line, lineNo);
+      const end = Math.max(rangeAnchor.line, lineNo);
+      setCommentFormLine({ file: filePath, startLine: start, endLine: end });
+    } else {
+      setRangeAnchor({ file: filePath, line: lineNo });
+      setCommentFormLine({
+        file: filePath,
+        startLine: lineNo,
+        endLine: lineNo,
+      });
+    }
+  },
+  [rangeAnchor],
+);
 
 // Drag: mousedown sets anchor, mouseover extends range, mouseup finalizes.
 const handleDragStart = useCallback((filePath: string, lineNo: number) => {
@@ -122,7 +163,12 @@ const handleDragStart = useCallback((filePath: string, lineNo: number) => {
 }, []);
 
 const handleDragOver = useCallback((filePath: string, lineNo: number) => {
-  if (!isDragging.current || !dragAnchor.current || dragAnchor.current.file !== filePath) return;
+  if (
+    !isDragging.current ||
+    !dragAnchor.current ||
+    dragAnchor.current.file !== filePath
+  )
+    return;
   const start = Math.min(dragAnchor.current.line, lineNo);
   const end = Math.max(dragAnchor.current.line, lineNo);
   setCommentFormLine({ file: filePath, startLine: start, endLine: end });
@@ -163,11 +209,13 @@ git commit -m "feat: add shift-click and drag range selection callbacks"
 ### Task 3: Update FileDiff Component Props and Rendering
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/DiffViewer.tsx:96-235` (FileDiff component)
 
 **Step 1: Update the FileDiff component signature**
 
 Replace lines 97-123 with:
+
 ```tsx
 function FileDiffComponent({
   file,
@@ -213,92 +261,132 @@ Note: renamed from `FileDiff` to `FileDiffComponent` to avoid name collision wit
 **Step 2: Update the line rendering inside FileDiffComponent**
 
 Replace the `hunk.lines.map` callback (lines 166-229) with:
+
 ```tsx
-{hunk.lines.map((line, lineIdx) => {
-  const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
-  const isFormOpen = commentFormLine?.file === file.path && commentFormLine?.endLine === lineNo;
-  const isInSelectedRange = commentFormLine !== null
-    && commentFormLine.file === file.path
-    && lineNo >= commentFormLine.startLine
-    && lineNo <= commentFormLine.endLine;
-  const isInCommentRange = commentRangeLines.has(`${file.path}:${lineNo}`);
-  const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
-  const tokens = tokenizeLine(line.content, lang);
+{
+  hunk.lines.map((line, lineIdx) => {
+    const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
+    const isFormOpen =
+      commentFormLine?.file === file.path &&
+      commentFormLine?.endLine === lineNo;
+    const isInSelectedRange =
+      commentFormLine !== null &&
+      commentFormLine.file === file.path &&
+      lineNo >= commentFormLine.startLine &&
+      lineNo <= commentFormLine.endLine;
+    const isInCommentRange = commentRangeLines.has(`${file.path}:${lineNo}`);
+    const lineComments = commentsByFileLine.get(`${file.path}:${lineNo}`) || [];
+    const tokens = tokenizeLine(line.content, lang);
 
-  return (
-    <div key={lineIdx}>
-      <div
-        className="diff-line px-4 py-0 flex relative"
-        style={{
-          borderLeft: line.type === 'add' ? '3px solid #3fb950'
-            : line.type === 'remove' ? '3px solid #f85149'
-            : '3px solid transparent',
-          backgroundColor: isInSelectedRange
-            ? 'rgba(9, 105, 218, 0.12)'
-            : isInCommentRange
-              ? 'rgba(9, 105, 218, 0.05)'
-              : undefined,
-        }}
-        onMouseEnter={() => onDragOver(file.path, lineNo)}
-        onMouseUp={onDragEnd}
-      >
-        {onAddComment && !isInSelectedRange && (
-          <button
-            className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-white text-xs rounded opacity-0"
-            style={{ backgroundColor: 'var(--color-accent)', transform: 'translateX(-2px)' }}
-            onClick={(e) => onLineClick(file.path, lineNo, e.shiftKey)}
-            onMouseDown={(e) => { if (!e.shiftKey) { e.preventDefault(); onDragStart(file.path, lineNo); } }}
-            title="Add comment (shift-click or drag for range)"
-          >
-            +
-          </button>
-        )}
-        <span className="w-12 text-right pr-2 select-none shrink-0" style={{ color: themeFg, opacity: 0.4 }}>
-          {line.oldLineNo ?? ''}
-        </span>
-        <span className="w-12 text-right pr-2 select-none shrink-0" style={{ color: themeFg, opacity: 0.4 }}>
-          {line.newLineNo ?? ''}
-        </span>
-        <span className="w-4 select-none shrink-0" style={{
-          color: line.type === 'add' ? '#3fb950' :
-                 line.type === 'remove' ? '#f85149' : 'transparent'
-        }}>
-          {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
-        </span>
-        <HighlightedContent content={line.content} tokens={tokens} />
-      </div>
-
-      {isFormOpen && onAddComment && (
-        <div className="mx-4 my-1">
-          {commentFormLine!.startLine !== commentFormLine!.endLine && (
-            <div className="text-xs mb-1" style={{ color: 'var(--color-accent)' }}>
-              Lines {commentFormLine!.startLine}–{commentFormLine!.endLine}
-            </div>
+    return (
+      <div key={lineIdx}>
+        <div
+          className="diff-line px-4 py-0 flex relative"
+          style={{
+            borderLeft:
+              line.type === 'add'
+                ? '3px solid #3fb950'
+                : line.type === 'remove'
+                  ? '3px solid #f85149'
+                  : '3px solid transparent',
+            backgroundColor: isInSelectedRange
+              ? 'rgba(9, 105, 218, 0.12)'
+              : isInCommentRange
+                ? 'rgba(9, 105, 218, 0.05)'
+                : undefined,
+          }}
+          onMouseEnter={() => onDragOver(file.path, lineNo)}
+          onMouseUp={onDragEnd}
+        >
+          {onAddComment && !isInSelectedRange && (
+            <button
+              className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-white text-xs rounded opacity-0"
+              style={{
+                backgroundColor: 'var(--color-accent)',
+                transform: 'translateX(-2px)',
+              }}
+              onClick={(e) => onLineClick(file.path, lineNo, e.shiftKey)}
+              onMouseDown={(e) => {
+                if (!e.shiftKey) {
+                  e.preventDefault();
+                  onDragStart(file.path, lineNo);
+                }
+              }}
+              title="Add comment (shift-click or drag for range)"
+            >
+              +
+            </button>
           )}
-          <CommentForm
-            onSubmit={({ body, severity }) => {
-              handleAddComment(file.path, commentFormLine!.startLine, commentFormLine!.endLine, body, severity || 'suggestion');
+          <span
+            className="w-12 text-right pr-2 select-none shrink-0"
+            style={{ color: themeFg, opacity: 0.4 }}
+          >
+            {line.oldLineNo ?? ''}
+          </span>
+          <span
+            className="w-12 text-right pr-2 select-none shrink-0"
+            style={{ color: themeFg, opacity: 0.4 }}
+          >
+            {line.newLineNo ?? ''}
+          </span>
+          <span
+            className="w-4 select-none shrink-0"
+            style={{
+              color:
+                line.type === 'add'
+                  ? '#3fb950'
+                  : line.type === 'remove'
+                    ? '#f85149'
+                    : 'transparent',
             }}
-            onCancel={onCancelComment}
-          />
+          >
+            {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+          </span>
+          <HighlightedContent content={line.content} tokens={tokens} />
         </div>
-      )}
 
-      {lineComments.map((comment) => (
-        <CommentThread
-          key={comment.id}
-          comment={comment}
-          replies={repliesByParent.get(comment.id) || []}
-          onReply={onReplyComment || (() => {})}
-          onResolve={onResolveComment || (() => {})}
-        />
-      ))}
-    </div>
-  );
-})}
+        {isFormOpen && onAddComment && (
+          <div className="mx-4 my-1">
+            {commentFormLine!.startLine !== commentFormLine!.endLine && (
+              <div
+                className="text-xs mb-1"
+                style={{ color: 'var(--color-accent)' }}
+              >
+                Lines {commentFormLine!.startLine}–{commentFormLine!.endLine}
+              </div>
+            )}
+            <CommentForm
+              onSubmit={({ body, severity }) => {
+                handleAddComment(
+                  file.path,
+                  commentFormLine!.startLine,
+                  commentFormLine!.endLine,
+                  body,
+                  severity || 'suggestion',
+                );
+              }}
+              onCancel={onCancelComment}
+            />
+          </div>
+        )}
+
+        {lineComments.map((comment) => (
+          <CommentThread
+            key={comment.id}
+            comment={comment}
+            replies={repliesByParent.get(comment.id) || []}
+            onReply={onReplyComment || (() => {})}
+            onResolve={onResolveComment || (() => {})}
+          />
+        ))}
+      </div>
+    );
+  });
+}
 ```
 
 Key interaction details:
+
 - **Drag**: `onMouseDown` on "+" button (only when `!e.shiftKey`) calls `e.preventDefault()` (prevents text selection) then `onDragStart`. `onMouseEnter` on each diff line calls `onDragOver` (extends range while dragging). `onMouseUp` / global `window.mouseup` calls `onDragEnd`.
 - **Shift-click**: `onMouseDown` skips when shift is held, letting the `onClick` handler fire `onLineClick` which extends range from the existing anchor.
 - **Normal click**: Both `onMouseDown` (drag start) and `onClick` (line click) fire — both set the same single-line state, so they're idempotent.
@@ -306,6 +394,7 @@ Key interaction details:
 **Step 3: Update the FileDiffComponent call site**
 
 Replace lines 349-362:
+
 ```tsx
 <FileDiffComponent
   file={file}
@@ -345,13 +434,21 @@ git commit -m "feat: add range selection highlighting with shift-click and drag"
 ### Task 4: Update PRReview.tsx
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx:116-127`
 
 **Step 1: Update handleAddComment signature**
 
 Replace lines 116-127:
+
 ```tsx
-const handleAddComment = async (data: { filePath: string; startLine: number; endLine: number; body: string; severity: string }) => {
+const handleAddComment = async (data: {
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  body: string;
+  severity: string;
+}) => {
   if (!prId) return;
   await api.comments.create(prId, {
     filePath: data.filePath,
@@ -382,17 +479,21 @@ git commit -m "feat: forward startLine/endLine in PRReview comment handler"
 ### Task 5: Show Line Range on CommentThread
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/CommentThread.tsx:39-55`
 
 **Step 1: Add range label after severity badge**
 
 After line 51 (`</span>` closing the severity badge) and before line 52 (`{comment.resolved && (`), add:
+
 ```tsx
-{comment.startLine !== comment.endLine && (
-  <span className="text-xs opacity-50">
-    L{comment.startLine}–{comment.endLine}
-  </span>
-)}
+{
+  comment.startLine !== comment.endLine && (
+    <span className="text-xs opacity-50">
+      L{comment.startLine}–{comment.endLine}
+    </span>
+  );
+}
 ```
 
 **Step 2: Run full build**

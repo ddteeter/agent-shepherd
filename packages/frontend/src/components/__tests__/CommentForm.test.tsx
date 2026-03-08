@@ -17,7 +17,14 @@ describe('CommentForm', () => {
   });
 
   it('hides severity selector when editing', () => {
-    render(<CommentForm onSubmit={vi.fn()} onCancel={vi.fn()} isEditing initialBody="test" />);
+    render(
+      <CommentForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        isEditing
+        initialBody="test"
+      />,
+    );
     expect(screen.queryByText('Severity:')).not.toBeInTheDocument();
     expect(screen.getByText('Save')).toBeInTheDocument();
   });
@@ -27,10 +34,16 @@ describe('CommentForm', () => {
     const onSubmit = vi.fn();
     render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} />);
 
-    await user.type(screen.getByPlaceholderText('Write a comment...'), 'My comment');
+    await user.type(
+      screen.getByPlaceholderText('Write a comment...'),
+      'My comment',
+    );
     await user.click(screen.getByText('Add Comment'));
 
-    expect(onSubmit).toHaveBeenCalledWith({ body: 'My comment', severity: 'suggestion' });
+    expect(onSubmit).toHaveBeenCalledWith({
+      body: 'My comment',
+      severity: 'suggestion',
+    });
   });
 
   it('does not submit with empty body', async () => {
@@ -78,11 +91,20 @@ describe('CommentForm', () => {
     const onSubmit = vi.fn();
     render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} />);
 
-    await user.selectOptions(screen.getByDisplayValue('Suggestion'), 'must-fix');
-    await user.type(screen.getByPlaceholderText('Write a comment...'), 'Fix this');
+    await user.selectOptions(
+      screen.getByDisplayValue('Suggestion'),
+      'must-fix',
+    );
+    await user.type(
+      screen.getByPlaceholderText('Write a comment...'),
+      'Fix this',
+    );
     await user.click(screen.getByText('Add Comment'));
 
-    expect(onSubmit).toHaveBeenCalledWith({ body: 'Fix this', severity: 'must-fix' });
+    expect(onSubmit).toHaveBeenCalledWith({
+      body: 'Fix this',
+      severity: 'must-fix',
+    });
   });
 
   it('submits reply without severity', async () => {
@@ -90,33 +112,58 @@ describe('CommentForm', () => {
     const onSubmit = vi.fn();
     render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} isReply />);
 
-    await user.type(screen.getByPlaceholderText('Write a reply...'), 'My reply');
+    await user.type(
+      screen.getByPlaceholderText('Write a reply...'),
+      'My reply',
+    );
     await user.click(screen.getByText('Reply'));
 
-    expect(onSubmit).toHaveBeenCalledWith({ body: 'My reply', severity: undefined });
+    expect(onSubmit).toHaveBeenCalledWith({
+      body: 'My reply',
+      severity: undefined,
+    });
   });
 
   it('submits edit without severity', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
-    render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} isEditing initialBody="Original" />);
+    render(
+      <CommentForm
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        isEditing
+        initialBody="Original"
+      />,
+    );
 
     const textarea = screen.getByDisplayValue('Original');
     await user.clear(textarea);
     await user.type(textarea, 'Edited');
     await user.click(screen.getByText('Save'));
 
-    expect(onSubmit).toHaveBeenCalledWith({ body: 'Edited', severity: undefined });
+    expect(onSubmit).toHaveBeenCalledWith({
+      body: 'Edited',
+      severity: undefined,
+    });
   });
 
   it('uses custom default severity', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
-    render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} defaultSeverity="must-fix" />);
+    render(
+      <CommentForm
+        onSubmit={onSubmit}
+        onCancel={vi.fn()}
+        defaultSeverity="must-fix"
+      />,
+    );
 
     await user.type(screen.getByPlaceholderText('Write a comment...'), 'Fix');
     await user.click(screen.getByText('Add Comment'));
 
-    expect(onSubmit).toHaveBeenCalledWith({ body: 'Fix', severity: 'must-fix' });
+    expect(onSubmit).toHaveBeenCalledWith({
+      body: 'Fix',
+      severity: 'must-fix',
+    });
   });
 });

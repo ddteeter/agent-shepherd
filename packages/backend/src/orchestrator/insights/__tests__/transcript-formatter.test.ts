@@ -6,12 +6,24 @@ import { tmpdir } from 'node:os';
 import { formatTranscript } from '../transcript-formatter.js';
 import type { SessionLog } from '../../session-log/provider.js';
 
-async function createTempJsonl(lines: object[]): Promise<{ inputPath: string; outputDir: string; cleanup: () => Promise<void> }> {
+async function createTempJsonl(lines: object[]): Promise<{
+  inputPath: string;
+  outputDir: string;
+  cleanup: () => Promise<void>;
+}> {
   const tempDir = await mkdtemp(join(tmpdir(), 'transcript-test-'));
   const inputPath = join(tempDir, 'test-session.jsonl');
   const outputDir = join(tempDir, 'output');
-  await writeFile(inputPath, lines.map(l => JSON.stringify(l)).join('\n'), 'utf-8');
-  return { inputPath, outputDir, cleanup: () => rm(tempDir, { recursive: true, force: true }) };
+  await writeFile(
+    inputPath,
+    lines.map((l) => JSON.stringify(l)).join('\n'),
+    'utf-8',
+  );
+  return {
+    inputPath,
+    outputDir,
+    cleanup: () => rm(tempDir, { recursive: true, force: true }),
+  };
 }
 
 function makeSessionLog(filePath: string): SessionLog {
@@ -27,13 +39,16 @@ describe('TranscriptFormatter', () => {
   const cleanups: (() => Promise<void>)[] = [];
 
   afterEach(async () => {
-    await Promise.all(cleanups.map(fn => fn()));
+    await Promise.all(cleanups.map((fn) => fn()));
     cleanups.length = 0;
   });
 
   it('produces frontmatter with session metadata', async () => {
     const { inputPath, outputDir, cleanup } = await createTempJsonl([
-      { type: 'assistant', message: { content: [{ type: 'text', text: 'Hello' }] } },
+      {
+        type: 'assistant',
+        message: { content: [{ type: 'text', text: 'Hello' }] },
+      },
     ]);
     cleanups.push(cleanup);
 
@@ -48,7 +63,17 @@ describe('TranscriptFormatter', () => {
 
   it('preserves assistant text blocks fully', async () => {
     const { inputPath, outputDir, cleanup } = await createTempJsonl([
-      { type: 'assistant', message: { content: [{ type: 'text', text: 'I need to refactor the auth module because it has a circular dependency.' }] } },
+      {
+        type: 'assistant',
+        message: {
+          content: [
+            {
+              type: 'text',
+              text: 'I need to refactor the auth module because it has a circular dependency.',
+            },
+          ],
+        },
+      },
     ]);
     cleanups.push(cleanup);
 
@@ -56,7 +81,9 @@ describe('TranscriptFormatter', () => {
     const content = await readFile(result, 'utf-8');
 
     expect(content).toContain('## Assistant [line 1]');
-    expect(content).toContain('I need to refactor the auth module because it has a circular dependency.');
+    expect(content).toContain(
+      'I need to refactor the auth module because it has a circular dependency.',
+    );
   });
 
   it('formats tool_use blocks with key params', async () => {
@@ -65,7 +92,11 @@ describe('TranscriptFormatter', () => {
         type: 'assistant',
         message: {
           content: [
-            { type: 'tool_use', name: 'Read', input: { file_path: 'src/App.tsx' } },
+            {
+              type: 'tool_use',
+              name: 'Read',
+              input: { file_path: 'src/App.tsx' },
+            },
             { type: 'tool_use', name: 'Bash', input: { command: 'npm test' } },
           ],
         },
@@ -87,7 +118,11 @@ describe('TranscriptFormatter', () => {
         type: 'assistant',
         message: {
           content: [
-            { type: 'tool_use', name: 'Write', input: { file_path: 'out.ts', content: largeContent } },
+            {
+              type: 'tool_use',
+              name: 'Write',
+              input: { file_path: 'out.ts', content: largeContent },
+            },
           ],
         },
       },
@@ -103,7 +138,12 @@ describe('TranscriptFormatter', () => {
 
   it('preserves user text blocks', async () => {
     const { inputPath, outputDir, cleanup } = await createTempJsonl([
-      { type: 'user', message: { content: [{ type: 'text', text: 'Please fix the login bug' }] } },
+      {
+        type: 'user',
+        message: {
+          content: [{ type: 'text', text: 'Please fix the login bug' }],
+        },
+      },
     ]);
     cleanups.push(cleanup);
 
@@ -145,9 +185,7 @@ describe('TranscriptFormatter', () => {
             {
               type: 'tool_result',
               tool_use_id: 'tu-1',
-              content: [
-                { type: 'text', text: 'file contents here' },
-              ],
+              content: [{ type: 'text', text: 'file contents here' }],
             },
           ],
         },
@@ -166,7 +204,10 @@ describe('TranscriptFormatter', () => {
     const { inputPath, outputDir, cleanup } = await createTempJsonl([
       { type: 'progress', data: { percent: 50 } },
       { type: 'file-history-snapshot', files: [] },
-      { type: 'assistant', message: { content: [{ type: 'text', text: 'visible' }] } },
+      {
+        type: 'assistant',
+        message: { content: [{ type: 'text', text: 'visible' }] },
+      },
     ]);
     cleanups.push(cleanup);
 
@@ -181,8 +222,14 @@ describe('TranscriptFormatter', () => {
   it('includes correct line numbers', async () => {
     const { inputPath, outputDir, cleanup } = await createTempJsonl([
       { type: 'progress', data: {} },
-      { type: 'assistant', message: { content: [{ type: 'text', text: 'first' }] } },
-      { type: 'user', message: { content: [{ type: 'text', text: 'second' }] } },
+      {
+        type: 'assistant',
+        message: { content: [{ type: 'text', text: 'first' }] },
+      },
+      {
+        type: 'user',
+        message: { content: [{ type: 'text', text: 'second' }] },
+      },
     ]);
     cleanups.push(cleanup);
 
@@ -196,7 +243,10 @@ describe('TranscriptFormatter', () => {
 
   it('writes output to the correct path', async () => {
     const { inputPath, outputDir, cleanup } = await createTempJsonl([
-      { type: 'assistant', message: { content: [{ type: 'text', text: 'hi' }] } },
+      {
+        type: 'assistant',
+        message: { content: [{ type: 'text', text: 'hi' }] },
+      },
     ]);
     cleanups.push(cleanup);
 

@@ -29,7 +29,10 @@ interface ReviewCycle {
 export function PRReview() {
   const { prId } = useParams<{ prId: string }>();
   const [pr, setPr] = useState<any>(null);
-  const [diffData, setDiffData] = useState<{ diff: string; files: string[] } | null>(null);
+  const [diffData, setDiffData] = useState<{
+    diff: string;
+    files: string[];
+  } | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [visibleFile, setVisibleFile] = useState<string | null>(null);
   const [scrollToFile, setScrollToFile] = useState<string | null>(null);
@@ -48,20 +51,34 @@ export function PRReview() {
   const [insightsActivity, setInsightsActivity] = useState<ActivityEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'review' | 'insights'>('review');
   const [analyzerRunning, setAnalyzerRunning] = useState(false);
-  const [fileGroups, setFileGroups] = useState<Array<{ name: string; description?: string; files: string[] }> | null>(null);
-  const [viewMode, setViewMode] = useState<'directory' | 'logical'>('directory');
+  const [fileGroups, setFileGroups] = useState<Array<{
+    name: string;
+    description?: string;
+    files: string[];
+  }> | null>(null);
+  const [viewMode, setViewMode] = useState<'directory' | 'logical'>(
+    'directory',
+  );
 
   const { connected } = useWebSocket((msg) => {
     if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
       fetchComments();
     }
-    if (msg.event === 'review:submitted' || msg.event === 'pr:ready-for-review' || msg.event === 'pr:updated') {
+    if (
+      msg.event === 'review:submitted' ||
+      msg.event === 'pr:ready-for-review' ||
+      msg.event === 'pr:updated'
+    ) {
       if (prId) {
         api.prs.get(prId).then(setPr);
         fetchCycles();
       }
     }
-    if (msg.event === 'agent:working' || msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
+    if (
+      msg.event === 'agent:working' ||
+      msg.event === 'agent:completed' ||
+      msg.event === 'agent:cancelled'
+    ) {
       setAgentError(null);
       if (msg.event === 'agent:working') {
         if (msg.data?.source === 'insights') {
@@ -71,7 +88,10 @@ export function PRReview() {
           setAgentActivity([]);
         }
       }
-      if ((msg.event === 'agent:completed' || msg.event === 'agent:cancelled') && msg.data?.source === 'insights') {
+      if (
+        (msg.event === 'agent:completed' || msg.event === 'agent:cancelled') &&
+        msg.data?.source === 'insights'
+      ) {
         setAnalyzerRunning(false);
         fetchInsights();
       }
@@ -80,7 +100,11 @@ export function PRReview() {
       }
       fetchCycles();
     }
-    if (msg.event === 'agent:output' && msg.data?.prId === prId && msg.data?.entry) {
+    if (
+      msg.event === 'agent:output' &&
+      msg.data?.prId === prId &&
+      msg.data?.entry
+    ) {
       if (msg.data.source === 'insights') {
         setInsightsActivity((prev) => [...prev.slice(-49), msg.data.entry]);
       } else {
@@ -126,66 +150,77 @@ export function PRReview() {
     }
   }, [prId]);
 
-  const fetchDiff = useCallback(async (cycleValue: string) => {
-    if (!prId) return;
-    setDiffLoading(true);
-    setDiffError(null);
-    try {
-      let diff;
-      if (cycleValue === 'current') {
-        diff = await api.prs.diff(prId);
-      } else if (cycleValue.startsWith('inter:')) {
-        const [, fromStr, toStr] = cycleValue.split(':');
-        diff = await api.prs.diff(prId, { from: parseInt(fromStr, 10), to: parseInt(toStr, 10) });
-      } else {
-        const cycleNum = parseInt(cycleValue, 10);
-        diff = await api.prs.diff(prId, { cycle: cycleNum });
+  const fetchDiff = useCallback(
+    async (cycleValue: string) => {
+      if (!prId) return;
+      setDiffLoading(true);
+      setDiffError(null);
+      try {
+        let diff;
+        if (cycleValue === 'current') {
+          diff = await api.prs.diff(prId);
+        } else if (cycleValue.startsWith('inter:')) {
+          const [, fromStr, toStr] = cycleValue.split(':');
+          diff = await api.prs.diff(prId, {
+            from: parseInt(fromStr, 10),
+            to: parseInt(toStr, 10),
+          });
+        } else {
+          const cycleNum = parseInt(cycleValue, 10);
+          diff = await api.prs.diff(prId, { cycle: cycleNum });
+        }
+        setDiffData(diff);
+        if (diff.fileGroups) {
+          setFileGroups(diff.fileGroups);
+          setViewMode('logical');
+        } else {
+          setFileGroups(null);
+          setViewMode('directory');
+        }
+        setScrollToFile(null);
+        setVisibleFile(null);
+      } catch (err) {
+        setDiffError(
+          err instanceof Error ? err.message : 'Failed to load diff',
+        );
+      } finally {
+        setDiffLoading(false);
       }
-      setDiffData(diff);
-      if (diff.fileGroups) {
-        setFileGroups(diff.fileGroups);
-        setViewMode('logical');
-      } else {
-        setFileGroups(null);
-        setViewMode('directory');
-      }
-      setScrollToFile(null);
-      setVisibleFile(null);
-    } catch (err) {
-      setDiffError(err instanceof Error ? err.message : 'Failed to load diff');
-    } finally {
-      setDiffLoading(false);
-    }
-  }, [prId]);
+    },
+    [prId],
+  );
 
   useEffect(() => {
     if (!prId) return;
-    Promise.all([
-      api.prs.get(prId),
-      api.prs.diff(prId),
-    ]).then(([prData, diff]) => {
-      setPr(prData);
-      setDiffData(diff);
-      if (prData.agents?.insights) {
-        setAnalyzerRunning(true);
-      }
-      if (diff.fileGroups) {
-        setFileGroups(diff.fileGroups);
-        setViewMode('logical');
-      }
-    }).catch((err) => {
-      setError(err instanceof Error ? err.message : 'Failed to load PR');
-    }).finally(() => setLoading(false));
+    Promise.all([api.prs.get(prId), api.prs.diff(prId)])
+      .then(([prData, diff]) => {
+        setPr(prData);
+        setDiffData(diff);
+        if (prData.agents?.insights) {
+          setAnalyzerRunning(true);
+        }
+        if (diff.fileGroups) {
+          setFileGroups(diff.fileGroups);
+          setViewMode('logical');
+        }
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to load PR');
+      })
+      .finally(() => setLoading(false));
 
     fetchComments();
     fetchCycles();
     fetchInsights();
   }, [prId, fetchComments, fetchCycles, fetchInsights]);
 
-  const handleCycleChange = useCallback((value: string) => {
-    setSelectedCycle(value);
-    fetchDiff(value);
-  }, [fetchDiff]);
+  const handleCycleChange = useCallback(
+    (value: string) => {
+      setSelectedCycle(value);
+      fetchDiff(value);
+    },
+    [fetchDiff],
+  );
 
   const handleFileSelect = useCallback((file: string) => {
     scrollKeyRef.current++;
@@ -193,7 +228,13 @@ export function PRReview() {
     setVisibleFile(file);
   }, []);
 
-  const handleAddComment = async (data: { filePath: string | null; startLine: number | null; endLine: number | null; body: string; severity: string }) => {
+  const handleAddComment = async (data: {
+    filePath: string | null;
+    startLine: number | null;
+    endLine: number | null;
+    body: string;
+    severity: string;
+  }) => {
     if (!prId) return;
     try {
       await api.comments.create(prId, {
@@ -344,7 +385,10 @@ export function PRReview() {
 
   const latestCycle = useMemo(() => {
     if (cycles.length === 0) return null;
-    return cycles.reduce((latest, c) => c.cycleNumber > latest.cycleNumber ? c : latest, cycles[0]);
+    return cycles.reduce(
+      (latest, c) => (c.cycleNumber > latest.cycleNumber ? c : latest),
+      cycles[0],
+    );
   }, [cycles]);
 
   const threadStatusMap = useMemo(() => {
@@ -352,7 +396,11 @@ export function PRReview() {
     if (!latestCycle) return map;
     const threads = groupThreads(comments);
     for (const thread of threads) {
-      const status = getThreadStatus(thread.comment, thread.replies, latestCycle.id);
+      const status = getThreadStatus(
+        thread.comment,
+        thread.replies,
+        latestCycle.id,
+      );
       map.set(thread.comment.id, status);
     }
     return map;
@@ -418,8 +466,14 @@ export function PRReview() {
   return (
     <div className="flex flex-col h-full">
       {/* PR Header */}
-      <div className="px-6 py-3 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
-        <Link to={`/projects/${pr.projectId}`} className="text-sm opacity-70 hover:opacity-100">
+      <div
+        className="px-6 py-3 border-b shrink-0"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
+        <Link
+          to={`/projects/${pr.projectId}`}
+          className="text-sm opacity-70 hover:opacity-100"
+        >
           &larr; Back
         </Link>
         <div className="flex items-center justify-between">
@@ -429,7 +483,10 @@ export function PRReview() {
               <button
                 onClick={() => setGlobalCommentForm(!globalCommentForm)}
                 className="text-xs px-2 py-1 rounded border hover:opacity-80"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+                style={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-accent)',
+                }}
               >
                 Comment on PR
               </button>
@@ -438,7 +495,10 @@ export function PRReview() {
               <button
                 onClick={handleClosePr}
                 className="text-xs px-2 py-1 rounded border hover:opacity-80"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                style={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-text)',
+                }}
               >
                 Close PR
               </button>
@@ -447,7 +507,10 @@ export function PRReview() {
               <button
                 onClick={handleReopenPr}
                 className="text-xs px-2 py-1 rounded border hover:opacity-80"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+                style={{
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-accent)',
+                }}
               >
                 Reopen
               </button>
@@ -477,23 +540,25 @@ export function PRReview() {
                     <option key={cycle.id} value={String(cycle.cycleNumber)}>
                       Cycle {cycle.cycleNumber}
                       {cycle.status === 'approved' ? ' (approved)' : ''}
-                      {cycle.status === 'changes_requested' ? ' (changes requested)' : ''}
+                      {cycle.status === 'changes_requested'
+                        ? ' (changes requested)'
+                        : ''}
                       {cycle.status === 'superseded' ? ' (superseded)' : ''}
                     </option>
-                  ))
-                }
+                  ))}
                 {cyclesWithSnapshots.length >= 2 && (
                   <>
                     <option disabled>───────────</option>
                     {(() => {
-                      const sorted = [...cyclesWithSnapshots]
-                        .sort((a, b) => a.cycleNumber - b.cycleNumber);
+                      const sorted = [...cyclesWithSnapshots].sort(
+                        (a, b) => a.cycleNumber - b.cycleNumber,
+                      );
                       const options: React.ReactNode[] = [];
 
                       // Sequential inter-cycle diffs
                       sorted.slice(1).forEach((cycle) => {
                         const prevCycle = sorted.find(
-                          (c) => c.cycleNumber === cycle.cycleNumber - 1
+                          (c) => c.cycleNumber === cycle.cycleNumber - 1,
                         );
                         if (!prevCycle) return;
                         options.push(
@@ -501,27 +566,36 @@ export function PRReview() {
                             key={`inter-${prevCycle.cycleNumber}-${cycle.cycleNumber}`}
                             value={`inter:${prevCycle.cycleNumber}:${cycle.cycleNumber}`}
                           >
-                            Changes: Cycle {prevCycle.cycleNumber} → {cycle.cycleNumber}
-                          </option>
+                            Changes: Cycle {prevCycle.cycleNumber} →{' '}
+                            {cycle.cycleNumber}
+                          </option>,
                         );
                       });
 
                       // "Since last reviewed" diffs (skip superseded cycles)
                       const reviewedCycles = sorted.filter(
-                        (c) => c.status !== 'superseded' && c.status !== 'pending_review'
+                        (c) =>
+                          c.status !== 'superseded' &&
+                          c.status !== 'pending_review',
                       );
                       const latestCycle = sorted[sorted.length - 1];
                       if (reviewedCycles.length > 0 && latestCycle) {
-                        const lastReviewed = reviewedCycles[reviewedCycles.length - 1];
+                        const lastReviewed =
+                          reviewedCycles[reviewedCycles.length - 1];
                         // Only add if it's different from a sequential diff already shown
-                        if (lastReviewed.cycleNumber !== latestCycle.cycleNumber - 1) {
+                        if (
+                          lastReviewed.cycleNumber !==
+                          latestCycle.cycleNumber - 1
+                        ) {
                           options.push(
                             <option
                               key={`reviewed-${lastReviewed.cycleNumber}-${latestCycle.cycleNumber}`}
                               value={`inter:${lastReviewed.cycleNumber}:${latestCycle.cycleNumber}`}
                             >
-                              Changes: Since last review (Cycle {lastReviewed.cycleNumber} → {latestCycle.cycleNumber})
-                            </option>
+                              Changes: Since last review (Cycle{' '}
+                              {lastReviewed.cycleNumber} →{' '}
+                              {latestCycle.cycleNumber})
+                            </option>,
                           );
                         }
                       }
@@ -535,7 +609,9 @@ export function PRReview() {
                 <span className="text-sm opacity-50">Loading...</span>
               )}
               {diffError && (
-                <span className="text-sm text-red-500">Failed to load diff</span>
+                <span className="text-sm text-red-500">
+                  Failed to load diff
+                </span>
               )}
             </div>
           )}
@@ -544,8 +620,14 @@ export function PRReview() {
           <span
             className="inline-block px-2 py-0.5 rounded text-xs font-medium mr-2"
             style={{
-              backgroundColor: pr.status === 'open' ? 'rgba(46, 160, 67, 0.15)' : 'rgba(130, 130, 130, 0.15)',
-              color: pr.status === 'open' ? 'var(--color-success)' : 'var(--color-text)',
+              backgroundColor:
+                pr.status === 'open'
+                  ? 'rgba(46, 160, 67, 0.15)'
+                  : 'rgba(130, 130, 130, 0.15)',
+              color:
+                pr.status === 'open'
+                  ? 'var(--color-success)'
+                  : 'var(--color-text)',
             }}
           >
             {pr.status}
@@ -579,7 +661,8 @@ export function PRReview() {
                 color: 'var(--color-text)',
               }}
             >
-              Resubmit context: {selectedCycleData.context.length > 200
+              Resubmit context:{' '}
+              {selectedCycleData.context.length > 200
                 ? selectedCycleData.context.slice(0, 200) + '...'
                 : selectedCycleData.context}
             </span>
@@ -588,22 +671,43 @@ export function PRReview() {
       </div>
 
       {/* Tab navigation */}
-      <div className="flex border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+      <div
+        className="flex border-b shrink-0"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
         <button
           onClick={() => setActiveTab('review')}
           className={`px-4 py-2 text-sm flex items-center gap-1.5 ${activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
-          style={activeTab === 'review' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
+          style={
+            activeTab === 'review'
+              ? {
+                  borderColor: 'var(--color-accent)',
+                  color: 'var(--color-accent)',
+                }
+              : {}
+          }
         >
           Review
-          {agentWorking && <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />}
+          {agentWorking && (
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab('insights')}
           className={`px-4 py-2 text-sm flex items-center gap-1.5 ${activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
-          style={activeTab === 'insights' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
+          style={
+            activeTab === 'insights'
+              ? {
+                  borderColor: 'var(--color-accent)',
+                  color: 'var(--color-accent)',
+                }
+              : {}
+          }
         >
           Insights
-          {analyzerRunning && <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />}
+          {analyzerRunning && (
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+          )}
         </button>
       </div>
 
@@ -614,7 +718,11 @@ export function PRReview() {
             active={agentWorking}
             activity={agentActivity}
             onCancel={handleCancelAgent}
-            error={agentErrored ? `Agent error${agentError ? `: ${agentError}` : ''}` : null}
+            error={
+              agentErrored
+                ? `Agent error${agentError ? `: ${agentError}` : ''}`
+                : null
+            }
           />
           {cycles.length > 1 && (
             <div className="px-4 shrink-0">
@@ -626,56 +734,63 @@ export function PRReview() {
             </div>
           )}
           <div className="flex flex-1 overflow-hidden">
-          {diffError ? (
-            <div className="flex-1 flex items-center justify-center p-6">
-              <div className="text-center">
-                <p className="text-sm opacity-70">Failed to load diff for this cycle.</p>
-                <p className="text-xs opacity-50 mt-1">{diffError}</p>
+            {diffError ? (
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="text-center">
+                  <p className="text-sm opacity-70">
+                    Failed to load diff for this cycle.
+                  </p>
+                  <p className="text-xs opacity-50 mt-1">{diffError}</p>
+                </div>
               </div>
-            </div>
-          ) : typeof diffData.diff !== 'string' ? (
-            <div className="flex-1 flex items-center justify-center p-6">
-              <div className="text-center">
-                <p className="text-sm opacity-70">Diff snapshot is unavailable for this cycle.</p>
-                <p className="text-xs opacity-50 mt-1">
-                  This cycle was superseded before a diff snapshot could be captured,
-                  or the snapshot data was lost. Try viewing a more recent cycle instead.
-                </p>
+            ) : typeof diffData.diff !== 'string' ? (
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="text-center">
+                  <p className="text-sm opacity-70">
+                    Diff snapshot is unavailable for this cycle.
+                  </p>
+                  <p className="text-xs opacity-50 mt-1">
+                    This cycle was superseded before a diff snapshot could be
+                    captured, or the snapshot data was lost. Try viewing a more
+                    recent cycle instead.
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-          <>
-          <FileTree
-            files={diffData.files}
-            selectedFile={visibleFile}
-            onSelectFile={handleFileSelect}
-            fileStatuses={fileStatuses}
-            commentCounts={commentCounts}
-            fileGroups={fileGroups}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
-          <DiffViewer
-            diff={diffData.diff}
-            files={diffData.files}
-            scrollToFile={scrollToFile}
-            scrollKey={scrollKeyRef.current}
-            onVisibleFileChange={setVisibleFile}
-            comments={filteredComments}
-            threadStatusMap={threadStatusMap}
-            onAddComment={handleAddComment}
-            onReplyComment={handleReplyComment}
-            onResolveComment={handleResolveComment}
-            onEditComment={handleEditComment}
-            onDeleteComment={handleDeleteComment}
-            canEditComments={selectedCycle === 'current'}
-            globalCommentForm={globalCommentForm}
-            onToggleGlobalCommentForm={() => setGlobalCommentForm(!globalCommentForm)}
-            fileGroups={fileGroups}
-            viewMode={viewMode}
-          />
-          </>
-          )}
+            ) : (
+              <>
+                <FileTree
+                  files={diffData.files}
+                  selectedFile={visibleFile}
+                  onSelectFile={handleFileSelect}
+                  fileStatuses={fileStatuses}
+                  commentCounts={commentCounts}
+                  fileGroups={fileGroups}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
+                />
+                <DiffViewer
+                  diff={diffData.diff}
+                  files={diffData.files}
+                  scrollToFile={scrollToFile}
+                  scrollKey={scrollKeyRef.current}
+                  onVisibleFileChange={setVisibleFile}
+                  comments={filteredComments}
+                  threadStatusMap={threadStatusMap}
+                  onAddComment={handleAddComment}
+                  onReplyComment={handleReplyComment}
+                  onResolveComment={handleResolveComment}
+                  onEditComment={handleEditComment}
+                  onDeleteComment={handleDeleteComment}
+                  canEditComments={selectedCycle === 'current'}
+                  globalCommentForm={globalCommentForm}
+                  onToggleGlobalCommentForm={() =>
+                    setGlobalCommentForm(!globalCommentForm)
+                  }
+                  fileGroups={fileGroups}
+                  viewMode={viewMode}
+                />
+              </>
+            )}
           </div>
         </div>
       ) : (
@@ -700,12 +815,21 @@ export function PRReview() {
           onReview={handleReview}
         />
       ) : (
-        <div className="px-6 py-3 border-t flex items-center justify-end" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
+        <div
+          className="px-6 py-3 border-t flex items-center justify-end"
+          style={{
+            borderColor: 'var(--color-border)',
+            backgroundColor: 'var(--color-bg-secondary)',
+          }}
+        >
           {analyzerRunning && (
             <button
               onClick={handleCancelAnalyzer}
               className="px-4 py-1.5 text-sm rounded font-medium border hover:opacity-80"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+              style={{
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text)',
+              }}
             >
               Cancel Analyzer
             </button>
@@ -714,7 +838,10 @@ export function PRReview() {
             <button
               onClick={handleRunAnalyzer}
               className="btn-danger px-4 py-1.5 text-sm rounded font-medium"
-              style={{ backgroundColor: 'var(--color-btn-danger-bg)', color: 'var(--color-btn-danger-fg)' }}
+              style={{
+                backgroundColor: 'var(--color-btn-danger-bg)',
+                color: 'var(--color-btn-danger-fg)',
+              }}
             >
               Run Analyzer
             </button>

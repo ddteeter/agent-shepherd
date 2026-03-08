@@ -1,7 +1,14 @@
 import { spawn, type ChildProcess } from 'child_process';
-import type { AgentAdapter, AgentSession, AgentActivityEntry } from './types.js';
+import type {
+  AgentAdapter,
+  AgentSession,
+  AgentActivityEntry,
+} from './types.js';
 
-function summarizeToolUse(name: string, input: Record<string, unknown>): string {
+function summarizeToolUse(
+  name: string,
+  input: Record<string, unknown>,
+): string {
   switch (name) {
     case 'Read':
       return `Reading ${input.file_path || 'file'}`;
@@ -32,8 +39,21 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     this.devMode = opts?.devMode ?? false;
   }
 
-  async startSession(opts: { projectPath: string; prompt: string; additionalDirs?: string[] }): Promise<AgentSession> {
-    const args = ['--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits', '--allowedTools', 'Bash(agent-shepherd:*)', 'Bash(git:*)'];
+  async startSession(opts: {
+    projectPath: string;
+    prompt: string;
+    additionalDirs?: string[];
+  }): Promise<AgentSession> {
+    const args = [
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--permission-mode',
+      'acceptEdits',
+      '--allowedTools',
+      'Bash(agent-shepherd:*)',
+      'Bash(git:*)',
+    ];
     if (opts.additionalDirs) {
       for (const dir of opts.additionalDirs) {
         args.push('--add-dir', dir);
@@ -70,7 +90,11 @@ export class ClaudeCodeAdapter implements AgentAdapter {
           const msg = JSON.parse(line);
 
           // Extract session ID from init message
-          if (msg.type === 'system' && msg.subtype === 'init' && msg.session_id) {
+          if (
+            msg.type === 'system' &&
+            msg.subtype === 'init' &&
+            msg.session_id
+          ) {
             sessionId = msg.session_id;
           }
 
@@ -90,7 +114,9 @@ export class ClaudeCodeAdapter implements AgentAdapter {
                   timestamp: new Date().toISOString(),
                   type: block.name,
                   summary: summarizeToolUse(block.name, block.input || {}),
-                  ...(devMode && block.input ? { detail: JSON.stringify(block.input, null, 2) } : {}),
+                  ...(devMode && block.input
+                    ? { detail: JSON.stringify(block.input, null, 2) }
+                    : {}),
                 };
                 outputCallback?.(entry);
               } else if (devMode && block.type === 'text' && block.text) {
@@ -98,7 +124,8 @@ export class ClaudeCodeAdapter implements AgentAdapter {
                 const entry: AgentActivityEntry = {
                   timestamp: new Date().toISOString(),
                   type: 'text',
-                  summary: text.length > 120 ? text.slice(0, 120) + '...' : text,
+                  summary:
+                    text.length > 120 ? text.slice(0, 120) + '...' : text,
                   detail: text,
                 };
                 outputCallback?.(entry);
@@ -108,11 +135,15 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
           // Emit tool results in dev mode
           if (devMode && msg.type === 'result') {
-            const content = typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result, null, 2);
+            const content =
+              typeof msg.result === 'string'
+                ? msg.result
+                : JSON.stringify(msg.result, null, 2);
             const entry: AgentActivityEntry = {
               timestamp: new Date().toISOString(),
               type: 'tool_result',
-              summary: content.length > 120 ? content.slice(0, 120) + '...' : content,
+              summary:
+                content.length > 120 ? content.slice(0, 120) + '...' : content,
               detail: content,
             };
             outputCallback?.(entry);
@@ -130,14 +161,22 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     proc.on('exit', (code) => {
       if (code === 0) {
         if (lastStopReason === 'end_turn') {
-          const lastMsg = lastAssistantText ? `. Last message: ${lastAssistantText.slice(0, 200)}` : '';
-          errorCallback?.(new Error(`Agent stopped waiting for input (end_turn) — it may not have had the information or permissions needed to complete the task${lastMsg}`));
+          const lastMsg = lastAssistantText
+            ? `. Last message: ${lastAssistantText.slice(0, 200)}`
+            : '';
+          errorCallback?.(
+            new Error(
+              `Agent stopped waiting for input (end_turn) — it may not have had the information or permissions needed to complete the task${lastMsg}`,
+            ),
+          );
         } else {
           completeCallback?.();
         }
       } else {
         const detail = stderr.trim() || 'no output captured';
-        errorCallback?.(new Error(`Claude Code exited with code ${code}: ${detail}`));
+        errorCallback?.(
+          new Error(`Claude Code exited with code ${code}: ${detail}`),
+        );
       }
     });
 
@@ -146,11 +185,21 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     });
 
     return {
-      get id() { return sessionId; },
-      onComplete(cb) { completeCallback = cb; },
-      onError(cb) { errorCallback = cb; },
-      onOutput(cb) { outputCallback = cb; },
-      async kill() { proc.kill('SIGTERM'); },
+      get id() {
+        return sessionId;
+      },
+      onComplete(cb) {
+        completeCallback = cb;
+      },
+      onError(cb) {
+        errorCallback = cb;
+      },
+      onOutput(cb) {
+        outputCallback = cb;
+      },
+      async kill() {
+        proc.kill('SIGTERM');
+      },
     };
   }
 }

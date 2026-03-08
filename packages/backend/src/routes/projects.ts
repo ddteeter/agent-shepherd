@@ -45,7 +45,11 @@ export async function projectRoutes(fastify: FastifyInstance) {
 
   fastify.put('/api/projects/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const updates = request.body as Partial<{ name: string; path: string; baseBranch: string }>;
+    const updates = request.body as Partial<{
+      name: string;
+      path: string;
+      baseBranch: string;
+    }>;
 
     const existing = db
       .select()
@@ -58,9 +62,16 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    db.update(schema.projects).set(updates).where(eq(schema.projects.id, id)).run();
+    db.update(schema.projects)
+      .set(updates)
+      .where(eq(schema.projects.id, id))
+      .run();
 
-    return db.select().from(schema.projects).where(eq(schema.projects.id, id)).get();
+    return db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, id))
+      .get();
   });
 
   fastify.delete('/api/projects/:id', async (request, reply) => {

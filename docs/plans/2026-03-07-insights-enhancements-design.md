@@ -6,6 +6,7 @@
 ## Overview
 
 Three enhancements to the insights analysis system:
+
 1. Confidence levels on all recommendations with a three-tier action model
 2. CLAUDE.md best practices context baked into the workflow-analyzer skill
 3. Cycle deduplication via timestamps, git history, and prompt guidance
@@ -31,11 +32,11 @@ interface InsightItem {
 
 ### Three-Tier Action Model
 
-| Confidence | Agent Action | UI Display |
-|---|---|---|
-| **High** | Auto-commits the change to the recommended location | Green badge, shows `appliedPath` |
-| **Medium** | Writes the recommendation but does NOT commit changes | Yellow badge, user can act on it |
-| **Low** | Writes the recommendation only | Gray badge, marked as speculative |
+| Confidence | Agent Action                                          | UI Display                        |
+| ---------- | ----------------------------------------------------- | --------------------------------- |
+| **High**   | Auto-commits the change to the recommended location   | Green badge, shows `appliedPath`  |
+| **Medium** | Writes the recommendation but does NOT commit changes | Yellow badge, user can act on it  |
+| **Low**    | Writes the recommendation only                        | Gray badge, marked as speculative |
 
 ### Confidence Definitions (for prompt)
 
@@ -51,11 +52,11 @@ Source: https://code.claude.com/docs/en/memory#claudemd-files (reviewed 2026-03-
 
 ### Location Decision Matrix
 
-| Situation | Recommended Location |
-|---|---|
-| Simple universal convention | Add directly to `CLAUDE.md` |
-| Detailed topic that would bloat CLAUDE.md | Create separate file, add `@path/to/file` import in CLAUDE.md |
-| Rule scoped to specific file types/directories | Create `.claude/rules/filename.md` with `paths` frontmatter |
+| Situation                                      | Recommended Location                                          |
+| ---------------------------------------------- | ------------------------------------------------------------- |
+| Simple universal convention                    | Add directly to `CLAUDE.md`                                   |
+| Detailed topic that would bloat CLAUDE.md      | Create separate file, add `@path/to/file` import in CLAUDE.md |
+| Rule scoped to specific file types/directories | Create `.claude/rules/filename.md` with `paths` frontmatter   |
 
 ### Key Principles
 
@@ -76,6 +77,7 @@ Purely prompt/skill changes -- no infrastructure work.
 ### Context Passed to Agent
 
 When previous insights exist, the prompt includes:
+
 - The `updatedAt` timestamp from the most recent insights record.
 - Instruction to run `git log --since="[updatedAt]"` on the branch to identify new commits.
 
@@ -94,6 +96,7 @@ The agent is instructed to:
 ### Confidence Badges
 
 Colored pill badges on each recommendation item:
+
 - **Green** pill with "High" text
 - **Yellow** pill with "Medium" text
 - **Gray** pill with "Low" text
@@ -108,12 +111,12 @@ No new pages or layout changes.
 
 ## Files to Modify
 
-| Area | Files |
-|---|---|
-| Shared types | `packages/shared/src/types.ts` |
-| DB schema / migration | `packages/backend/src/db/schema.ts` |
-| Insights prompt builder | `packages/backend/src/orchestrator/insights/prompt-builder.ts` |
-| Workflow-analyzer skill | Skill file (CLAUDE.md best practices section) |
-| Insights routes | `packages/backend/src/routes/insights.ts` (data migration for `applied` -> `appliedPath`) |
-| Frontend insights UI | `packages/frontend/src/pages/PRReview.tsx` (or relevant insights component) |
-| Tests | Update existing insight analyzer and prompt builder tests |
+| Area                    | Files                                                                                     |
+| ----------------------- | ----------------------------------------------------------------------------------------- |
+| Shared types            | `packages/shared/src/types.ts`                                                            |
+| DB schema / migration   | `packages/backend/src/db/schema.ts`                                                       |
+| Insights prompt builder | `packages/backend/src/orchestrator/insights/prompt-builder.ts`                            |
+| Workflow-analyzer skill | Skill file (CLAUDE.md best practices section)                                             |
+| Insights routes         | `packages/backend/src/routes/insights.ts` (data migration for `applied` -> `appliedPath`) |
+| Frontend insights UI    | `packages/frontend/src/pages/PRReview.tsx` (or relevant insights component)               |
+| Tests                   | Update existing insight analyzer and prompt builder tests                                 |

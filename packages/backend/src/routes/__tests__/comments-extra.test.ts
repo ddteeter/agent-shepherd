@@ -105,7 +105,11 @@ describe('Comments API - additional coverage', () => {
       payload: {
         comments: [],
         replies: [
-          { parentCommentId: 'nonexistent', body: 'reply to nothing', severity: 'suggestion' },
+          {
+            parentCommentId: 'nonexistent',
+            body: 'reply to nothing',
+            severity: 'suggestion',
+          },
         ],
       },
     });

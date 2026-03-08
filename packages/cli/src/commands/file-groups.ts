@@ -8,9 +8,10 @@ export function fileGroupsCommand(program: Command, client: ApiClient) {
     .option('--cycle <number>', 'Specific cycle number')
     .action(async (prId: string, opts: { cycle?: string }) => {
       const params = opts.cycle ? `?cycle=${opts.cycle}` : '';
-      const result = await client.get<{ fileGroups: any[] | null; cycleNumber: number }>(
-        `/api/prs/${prId}/file-groups${params}`,
-      );
+      const result = await client.get<{
+        fileGroups: any[] | null;
+        cycleNumber: number;
+      }>(`/api/prs/${prId}/file-groups${params}`);
 
       if (!result.fileGroups) {
         console.log('No file groups defined for this PR.');

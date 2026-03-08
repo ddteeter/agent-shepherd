@@ -13,6 +13,8 @@ export function statusCommand(program: Command, client: ApiClient) {
       console.log(`PR: ${pr.title}`);
       console.log(`Status: ${pr.status}`);
       console.log(`Branch: ${pr.sourceBranch} -> ${pr.baseBranch}`);
-      console.log(`Review Cycle: ${currentCycle?.cycleNumber || 0} (${currentCycle?.status || 'none'})`);
+      console.log(
+        `Review Cycle: ${currentCycle?.cycleNumber || 0} (${currentCycle?.status || 'none'})`,
+      );
     });
 }

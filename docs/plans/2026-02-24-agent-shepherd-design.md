@@ -48,64 +48,64 @@ Global config (`~/.shepherd/config.yml`) -> Per-project config (`.shepherd.yml` 
 
 ### Project
 
-| Field | Type | Description |
-|---|---|---|
-| id | TEXT (UUID) | Primary key |
-| name | TEXT | Display name |
-| path | TEXT | Absolute path to git repository |
-| baseBranch | TEXT | Default base branch (e.g., main) |
-| createdAt | DATETIME | Creation timestamp |
+| Field      | Type        | Description                      |
+| ---------- | ----------- | -------------------------------- |
+| id         | TEXT (UUID) | Primary key                      |
+| name       | TEXT        | Display name                     |
+| path       | TEXT        | Absolute path to git repository  |
+| baseBranch | TEXT        | Default base branch (e.g., main) |
+| createdAt  | DATETIME    | Creation timestamp               |
 
 ### PullRequest
 
-| Field | Type | Description |
-|---|---|---|
-| id | TEXT (UUID) | Primary key |
-| projectId | TEXT | FK to Project |
-| title | TEXT | PR title |
-| description | TEXT | PR description |
-| sourceBranch | TEXT | Feature branch |
-| baseBranch | TEXT | Target branch |
-| status | TEXT | open / approved / closed |
-| agentContext | TEXT (JSON) | Structured context from the agent |
-| agentSessionId | TEXT | Agent session ID for resume mode |
-| createdAt | DATETIME | Creation timestamp |
-| updatedAt | DATETIME | Last update timestamp |
+| Field          | Type        | Description                       |
+| -------------- | ----------- | --------------------------------- |
+| id             | TEXT (UUID) | Primary key                       |
+| projectId      | TEXT        | FK to Project                     |
+| title          | TEXT        | PR title                          |
+| description    | TEXT        | PR description                    |
+| sourceBranch   | TEXT        | Feature branch                    |
+| baseBranch     | TEXT        | Target branch                     |
+| status         | TEXT        | open / approved / closed          |
+| agentContext   | TEXT (JSON) | Structured context from the agent |
+| agentSessionId | TEXT        | Agent session ID for resume mode  |
+| createdAt      | DATETIME    | Creation timestamp                |
+| updatedAt      | DATETIME    | Last update timestamp             |
 
 ### ReviewCycle
 
-| Field | Type | Description |
-|---|---|---|
-| id | TEXT (UUID) | Primary key |
-| prId | TEXT | FK to PullRequest |
-| cycleNumber | INTEGER | Sequential cycle number |
-| status | TEXT | pending_review / in_review / changes_requested / pending_agent / approved |
-| reviewedAt | DATETIME | When human submitted review |
-| agentCompletedAt | DATETIME | When agent signaled ready |
+| Field            | Type        | Description                                                               |
+| ---------------- | ----------- | ------------------------------------------------------------------------- |
+| id               | TEXT (UUID) | Primary key                                                               |
+| prId             | TEXT        | FK to PullRequest                                                         |
+| cycleNumber      | INTEGER     | Sequential cycle number                                                   |
+| status           | TEXT        | pending_review / in_review / changes_requested / pending_agent / approved |
+| reviewedAt       | DATETIME    | When human submitted review                                               |
+| agentCompletedAt | DATETIME    | When agent signaled ready                                                 |
 
 ### Comment
 
-| Field | Type | Description |
-|---|---|---|
-| id | TEXT (UUID) | Primary key |
-| reviewCycleId | TEXT | FK to ReviewCycle |
-| filePath | TEXT | File the comment is on |
-| startLine | INTEGER | Start line of selection |
-| endLine | INTEGER | End line of selection |
-| body | TEXT | Comment text |
-| severity | TEXT | suggestion / request / must-fix |
-| author | TEXT | human / agent |
-| parentCommentId | TEXT | FK to Comment (for threads) |
-| resolved | BOOLEAN | Whether the comment is resolved |
-| createdAt | DATETIME | Creation timestamp |
+| Field           | Type        | Description                     |
+| --------------- | ----------- | ------------------------------- |
+| id              | TEXT (UUID) | Primary key                     |
+| reviewCycleId   | TEXT        | FK to ReviewCycle               |
+| filePath        | TEXT        | File the comment is on          |
+| startLine       | INTEGER     | Start line of selection         |
+| endLine         | INTEGER     | End line of selection           |
+| body            | TEXT        | Comment text                    |
+| severity        | TEXT        | suggestion / request / must-fix |
+| author          | TEXT        | human / agent                   |
+| parentCommentId | TEXT        | FK to Comment (for threads)     |
+| resolved        | BOOLEAN     | Whether the comment is resolved |
+| createdAt       | DATETIME    | Creation timestamp              |
 
 ### DiffSnapshot
 
-| Field | Type | Description |
-|---|---|---|
-| id | TEXT (UUID) | Primary key |
-| reviewCycleId | TEXT | FK to ReviewCycle |
-| diffData | TEXT (JSON) | Parsed unified diff |
+| Field         | Type        | Description         |
+| ------------- | ----------- | ------------------- |
+| id            | TEXT (UUID) | Primary key         |
+| reviewCycleId | TEXT        | FK to ReviewCycle   |
+| diffData      | TEXT (JSON) | Parsed unified diff |
 
 ### ProjectConfig / GlobalConfig
 
@@ -115,20 +115,20 @@ Key-value stores for web UI config overrides.
 
 ### REST Endpoints
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/projects` | GET/POST | List/register projects |
-| `/api/projects/:id` | GET/PUT/DELETE | Manage a project |
-| `/api/projects/:id/prs` | GET/POST | List/create PRs for a project |
-| `/api/prs/:id` | GET/PUT | Get/update a PR |
-| `/api/prs/:id/cycles` | GET/POST | List/create review cycles |
-| `/api/prs/:id/diff` | GET | Get diff for current cycle |
-| `/api/prs/:id/comments` | GET/POST | List/add comments |
-| `/api/comments/:id` | PUT/DELETE | Update/delete a comment |
-| `/api/prs/:id/review` | POST | Submit review (approve/request-changes) |
-| `/api/prs/:id/agent-ready` | POST | Agent signals PR ready for re-review |
-| `/api/config` | GET/PUT | Global config |
-| `/api/projects/:id/config` | GET/PUT | Project config |
+| Endpoint                   | Method         | Purpose                                 |
+| -------------------------- | -------------- | --------------------------------------- |
+| `/api/projects`            | GET/POST       | List/register projects                  |
+| `/api/projects/:id`        | GET/PUT/DELETE | Manage a project                        |
+| `/api/projects/:id/prs`    | GET/POST       | List/create PRs for a project           |
+| `/api/prs/:id`             | GET/PUT        | Get/update a PR                         |
+| `/api/prs/:id/cycles`      | GET/POST       | List/create review cycles               |
+| `/api/prs/:id/diff`        | GET            | Get diff for current cycle              |
+| `/api/prs/:id/comments`    | GET/POST       | List/add comments                       |
+| `/api/comments/:id`        | PUT/DELETE     | Update/delete a comment                 |
+| `/api/prs/:id/review`      | POST           | Submit review (approve/request-changes) |
+| `/api/prs/:id/agent-ready` | POST           | Agent signals PR ready for re-review    |
+| `/api/config`              | GET/PUT        | Global config                           |
+| `/api/projects/:id/config` | GET/PUT        | Project config                          |
 
 ### WebSocket Events
 
@@ -157,7 +157,13 @@ shepherd config [--global] [key] [value]          # Get/set config
 ```json
 {
   "comments": [
-    { "filePath": "src/index.ts", "startLine": 42, "endLine": 42, "body": "...", "severity": "suggestion" }
+    {
+      "filePath": "src/index.ts",
+      "startLine": 42,
+      "endLine": 42,
+      "body": "...",
+      "severity": "suggestion"
+    }
   ],
   "replies": [
     { "commentId": "abc123", "body": "Good point, I've updated this." },
@@ -194,6 +200,7 @@ shepherd config [--global] [key] [value]          # Get/set config
 ### Agent Context Attachment
 
 When submitting a PR, the agent attaches structured context:
+
 - Summary of what was built and why
 - Key architectural decisions and trade-offs
 - The original plan/spec reference
@@ -206,8 +213,14 @@ This context is stored with the PR and injected into new sessions or available a
 ```typescript
 interface AgentAdapter {
   name: string;
-  startSession(opts: { projectPath: string; prompt: string }): Promise<AgentSession>;
-  resumeSession(opts: { sessionId: string; prompt: string }): Promise<AgentSession>;
+  startSession(opts: {
+    projectPath: string;
+    prompt: string;
+  }): Promise<AgentSession>;
+  resumeSession(opts: {
+    sessionId: string;
+    prompt: string;
+  }): Promise<AgentSession>;
 }
 
 interface AgentSession {
@@ -278,22 +291,22 @@ Guides the agent on what context to capture when submitting PRs: summary, archit
 
 ## Technology Stack
 
-| Component | Technology | Rationale |
-|---|---|---|
-| Runtime | Node.js + TypeScript | User preference, ecosystem |
-| Backend | Fastify | Fast, TypeScript-friendly, WebSocket plugin |
-| Database | SQLite via `better-sqlite3` | Zero setup, local, fast |
-| ORM | Drizzle ORM | Lightweight, type-safe, great SQLite support |
-| Frontend | React + TypeScript | Ecosystem, git-diff-view support |
-| Build | Vite | Fast dev server |
+| Component      | Technology                               | Rationale                                       |
+| -------------- | ---------------------------------------- | ----------------------------------------------- |
+| Runtime        | Node.js + TypeScript                     | User preference, ecosystem                      |
+| Backend        | Fastify                                  | Fast, TypeScript-friendly, WebSocket plugin     |
+| Database       | SQLite via `better-sqlite3`              | Zero setup, local, fast                         |
+| ORM            | Drizzle ORM                              | Lightweight, type-safe, great SQLite support    |
+| Frontend       | React + TypeScript                       | Ecosystem, git-diff-view support                |
+| Build          | Vite                                     | Fast dev server                                 |
 | Diff rendering | `git-diff-view` + `@git-diff-view/shiki` | ~40kB, widget API, VS Code-quality highlighting |
-| Styling | Tailwind CSS + CSS custom properties | Rapid dev, theming |
-| WebSocket | `@fastify/websocket` | Native Fastify integration |
-| CLI | `commander` | Standard Node.js CLI |
-| Git | `simple-git` | Clean API for git operations |
-| Notifications | Web Notifications API + `node-notifier` | Browser + OS notifications |
-| Testing | Vitest | Fast, Vite-native |
-| Monorepo | npm workspaces | Manage CLI, backend, frontend packages |
+| Styling        | Tailwind CSS + CSS custom properties     | Rapid dev, theming                              |
+| WebSocket      | `@fastify/websocket`                     | Native Fastify integration                      |
+| CLI            | `commander`                              | Standard Node.js CLI                            |
+| Git            | `simple-git`                             | Clean API for git operations                    |
+| Notifications  | Web Notifications API + `node-notifier`  | Browser + OS notifications                      |
+| Testing        | Vitest                                   | Fast, Vite-native                               |
+| Monorepo       | npm workspaces                           | Manage CLI, backend, frontend packages          |
 
 ### Future / Optional
 

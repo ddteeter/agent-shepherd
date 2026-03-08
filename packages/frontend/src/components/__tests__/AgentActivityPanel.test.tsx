@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AgentActivityPanel, type ActivityEntry } from '../AgentActivityPanel.js';
+import {
+  AgentActivityPanel,
+  type ActivityEntry,
+} from '../AgentActivityPanel.js';
 
 function makeEntry(overrides: Partial<ActivityEntry> = {}): ActivityEntry {
   return {
@@ -42,7 +45,9 @@ describe('AgentActivityPanel', () => {
 
   it('shows verbose badge when entries have details', () => {
     render(
-      <AgentActivityPanel entries={[makeEntry({ detail: 'detailed output' })]} />,
+      <AgentActivityPanel
+        entries={[makeEntry({ detail: 'detailed output' })]}
+      />,
     );
     expect(screen.getByText('verbose')).toBeInTheDocument();
   });
@@ -50,7 +55,9 @@ describe('AgentActivityPanel', () => {
   it('shows detail content when an entry row with detail is clicked', async () => {
     const user = userEvent.setup();
     render(
-      <AgentActivityPanel entries={[makeEntry({ detail: 'Test output details' })]} />,
+      <AgentActivityPanel
+        entries={[makeEntry({ detail: 'Test output details' })]}
+      />,
     );
 
     const summaryRow = screen.getByText('Running tests');
@@ -61,7 +68,9 @@ describe('AgentActivityPanel', () => {
 
   it('applies italic style for text-type entries', () => {
     render(
-      <AgentActivityPanel entries={[makeEntry({ type: 'text', summary: 'Thinking...' })]} />,
+      <AgentActivityPanel
+        entries={[makeEntry({ type: 'text', summary: 'Thinking...' })]}
+      />,
     );
     const row = screen.getByText('Thinking...').closest('div');
     expect(row?.style.fontStyle).toBe('italic');

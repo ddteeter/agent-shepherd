@@ -4,8 +4,9 @@ import type { AgentRunner } from '../../agent-runner.js';
 import type { SessionLogProvider } from '../../session-log/provider.js';
 
 vi.mock('../transcript-formatter.js', () => ({
-  formatTranscript: vi.fn(async (session: any, _outputDir: string) =>
-    `/tmp/formatted/${session.sessionId}.md`
+  formatTranscript: vi.fn(
+    async (session: any, _outputDir: string) =>
+      `/tmp/formatted/${session.sessionId}.md`,
   ),
 }));
 
@@ -17,7 +18,9 @@ function createMockRunner(): AgentRunner {
   } as any;
 }
 
-function createMockSessionLogProvider(sessions: any[] = []): SessionLogProvider {
+function createMockSessionLogProvider(
+  sessions: any[] = [],
+): SessionLogProvider {
   return {
     name: 'mock',
     findSessions: vi.fn(async () => sessions),
@@ -25,9 +28,22 @@ function createMockSessionLogProvider(sessions: any[] = []): SessionLogProvider 
 }
 
 function createMockDb(opts?: { pr?: any; project?: any; insights?: any }) {
-  const pr = opts !== undefined && 'pr' in opts ? opts.pr : { id: 'pr-1', projectId: 'proj-1', title: 'Test PR', sourceBranch: 'feat/x', workingDirectory: '/tmp/worktree' };
-  const project = opts !== undefined && 'project' in opts ? opts.project : { id: 'proj-1', path: '/tmp/project', name: 'Test' };
-  const insightsRow = opts !== undefined && 'insights' in opts ? opts.insights : null;
+  const pr =
+    opts !== undefined && 'pr' in opts
+      ? opts.pr
+      : {
+          id: 'pr-1',
+          projectId: 'proj-1',
+          title: 'Test PR',
+          sourceBranch: 'feat/x',
+          workingDirectory: '/tmp/worktree',
+        };
+  const project =
+    opts !== undefined && 'project' in opts
+      ? opts.project
+      : { id: 'proj-1', path: '/tmp/project', name: 'Test' };
+  const insightsRow =
+    opts !== undefined && 'insights' in opts ? opts.insights : null;
 
   let callCount = 0;
   return {
@@ -52,7 +68,12 @@ describe('InsightsAnalyzer', () => {
   it('discovers session logs, formats them, and spawns agent', async () => {
     const runner = createMockRunner();
     const sessionLogProvider = createMockSessionLogProvider([
-      { sessionId: 's1', filePath: '/path/to/s1.jsonl', startedAt: '2026-01-01', branch: 'feat/x' },
+      {
+        sessionId: 's1',
+        filePath: '/path/to/s1.jsonl',
+        startedAt: '2026-01-01',
+        branch: 'feat/x',
+      },
     ]);
 
     const db = createMockDb();
@@ -71,7 +92,12 @@ describe('InsightsAnalyzer', () => {
     // Verify formatTranscript was called
     const { formatTranscript } = await import('../transcript-formatter.js');
     expect(formatTranscript).toHaveBeenCalledWith(
-      { sessionId: 's1', filePath: '/path/to/s1.jsonl', startedAt: '2026-01-01', branch: 'feat/x' },
+      {
+        sessionId: 's1',
+        filePath: '/path/to/s1.jsonl',
+        startedAt: '2026-01-01',
+        branch: 'feat/x',
+      },
       expect.stringContaining('transcripts'),
     );
 
@@ -81,7 +107,9 @@ describe('InsightsAnalyzer', () => {
     expect(runCall[0].prompt).not.toContain('s1.jsonl');
 
     // Verify additionalDirs is passed so the agent sandbox can access transcript files
-    expect(runCall[0].additionalDirs).toEqual([expect.stringContaining('transcripts')]);
+    expect(runCall[0].additionalDirs).toEqual([
+      expect.stringContaining('transcripts'),
+    ]);
 
     expect(runner.run).toHaveBeenCalledWith(
       expect.objectContaining({ prId: 'pr-1', source: 'insights' }),
@@ -156,7 +184,13 @@ describe('InsightsAnalyzer', () => {
   it('falls back to project.path when workingDirectory is null', async () => {
     const runner = createMockRunner();
     const db = createMockDb({
-      pr: { id: 'pr-1', projectId: 'proj-1', title: 'Test', sourceBranch: 'feat/x', workingDirectory: null },
+      pr: {
+        id: 'pr-1',
+        projectId: 'proj-1',
+        title: 'Test',
+        sourceBranch: 'feat/x',
+        workingDirectory: null,
+      },
     });
 
     const analyzer = new InsightsAnalyzer({
@@ -178,7 +212,11 @@ describe('InsightsAnalyzer', () => {
   it('passes previousUpdatedAt to prompt when insights exist', async () => {
     const runner = createMockRunner();
     const db = createMockDb({
-      insights: { id: 'ins-1', prId: 'pr-1', updatedAt: '2026-03-07T10:00:00Z' },
+      insights: {
+        id: 'ins-1',
+        prId: 'pr-1',
+        updatedAt: '2026-03-07T10:00:00Z',
+      },
     });
 
     const analyzer = new InsightsAnalyzer({

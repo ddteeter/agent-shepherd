@@ -1,11 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { getLangFromPath, getLanguagesForFiles, getStoredSyntaxTheme, AVAILABLE_THEMES, THEME_GROUPS, useHighlighter } from '../useHighlighter.js';
+import {
+  getLangFromPath,
+  getLanguagesForFiles,
+  getStoredSyntaxTheme,
+  AVAILABLE_THEMES,
+  THEME_GROUPS,
+  useHighlighter,
+} from '../useHighlighter.js';
 
 // Mock shiki
 vi.mock('shiki', () => {
   const mockHighlighter = {
-    codeToTokens: vi.fn().mockReturnValue({ tokens: [[{ content: 'test', color: '#fff' }]] }),
+    codeToTokens: vi
+      .fn()
+      .mockReturnValue({ tokens: [[{ content: 'test', color: '#fff' }]] }),
     loadTheme: vi.fn().mockResolvedValue(undefined),
   };
   return {
@@ -13,7 +22,7 @@ vi.mock('shiki', () => {
     bundledThemes: {
       'github-dark': true,
       'github-light': true,
-      'nord': true,
+      nord: true,
     },
   };
 });

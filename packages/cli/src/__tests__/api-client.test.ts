@@ -19,7 +19,9 @@ describe('ApiClient', () => {
 
   it('constructs URLs correctly', () => {
     const client = new ApiClient('http://localhost:3847');
-    expect((client as any).url('/api/projects')).toBe('http://localhost:3847/api/projects');
+    expect((client as any).url('/api/projects')).toBe(
+      'http://localhost:3847/api/projects',
+    );
   });
 
   describe('getToken', () => {
@@ -47,16 +49,22 @@ describe('ApiClient', () => {
     });
 
     it('throws when token file not found', () => {
-      vi.mocked(readFileSync).mockImplementation(() => { throw new Error('ENOENT'); });
+      vi.mocked(readFileSync).mockImplementation(() => {
+        throw new Error('ENOENT');
+      });
       const client = new ApiClient('http://localhost:3847');
-      expect(() => (client as any).getToken()).toThrow('Session token not found');
+      expect(() => (client as any).getToken()).toThrow(
+        'Session token not found',
+      );
     });
   });
 
   describe('authHeaders', () => {
     it('returns X-Session-Token header', () => {
       const client = new ApiClient('http://localhost:3847', 'test-token');
-      expect((client as any).authHeaders()).toEqual({ 'X-Session-Token': 'test-token' });
+      expect((client as any).authHeaders()).toEqual({
+        'X-Session-Token': 'test-token',
+      });
     });
   });
 
@@ -83,7 +91,9 @@ describe('ApiClient', () => {
         text: () => Promise.resolve('Not Found'),
       } as any);
 
-      await expect(client.get('/api/missing')).rejects.toThrow('GET /api/missing: 404 Not Found');
+      await expect(client.get('/api/missing')).rejects.toThrow(
+        'GET /api/missing: 404 Not Found',
+      );
     });
   });
 
@@ -98,7 +108,10 @@ describe('ApiClient', () => {
       const result = await client.post('/api/test', { name: 'test' });
       expect(fetch).toHaveBeenCalledWith('http://localhost:3847/api/test', {
         method: 'POST',
-        headers: { 'X-Session-Token': 'token', 'Content-Type': 'application/json' },
+        headers: {
+          'X-Session-Token': 'token',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ name: 'test' }),
       });
       expect(result).toEqual({ id: '123' });
@@ -126,7 +139,9 @@ describe('ApiClient', () => {
         text: () => Promise.resolve('Server Error'),
       } as any);
 
-      await expect(client.post('/api/test', {})).rejects.toThrow('POST /api/test: 500 Server Error');
+      await expect(client.post('/api/test', {})).rejects.toThrow(
+        'POST /api/test: 500 Server Error',
+      );
     });
   });
 
@@ -141,7 +156,10 @@ describe('ApiClient', () => {
       const result = await client.put('/api/test/1', { name: 'updated' });
       expect(fetch).toHaveBeenCalledWith('http://localhost:3847/api/test/1', {
         method: 'PUT',
-        headers: { 'X-Session-Token': 'token', 'Content-Type': 'application/json' },
+        headers: {
+          'X-Session-Token': 'token',
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ name: 'updated' }),
       });
       expect(result).toEqual({ updated: true });
@@ -155,7 +173,9 @@ describe('ApiClient', () => {
         text: () => Promise.resolve('Bad Request'),
       } as any);
 
-      await expect(client.put('/api/test/1', {})).rejects.toThrow('PUT /api/test/1: 400 Bad Request');
+      await expect(client.put('/api/test/1', {})).rejects.toThrow(
+        'PUT /api/test/1: 400 Bad Request',
+      );
     });
   });
 });

@@ -43,7 +43,13 @@ function getDiffLines(container: HTMLElement) {
   return Array.from(container.querySelectorAll<HTMLElement>('.diff-line'));
 }
 
-type AddCommentData = { filePath: string | null; startLine: number | null; endLine: number | null; body: string; severity: string };
+type AddCommentData = {
+  filePath: string | null;
+  startLine: number | null;
+  endLine: number | null;
+  body: string;
+  severity: string;
+};
 
 describe('DiffViewer — multi-line comment support', () => {
   let onAddComment: ReturnType<typeof vi.fn<(data: AddCommentData) => void>>;
@@ -68,7 +74,9 @@ describe('DiffViewer — multi-line comment support', () => {
     fireEvent.click(lines[0]);
 
     // Comment form should appear (has the textarea)
-    expect(screen.getByPlaceholderText('Write a comment...')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Write a comment...'),
+    ).toBeInTheDocument();
 
     // Should NOT show multi-line label since it's a single-line click
     expect(screen.queryByText(/Commenting on lines/)).not.toBeInTheDocument();
@@ -138,11 +146,15 @@ describe('DiffViewer — multi-line comment support', () => {
     const lines = getDiffLines(container);
     fireEvent.click(lines[0]);
 
-    expect(screen.getByPlaceholderText('Write a comment...')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Write a comment...'),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Cancel'));
 
-    expect(screen.queryByPlaceholderText('Write a comment...')).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText('Write a comment...'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows existing multi-line comment range label in CommentThread', () => {
@@ -225,11 +237,14 @@ describe('FileTree and DiffViewer sort order', () => {
 
     // Get file order from the FileTree: file buttons (not directory buttons)
     // File buttons render file names; directory buttons have chevron SVGs
-    const treeButtons = container.querySelectorAll<HTMLButtonElement>('[data-file-path]');
+    const treeButtons =
+      container.querySelectorAll<HTMLButtonElement>('[data-file-path]');
 
     // Get file order from the DiffViewer: div containers with data-file-path
     // (FileTree uses button[data-file-path], DiffViewer uses div[data-file-path])
-    const diffFiles = container.querySelectorAll<HTMLElement>('div[data-file-path]');
+    const diffFiles = container.querySelectorAll<HTMLElement>(
+      'div[data-file-path]',
+    );
     const diffOrder = Array.from(diffFiles).map((el) => el.dataset.filePath);
 
     // FileTree shows: src/ dir first (with utils/helper.ts then index.ts inside),
@@ -246,14 +261,7 @@ describe('FileTree and DiffViewer sort order', () => {
 
 describe('DiffViewer — empty state', () => {
   it('shows "No diff content available" for empty diff', () => {
-    render(
-      <DiffViewer
-        diff=""
-        files={[]}
-        scrollToFile={null}
-        scrollKey={0}
-      />,
-    );
+    render(<DiffViewer diff="" files={[]} scrollToFile={null} scrollKey={0} />);
     expect(screen.getByText('No diff content available.')).toBeInTheDocument();
   });
 });
@@ -331,7 +339,9 @@ describe('DiffViewer — global/PR-level comments', () => {
       />,
     );
     expect(screen.getByText('General comments')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Write a comment...')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Write a comment...'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -381,7 +391,9 @@ describe('DiffViewer — orphaned comments', () => {
       />,
     );
     expect(screen.getByText('Orphaned line comment')).toBeInTheDocument();
-    expect(screen.getByText('Comments on lines no longer in this diff')).toBeInTheDocument();
+    expect(
+      screen.getByText('Comments on lines no longer in this diff'),
+    ).toBeInTheDocument();
   });
 
   it('renders orphaned comments for files not in diff', () => {
@@ -423,7 +435,10 @@ describe('DiffViewer — grouped file order', () => {
 
     const { container } = render(
       <DiffViewer
-        diff={SIMPLE_DIFF + `\ndiff --git a/package.json b/package.json\n--- a/package.json\n+++ b/package.json\n@@ -1,1 +1,1 @@\n-old\n+new`}
+        diff={
+          SIMPLE_DIFF +
+          `\ndiff --git a/package.json b/package.json\n--- a/package.json\n+++ b/package.json\n@@ -1,1 +1,1 @@\n-old\n+new`
+        }
         files={['src/app.ts', 'package.json']}
         scrollToFile={null}
         scrollKey={0}
@@ -432,7 +447,9 @@ describe('DiffViewer — grouped file order', () => {
       />,
     );
 
-    const fileHeaders = container.querySelectorAll<HTMLElement>('div[data-file-path]');
+    const fileHeaders = container.querySelectorAll<HTMLElement>(
+      'div[data-file-path]',
+    );
     const order = Array.from(fileHeaders).map((el) => el.dataset.filePath);
     expect(order).toEqual(['package.json', 'src/app.ts']);
   });

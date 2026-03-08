@@ -35,8 +35,12 @@ describe('insightsCommand', () => {
 
   describe('update', () => {
     it('errors when --stdin not provided', async () => {
-      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => { throw new Error('exit'); });
-      await expect(program.parseAsync(['node', 'test', 'insights', 'update', 'pr-1'])).rejects.toThrow('exit');
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+        throw new Error('exit');
+      });
+      await expect(
+        program.parseAsync(['node', 'test', 'insights', 'update', 'pr-1']),
+      ).rejects.toThrow('exit');
       expect(errorSpy).toHaveBeenCalledWith('Must specify --stdin');
       exitSpy.mockRestore();
     });
@@ -46,8 +50,16 @@ describe('insightsCommand', () => {
     it('fetches and prints comments history', async () => {
       const comments = [{ id: '1', body: 'test' }];
       client.get.mockResolvedValue(comments);
-      await program.parseAsync(['node', 'test', 'insights', 'history', 'proj-1']);
-      expect(client.get).toHaveBeenCalledWith('/api/projects/proj-1/comments/history');
+      await program.parseAsync([
+        'node',
+        'test',
+        'insights',
+        'history',
+        'proj-1',
+      ]);
+      expect(client.get).toHaveBeenCalledWith(
+        '/api/projects/proj-1/comments/history',
+      );
       expect(logSpy).toHaveBeenCalledWith(JSON.stringify(comments, null, 2));
     });
   });

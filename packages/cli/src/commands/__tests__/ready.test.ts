@@ -26,7 +26,9 @@ describe('readyCommand', () => {
     client.post.mockResolvedValue({ cycleNumber: 2 });
     await program.parseAsync(['node', 'test', 'ready', 'pr-1']);
 
-    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/agent-ready', { fileGroups: undefined });
+    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/agent-ready', {
+      fileGroups: undefined,
+    });
     expect(logSpy).toHaveBeenCalledWith('PR ready for review (cycle 2)');
   });
 
@@ -36,9 +38,18 @@ describe('readyCommand', () => {
       .mockResolvedValueOnce({ created: 2 })
       .mockResolvedValueOnce({ cycleNumber: 3 });
 
-    await program.parseAsync(['node', 'test', 'ready', 'pr-1', '-f', '/tmp/batch.json']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'ready',
+      'pr-1',
+      '-f',
+      '/tmp/batch.json',
+    ]);
 
-    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/comments/batch', { comments: [] });
+    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/comments/batch', {
+      comments: [],
+    });
     expect(logSpy).toHaveBeenCalledWith('Batch submitted: 2 items created');
     expect(logSpy).toHaveBeenCalledWith('PR ready for review (cycle 3)');
   });
@@ -48,8 +59,17 @@ describe('readyCommand', () => {
     vi.mocked(readFile).mockResolvedValue(JSON.stringify(groups));
     client.post.mockResolvedValue({ cycleNumber: 2 });
 
-    await program.parseAsync(['node', 'test', 'ready', 'pr-1', '--file-groups', '/tmp/groups.json']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'ready',
+      'pr-1',
+      '--file-groups',
+      '/tmp/groups.json',
+    ]);
 
-    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/agent-ready', { fileGroups: groups });
+    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/agent-ready', {
+      fileGroups: groups,
+    });
   });
 });

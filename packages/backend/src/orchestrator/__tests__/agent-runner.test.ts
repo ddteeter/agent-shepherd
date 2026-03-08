@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentRunner } from '../agent-runner.js';
-import type { AgentAdapter, AgentSession, AgentActivityEntry } from '../types.js';
+import type {
+  AgentAdapter,
+  AgentSession,
+  AgentActivityEntry,
+} from '../types.js';
 
 function createMockSession(id = 'session-1'): AgentSession & {
   _onComplete: () => void;
@@ -13,13 +17,25 @@ function createMockSession(id = 'session-1'): AgentSession & {
 
   return {
     id,
-    onComplete: vi.fn((cb) => { onComplete = cb; }),
-    onError: vi.fn((cb) => { onError = cb; }),
-    onOutput: vi.fn((cb) => { onOutput = cb; }),
+    onComplete: vi.fn((cb) => {
+      onComplete = cb;
+    }),
+    onError: vi.fn((cb) => {
+      onError = cb;
+    }),
+    onOutput: vi.fn((cb) => {
+      onOutput = cb;
+    }),
     kill: vi.fn(async () => {}),
-    get _onComplete() { return onComplete; },
-    get _onError() { return onError; },
-    get _onOutput() { return onOutput; },
+    get _onComplete() {
+      return onComplete;
+    },
+    get _onError() {
+      return onError;
+    },
+    get _onOutput() {
+      return onOutput;
+    },
   };
 }
 
@@ -31,7 +47,9 @@ function createMockAdapter(session: AgentSession): AgentAdapter {
 }
 
 describe('AgentRunner', () => {
-  let broadcast: ReturnType<typeof vi.fn<(event: string, data: unknown) => void>>;
+  let broadcast: ReturnType<
+    typeof vi.fn<(event: string, data: unknown) => void>
+  >;
 
   beforeEach(() => {
     broadcast = vi.fn<(event: string, data: unknown) => void>();
@@ -45,7 +63,12 @@ describe('AgentRunner', () => {
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
 
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp', prompt: 'fix bugs', source: 'code-fix' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp',
+        prompt: 'fix bugs',
+        source: 'code-fix',
+      },
       { onComplete: vi.fn(), onError: vi.fn() },
     );
 
@@ -54,7 +77,10 @@ describe('AgentRunner', () => {
       projectPath: '/tmp',
       prompt: 'fix bugs',
     });
-    expect(broadcast).toHaveBeenCalledWith('agent:working', { prId: 'pr-1', source: 'code-fix' });
+    expect(broadcast).toHaveBeenCalledWith('agent:working', {
+      prId: 'pr-1',
+      source: 'code-fix',
+    });
   });
 
   it('supports two sessions for same PR with different sources', async () => {
@@ -62,7 +88,8 @@ describe('AgentRunner', () => {
     const session2 = createMockSession('s2');
     const adapter: AgentAdapter = {
       name: 'mock',
-      startSession: vi.fn()
+      startSession: vi
+        .fn()
         .mockResolvedValueOnce(session1)
         .mockResolvedValueOnce(session2),
     };
@@ -73,7 +100,12 @@ describe('AgentRunner', () => {
       { onComplete: vi.fn(), onError: vi.fn() },
     );
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp', prompt: 'analyze', source: 'insights' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp',
+        prompt: 'analyze',
+        source: 'insights',
+      },
       { onComplete: vi.fn(), onError: vi.fn() },
     );
 
@@ -121,7 +153,10 @@ describe('AgentRunner', () => {
 
     expect(session.kill).toHaveBeenCalled();
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
-    expect(broadcast).toHaveBeenCalledWith('agent:cancelled', { prId: 'pr-1', source: 'code-fix' });
+    expect(broadcast).toHaveBeenCalledWith('agent:cancelled', {
+      prId: 'pr-1',
+      source: 'code-fix',
+    });
   });
 
   it('cleans up session on complete and calls callback', async () => {
@@ -139,7 +174,10 @@ describe('AgentRunner', () => {
 
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
     expect(onComplete).toHaveBeenCalled();
-    expect(broadcast).toHaveBeenCalledWith('agent:completed', { prId: 'pr-1', source: 'code-fix' });
+    expect(broadcast).toHaveBeenCalledWith('agent:completed', {
+      prId: 'pr-1',
+      source: 'code-fix',
+    });
   });
 
   it('cleans up session on error and calls callback', async () => {

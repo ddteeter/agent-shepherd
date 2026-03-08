@@ -30,10 +30,13 @@ export class Orchestrator {
   private agentRunner: AgentRunner;
 
   constructor(deps: OrchestratorDeps) {
-    const adapter = deps.adapter || new ClaudeCodeAdapter({ devMode: deps.devMode });
+    const adapter =
+      deps.adapter || new ClaudeCodeAdapter({ devMode: deps.devMode });
     const broadcast = deps.broadcast || (() => {});
-    const notificationService = deps.notificationService || new NotificationService();
-    const sessionLogProvider = deps.sessionLogProvider || new ClaudeCodeSessionLogProvider();
+    const notificationService =
+      deps.notificationService || new NotificationService();
+    const sessionLogProvider =
+      deps.sessionLogProvider || new ClaudeCodeSessionLogProvider();
 
     this.agentRunner = new AgentRunner({ adapter, broadcast });
 

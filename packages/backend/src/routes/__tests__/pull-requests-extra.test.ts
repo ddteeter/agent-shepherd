@@ -133,7 +133,11 @@ describe('Pull Requests API - additional coverage', () => {
     const db = (server as any).db;
     const { schema } = await import('../../db/index.js');
     const { eq } = await import('drizzle-orm');
-    const cycles = db.select().from(schema.reviewCycles).where(eq(schema.reviewCycles.prId, id)).all();
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, id))
+      .all();
     if (cycles.length > 0) {
       db.update(schema.reviewCycles)
         .set({ status: 'agent_working' })

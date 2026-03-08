@@ -201,7 +201,11 @@ describe('Comments API', () => {
       payload: {
         comments: [],
         replies: [
-          { parentCommentId: parentId, body: 'Done with changes', severity: 'suggestion' },
+          {
+            parentCommentId: parentId,
+            body: 'Done with changes',
+            severity: 'suggestion',
+          },
         ],
       },
     });
@@ -219,15 +223,32 @@ describe('Comments API', () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'fix auth', severity: 'must-fix', author: 'human' },
+      payload: {
+        filePath: 'src/auth.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'fix auth',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/db.ts', startLine: 5, endLine: 5, body: 'fix db', severity: 'suggestion', author: 'human' },
+      payload: {
+        filePath: 'src/db.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'fix db',
+        severity: 'suggestion',
+        author: 'human',
+      },
     });
 
-    const filtered = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?filePath=src/auth.ts` });
+    const filtered = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/comments?filePath=src/auth.ts`,
+    });
     expect(filtered.json()).toHaveLength(1);
     expect(filtered.json()[0].body).toBe('fix auth');
   });
@@ -236,15 +257,32 @@ describe('Comments API', () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'must fix this', severity: 'must-fix', author: 'human' },
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'must fix this',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/b.ts', startLine: 1, endLine: 1, body: 'suggestion', severity: 'suggestion', author: 'human' },
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'suggestion',
+        severity: 'suggestion',
+        author: 'human',
+      },
     });
 
-    const filtered = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?severity=must-fix` });
+    const filtered = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/comments?severity=must-fix`,
+    });
     expect(filtered.json()).toHaveLength(1);
     expect(filtered.json()[0].severity).toBe('must-fix');
   });
@@ -253,33 +291,71 @@ describe('Comments API', () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'fix1', severity: 'must-fix', author: 'human' },
+      payload: {
+        filePath: 'src/auth.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'fix1',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/auth.ts', startLine: 10, endLine: 10, body: 'fix2', severity: 'request', author: 'human' },
+      payload: {
+        filePath: 'src/auth.ts',
+        startLine: 10,
+        endLine: 10,
+        body: 'fix2',
+        severity: 'request',
+        author: 'human',
+      },
     });
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/db.ts', startLine: 5, endLine: 5, body: 'suggestion1', severity: 'suggestion', author: 'human' },
+      payload: {
+        filePath: 'src/db.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'suggestion1',
+        severity: 'suggestion',
+        author: 'human',
+      },
     });
     // Add a general (no-file) comment
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { body: 'Overall feedback', severity: 'suggestion', author: 'human' },
+      payload: {
+        body: 'Overall feedback',
+        severity: 'suggestion',
+        author: 'human',
+      },
     });
     // Add a reply (should not count as top-level)
-    const parentId = (await inject({ method: 'GET', url: `/api/prs/${prId}/comments` })).json()[0].id;
+    const parentId = (
+      await inject({ method: 'GET', url: `/api/prs/${prId}/comments` })
+    ).json()[0].id;
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'reply', severity: 'suggestion', author: 'agent', parentCommentId: parentId },
+      payload: {
+        filePath: 'src/auth.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'reply',
+        severity: 'suggestion',
+        author: 'agent',
+        parentCommentId: parentId,
+      },
     });
 
-    const response = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?summary=true` });
+    const response = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/comments?summary=true`,
+    });
     const summary = response.json();
     expect(summary.total).toBe(4); // 4 top-level, reply excluded
     expect(summary.bySeverity['must-fix']).toBe(1);
@@ -297,8 +373,20 @@ describe('Comments API', () => {
       url: `/api/prs/${prId}/comments/batch`,
       payload: {
         comments: [
-          { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'c1', severity: 'suggestion' },
-          { filePath: 'src/b.ts', startLine: 2, endLine: 2, body: 'c2', severity: 'request' },
+          {
+            filePath: 'src/a.ts',
+            startLine: 1,
+            endLine: 1,
+            body: 'c1',
+            severity: 'suggestion',
+          },
+          {
+            filePath: 'src/b.ts',
+            startLine: 2,
+            endLine: 2,
+            body: 'c2',
+            severity: 'request',
+          },
         ],
         replies: [],
       },

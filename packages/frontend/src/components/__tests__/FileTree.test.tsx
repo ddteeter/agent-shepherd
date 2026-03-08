@@ -7,12 +7,16 @@ describe('FileTree', () => {
   const files = ['src/index.ts', 'src/utils/helper.ts', 'package.json'];
 
   it('renders file count in header', () => {
-    render(<FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />);
+    render(
+      <FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />,
+    );
     expect(screen.getByText('Files (3)')).toBeInTheDocument();
   });
 
   it('renders file names', () => {
-    render(<FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />);
+    render(
+      <FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />,
+    );
     expect(screen.getByText('index.ts')).toBeInTheDocument();
     expect(screen.getByText('helper.ts')).toBeInTheDocument();
     expect(screen.getByText('package.json')).toBeInTheDocument();
@@ -21,14 +25,24 @@ describe('FileTree', () => {
   it('calls onSelectFile when a file is clicked', async () => {
     const user = userEvent.setup();
     const onSelectFile = vi.fn();
-    render(<FileTree files={files} selectedFile={null} onSelectFile={onSelectFile} />);
+    render(
+      <FileTree
+        files={files}
+        selectedFile={null}
+        onSelectFile={onSelectFile}
+      />,
+    );
     await user.click(screen.getByText('package.json'));
     expect(onSelectFile).toHaveBeenCalledWith('package.json');
   });
 
   it('highlights selected file', () => {
     render(
-      <FileTree files={files} selectedFile="src/index.ts" onSelectFile={vi.fn()} />,
+      <FileTree
+        files={files}
+        selectedFile="src/index.ts"
+        onSelectFile={vi.fn()}
+      />,
     );
     const btn = screen.getByText('index.ts').closest('button');
     expect(btn?.style.backgroundColor).toBeTruthy();
@@ -36,7 +50,9 @@ describe('FileTree', () => {
 
   it('renders directory nodes that can be collapsed', async () => {
     const user = userEvent.setup();
-    render(<FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />);
+    render(
+      <FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />,
+    );
 
     expect(screen.getByText('helper.ts')).toBeInTheDocument();
 
@@ -131,9 +147,7 @@ describe('FileTree', () => {
 
   it('collapses grouped tree sections', async () => {
     const user = userEvent.setup();
-    const fileGroups = [
-      { name: 'Core Files', files: ['src/index.ts'] },
-    ];
+    const fileGroups = [{ name: 'Core Files', files: ['src/index.ts'] }];
     render(
       <FileTree
         files={files}
@@ -153,9 +167,7 @@ describe('FileTree', () => {
   it('selects files in logical grouped view', async () => {
     const user = userEvent.setup();
     const onSelectFile = vi.fn();
-    const fileGroups = [
-      { name: 'Core', files: ['src/index.ts'] },
-    ];
+    const fileGroups = [{ name: 'Core', files: ['src/index.ts'] }];
     render(
       <FileTree
         files={files}
@@ -171,9 +183,7 @@ describe('FileTree', () => {
   });
 
   it('renders file status badges in grouped view', () => {
-    const fileGroups = [
-      { name: 'Core', files: ['src/index.ts'] },
-    ];
+    const fileGroups = [{ name: 'Core', files: ['src/index.ts'] }];
     render(
       <FileTree
         files={files}
@@ -191,9 +201,7 @@ describe('FileTree', () => {
   });
 
   it('highlights selected file in grouped view', () => {
-    const fileGroups = [
-      { name: 'Core', files: ['src/index.ts'] },
-    ];
+    const fileGroups = [{ name: 'Core', files: ['src/index.ts'] }];
     render(
       <FileTree
         files={files}
@@ -209,9 +217,7 @@ describe('FileTree', () => {
   });
 
   it('renders ungrouped files in logical view', () => {
-    const fileGroups = [
-      { name: 'Core', files: ['src/index.ts'] },
-    ];
+    const fileGroups = [{ name: 'Core', files: ['src/index.ts'] }];
     render(
       <FileTree
         files={files}
@@ -239,7 +245,9 @@ describe('FileTree', () => {
   });
 
   it('does not show view mode toggle without fileGroups', () => {
-    render(<FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />);
+    render(
+      <FileTree files={files} selectedFile={null} onSelectFile={vi.fn()} />,
+    );
     expect(screen.queryByText('Logical')).not.toBeInTheDocument();
     expect(screen.queryByText('Directory')).not.toBeInTheDocument();
   });

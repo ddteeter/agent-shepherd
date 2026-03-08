@@ -17,9 +17,11 @@ Four UX issues to fix: comment counts excluding agent replies, resolved comments
 Change both count computations to include all comments (top-level + replies):
 
 **File tree comment counts** (`PRReview.tsx` `commentCounts` memo):
+
 - Count all comments with a `filePath`, regardless of `parentCommentId`
 
 **ReviewBar count** (`PRReview.tsx` line 469):
+
 - Pass total comment count instead of `topLevelComments.length`
 - Update ReviewBar label: "X comments" includes all comments and replies
 
@@ -36,11 +38,13 @@ Handle this in the backend for atomicity. When creating a comment with `parentCo
 **Changes to `packages/backend/src/routes/comments.ts`:**
 
 In `POST /api/prs/:prId/comments`:
+
 - After inserting the new comment, if `parentCommentId` is provided, look up the parent
 - If `parent.resolved === 1` (SQLite stores booleans as integers), update `resolved` to `false`
 - Broadcast `comment:updated` for the parent so the frontend picks up the change
 
 In `POST /api/prs/:prId/comments/batch` (replies section):
+
 - Same logic: after inserting a reply, unresolve the parent if it was resolved
 
 **No frontend changes needed.** The existing WebSocket handler for `comment:updated` already refetches comments.
@@ -81,13 +85,13 @@ Add `useWebSocket` to `ProjectView` to refetch the PR list on relevant events.
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `packages/frontend/src/pages/PRReview.tsx` | Fix comment count to include replies |
-| `packages/frontend/src/components/ReviewBar.tsx` | Update label (no structural change needed) |
-| `packages/backend/src/routes/comments.ts` | Auto-unresolve parent on reply (both single and batch endpoints) |
-| `packages/frontend/src/components/CommentThread.tsx` | Move Edit/Delete to inline with parent header |
-| `packages/frontend/src/pages/ProjectView.tsx` | Add WebSocket listener for auto-refresh |
+| File                                                 | Changes                                                          |
+| ---------------------------------------------------- | ---------------------------------------------------------------- |
+| `packages/frontend/src/pages/PRReview.tsx`           | Fix comment count to include replies                             |
+| `packages/frontend/src/components/ReviewBar.tsx`     | Update label (no structural change needed)                       |
+| `packages/backend/src/routes/comments.ts`            | Auto-unresolve parent on reply (both single and batch endpoints) |
+| `packages/frontend/src/components/CommentThread.tsx` | Move Edit/Delete to inline with parent header                    |
+| `packages/frontend/src/pages/ProjectView.tsx`        | Add WebSocket listener for auto-refresh                          |
 
 ## Deferred Issues
 

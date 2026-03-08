@@ -8,11 +8,17 @@ export function listProjectsCommand(program: Command, client: ApiClient) {
     .action(async () => {
       const projects = await client.get<any[]>('/api/projects');
       if (projects.length === 0) {
-        console.log('No projects registered. Use "agent-shepherd init <path>" to register one.');
+        console.log(
+          'No projects registered. Use "agent-shepherd init <path>" to register one.',
+        );
         return;
       }
-      console.log('ID                                    Name              Path');
-      console.log('------------------------------------  ----------------  ----');
+      console.log(
+        'ID                                    Name              Path',
+      );
+      console.log(
+        '------------------------------------  ----------------  ----',
+      );
       for (const p of projects) {
         console.log(`${p.id}  ${p.name.padEnd(16)}  ${p.path}`);
       }

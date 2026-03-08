@@ -13,6 +13,7 @@
 ### Task 1: Fix orchestrator to query all unresolved comments across cycles
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/index.ts:4,75-89`
 - Test: `packages/backend/src/orchestrator/__tests__/orchestrator.test.ts` (create)
 
@@ -34,7 +35,10 @@ describe('Orchestrator.handleRequestChanges', () => {
   let prId: string;
 
   beforeEach(async () => {
-    server = await buildServer({ dbPath: ':memory:', disableOrchestrator: true });
+    server = await buildServer({
+      dbPath: ':memory:',
+      disableOrchestrator: true,
+    });
     const db = (server as any).db;
 
     // Create project and PR
@@ -90,7 +94,9 @@ describe('Orchestrator.handleRequestChanges', () => {
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
-    const cycle1Comment = comments.json().find((c: any) => c.body === 'Fix this bug');
+    const cycle1Comment = comments
+      .json()
+      .find((c: any) => c.body === 'Fix this bug');
 
     await server.inject({
       method: 'POST',
@@ -108,15 +114,23 @@ describe('Orchestrator.handleRequestChanges', () => {
 
     // Now build the prompt as the orchestrator would
     // Get all cycles for this PR
-    const allCycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
+    const allCycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
     const cycleIds = allCycles.map((c: any) => c.id);
 
     // Get ALL comments across all cycles
-    const allComments = db.select().from(schema.comments)
-      .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+    const allComments = db
+      .select()
+      .from(schema.comments)
+      .where(inArray(schema.comments.reviewCycleId, cycleIds))
+      .all();
 
-    const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+    const topLevel = allComments.filter(
+      (c: any) => !c.parentCommentId && !c.resolved,
+    );
     const reviewComments = topLevel.map((c: any) => ({
       id: c.id,
       filePath: c.filePath,
@@ -180,13 +194,21 @@ describe('Orchestrator.handleRequestChanges', () => {
     });
 
     const db = (server as any).db;
-    const allCycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
+    const allCycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
     const cycleIds = allCycles.map((c: any) => c.id);
-    const allComments = db.select().from(schema.comments)
-      .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+    const allComments = db
+      .select()
+      .from(schema.comments)
+      .where(inArray(schema.comments.reviewCycleId, cycleIds))
+      .all();
 
-    const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+    const topLevel = allComments.filter(
+      (c: any) => !c.parentCommentId && !c.resolved,
+    );
 
     const reviewComments = topLevel.map((c: any) => ({
       id: c.id,
@@ -227,16 +249,24 @@ In `packages/backend/src/orchestrator/index.ts`:
 
 ```typescript
 // Get all cycles for this PR
-const allCycles = this.db.select().from(this.schema.reviewCycles)
-  .where(eq(this.schema.reviewCycles.prId, prId)).all();
+const allCycles = this.db
+  .select()
+  .from(this.schema.reviewCycles)
+  .where(eq(this.schema.reviewCycles.prId, prId))
+  .all();
 const cycleIds = allCycles.map((c: any) => c.id);
 
 // Get ALL comments across all cycles (not just current cycle)
-const allComments = this.db.select().from(this.schema.comments)
-  .where(inArray(this.schema.comments.reviewCycleId, cycleIds)).all();
+const allComments = this.db
+  .select()
+  .from(this.schema.comments)
+  .where(inArray(this.schema.comments.reviewCycleId, cycleIds))
+  .all();
 
 // Filter to unresolved top-level comments
-const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+const topLevel = allComments.filter(
+  (c: any) => !c.parentCommentId && !c.resolved,
+);
 const reviewComments = topLevel.map((c: any) => ({
   id: c.id,
   filePath: c.filePath,
@@ -267,6 +297,7 @@ git commit -m "fix: query all unresolved comments across cycles for agent prompt
 ### Task 2: Add `agent_completed` status to shared types
 
 **Files:**
+
 - Modify: `packages/shared/src/types.ts:3-9`
 
 **Step 1: Add the new status value**
@@ -301,6 +332,7 @@ git commit -m "feat: add agent_completed status to ReviewCycleStatus"
 ### Task 3: Fix agent status sync in orchestrator onComplete
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/index.ts:112-116`
 
 **Step 1: Update the onComplete handler**
@@ -337,6 +369,7 @@ git commit -m "fix: update cycle status to agent_completed in onComplete handler
 ### Task 4: Add commitSha column to reviewCycles schema
 
 **Files:**
+
 - Modify: `packages/backend/src/db/schema.ts:25-32`
 - Create: Migration file (via drizzle-kit)
 
@@ -347,7 +380,9 @@ In `packages/backend/src/db/schema.ts`, add `commitSha` to the `reviewCycles` ta
 ```typescript
 export const reviewCycles = sqliteTable('review_cycles', {
   id: text('id').primaryKey(),
-  prId: text('pr_id').notNull().references(() => pullRequests.id),
+  prId: text('pr_id')
+    .notNull()
+    .references(() => pullRequests.id),
   cycleNumber: integer('cycle_number').notNull(),
   status: text('status').notNull().default('pending_review'),
   reviewedAt: text('reviewed_at'),
@@ -377,6 +412,7 @@ git commit -m "feat: add commitSha column to reviewCycles schema"
 ### Task 5: Add GitService methods for SHA and inter-commit diff
 
 **Files:**
+
 - Modify: `packages/backend/src/services/git.ts:3-33`
 - Modify: `packages/backend/src/services/__tests__/git.test.ts`
 
@@ -441,6 +477,7 @@ git commit -m "feat: add getHeadSha and getDiffBetweenCommits to GitService"
 ### Task 6: Capture commit SHA when creating review cycles
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/pull-requests.ts:13-63,183-248`
 
 **Step 1: Write the failing test**
@@ -507,6 +544,7 @@ db.insert(schema.reviewCycles)
 ```
 
 Add the `GitService` import at top of file:
+
 ```typescript
 import { GitService } from '../services/git.js';
 ```
@@ -554,6 +592,7 @@ git commit -m "feat: capture commit SHA when creating review cycles"
 ### Task 7: Add inter-cycle diff endpoint
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/diff.ts:15-74`
 - Modify: `packages/backend/src/routes/__tests__/diff.test.ts`
 
@@ -614,10 +653,14 @@ it('returns inter-cycle diff showing only changes between cycles', async () => {
 
   // Make a new commit on the feature branch before signaling ready
   execSync('git checkout feat/add-multiply', { cwd: repoPath, stdio: 'pipe' });
-  await writeFile(join(repoPath, 'src', 'utils.ts'),
-    'export function add(a: number, b: number) {\n  return a + b;\n}\n\nexport function multiply(a: number, b: number) {\n  return a * b;\n}\n\nexport function subtract(a: number, b: number) {\n  return a - b;\n}\n'
+  await writeFile(
+    join(repoPath, 'src', 'utils.ts'),
+    'export function add(a: number, b: number) {\n  return a + b;\n}\n\nexport function multiply(a: number, b: number) {\n  return a * b;\n}\n\nexport function subtract(a: number, b: number) {\n  return a - b;\n}\n',
   );
-  execSync('git add . && git commit -m "add subtract function"', { cwd: repoPath, stdio: 'pipe' });
+  execSync('git add . && git commit -m "add subtract function"', {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
 
   await server.inject({
     method: 'POST',
@@ -646,7 +689,11 @@ Expected: FAIL — the `from` param is not handled yet.
 In `packages/backend/src/routes/diff.ts`, modify the `GET /api/prs/:id/diff` handler. After the existing `cycle` param handling (around line 17), add `from`/`to` handling:
 
 ```typescript
-const { cycle, from, to } = request.query as { cycle?: string; from?: string; to?: string };
+const { cycle, from, to } = request.query as {
+  cycle?: string;
+  from?: string;
+  to?: string;
+};
 
 // Inter-cycle diff: from=N&to=M
 if (from !== undefined && to !== undefined) {
@@ -661,12 +708,22 @@ if (from !== undefined && to !== undefined) {
   const fromCycle = db
     .select()
     .from(schema.reviewCycles)
-    .where(and(eq(schema.reviewCycles.prId, id), eq(schema.reviewCycles.cycleNumber, fromNum)))
+    .where(
+      and(
+        eq(schema.reviewCycles.prId, id),
+        eq(schema.reviewCycles.cycleNumber, fromNum),
+      ),
+    )
     .get();
   const toCycle = db
     .select()
     .from(schema.reviewCycles)
-    .where(and(eq(schema.reviewCycles.prId, id), eq(schema.reviewCycles.cycleNumber, toNum)))
+    .where(
+      and(
+        eq(schema.reviewCycles.prId, id),
+        eq(schema.reviewCycles.cycleNumber, toNum),
+      ),
+    )
     .get();
 
   if (!fromCycle) {
@@ -679,24 +736,40 @@ if (from !== undefined && to !== undefined) {
   }
 
   if (!fromCycle.commitSha || !toCycle.commitSha) {
-    reply.code(400).send({ error: 'Commit SHAs not available for these cycles' });
+    reply
+      .code(400)
+      .send({ error: 'Commit SHAs not available for these cycles' });
     return;
   }
 
-  const project = db.select().from(schema.projects).where(eq(schema.projects.id, pr.projectId)).get();
+  const project = db
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.id, pr.projectId))
+    .get();
   if (!project) {
     reply.code(404).send({ error: 'Project not found' });
     return;
   }
 
   const gitService = new GitService(project.path);
-  const diff = await gitService.getDiffBetweenCommits(fromCycle.commitSha, toCycle.commitSha);
+  const diff = await gitService.getDiffBetweenCommits(
+    fromCycle.commitSha,
+    toCycle.commitSha,
+  );
   const files = extractFilesFromDiff(diff);
-  return { diff, files, fromCycle: fromNum, toCycle: toNum, isInterCycleDiff: true };
+  return {
+    diff,
+    files,
+    fromCycle: fromNum,
+    toCycle: toNum,
+    isInterCycleDiff: true,
+  };
 }
 ```
 
 Add `GitService` import at top:
+
 ```typescript
 import { GitService } from '../services/git.js';
 ```
@@ -720,6 +793,7 @@ git commit -m "feat: add inter-cycle diff endpoint with from/to params"
 ### Task 8: Update frontend API client and cycle selector for inter-cycle diff
 
 **Files:**
+
 - Modify: `packages/frontend/src/api.ts:24-29`
 - Modify: `packages/frontend/src/pages/PRReview.tsx:86-105,328-361`
 
@@ -745,30 +819,36 @@ In `packages/frontend/src/pages/PRReview.tsx`:
 1. Update `fetchDiff` to handle inter-cycle mode (around line 86-105):
 
 ```typescript
-const fetchDiff = useCallback(async (cycleValue: string) => {
-  if (!prId) return;
-  setDiffLoading(true);
-  try {
-    let diff;
-    if (cycleValue === 'current') {
-      diff = await api.prs.diff(prId);
-    } else if (cycleValue.startsWith('inter:')) {
-      // Inter-cycle diff: "inter:1:2" means from cycle 1 to cycle 2
-      const [, fromStr, toStr] = cycleValue.split(':');
-      diff = await api.prs.diff(prId, { from: parseInt(fromStr, 10), to: parseInt(toStr, 10) });
-    } else {
-      const cycleNum = parseInt(cycleValue, 10);
-      diff = await api.prs.diff(prId, { cycle: cycleNum });
+const fetchDiff = useCallback(
+  async (cycleValue: string) => {
+    if (!prId) return;
+    setDiffLoading(true);
+    try {
+      let diff;
+      if (cycleValue === 'current') {
+        diff = await api.prs.diff(prId);
+      } else if (cycleValue.startsWith('inter:')) {
+        // Inter-cycle diff: "inter:1:2" means from cycle 1 to cycle 2
+        const [, fromStr, toStr] = cycleValue.split(':');
+        diff = await api.prs.diff(prId, {
+          from: parseInt(fromStr, 10),
+          to: parseInt(toStr, 10),
+        });
+      } else {
+        const cycleNum = parseInt(cycleValue, 10);
+        diff = await api.prs.diff(prId, { cycle: cycleNum });
+      }
+      setDiffData(diff);
+      setScrollToFile(null);
+      setVisibleFile(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load diff');
+    } finally {
+      setDiffLoading(false);
     }
-    setDiffData(diff);
-    setScrollToFile(null);
-    setVisibleFile(null);
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to load diff');
-  } finally {
-    setDiffLoading(false);
-  }
-}, [prId]);
+  },
+  [prId],
+);
 ```
 
 2. Update the cycle selector dropdown (around line 328-361) to add inter-cycle options:
@@ -795,8 +875,7 @@ const fetchDiff = useCallback(async (cycleValue: string) => {
         {cycle.status === 'approved' ? ' (approved)' : ''}
         {cycle.status === 'changes_requested' ? ' (changes requested)' : ''}
       </option>
-    ))
-  }
+    ))}
   {cyclesWithSnapshots.length >= 2 && (
     <>
       <option disabled>───────────</option>
@@ -805,7 +884,7 @@ const fetchDiff = useCallback(async (cycleValue: string) => {
         .slice(1)
         .map((cycle) => {
           const prevCycle = cyclesWithSnapshots.find(
-            (c) => c.cycleNumber === cycle.cycleNumber - 1
+            (c) => c.cycleNumber === cycle.cycleNumber - 1,
           );
           if (!prevCycle) return null;
           return (
@@ -816,8 +895,7 @@ const fetchDiff = useCallback(async (cycleValue: string) => {
               Changes: Cycle {prevCycle.cycleNumber} → {cycle.cycleNumber}
             </option>
           );
-        })
-      }
+        })}
     </>
   )}
 </select>

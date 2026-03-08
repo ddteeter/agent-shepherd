@@ -27,7 +27,12 @@ function createMockDb() {
     agentContext: null,
   };
   const project = { id: 'proj-1', path: '/tmp/project', name: 'Test' };
-  const cycle = { id: 'cycle-1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested' };
+  const cycle = {
+    id: 'cycle-1',
+    prId: 'pr-1',
+    cycleNumber: 1,
+    status: 'changes_requested',
+  };
   const comments: any[] = [];
 
   return {
@@ -97,10 +102,13 @@ describe('Orchestrator (thin coordinator)', () => {
     await orchestrator.cancelAgent('pr-1', 'insights');
 
     // Should broadcast cancelled for insights only
-    expect(broadcast).toHaveBeenCalledWith('agent:cancelled', { prId: 'pr-1', source: 'insights' });
+    expect(broadcast).toHaveBeenCalledWith('agent:cancelled', {
+      prId: 'pr-1',
+      source: 'insights',
+    });
     // Should NOT broadcast for code-fix
     const calls = broadcast.mock.calls.filter(
-      (c: any[]) => c[0] === 'agent:cancelled' && c[1]?.source === 'code-fix'
+      (c: any[]) => c[0] === 'agent:cancelled' && c[1]?.source === 'code-fix',
     );
     expect(calls).toHaveLength(0);
   });
@@ -117,7 +125,7 @@ describe('Orchestrator (thin coordinator)', () => {
     await orchestrator.cancelAgent('pr-1');
 
     const cancelledEvents = broadcast.mock.calls.filter(
-      (c: any[]) => c[0] === 'agent:cancelled'
+      (c: any[]) => c[0] === 'agent:cancelled',
     );
     expect(cancelledEvents).toHaveLength(2);
     const sources = cancelledEvents.map((c: any[]) => c[1].source).sort();
@@ -128,7 +136,9 @@ describe('Orchestrator (thin coordinator)', () => {
     // Create an orchestrator with a session log provider that throws
     const failingProvider = {
       name: 'failing',
-      findSessions: vi.fn(async () => { throw new Error('provider error'); }),
+      findSessions: vi.fn(async () => {
+        throw new Error('provider error');
+      }),
     };
 
     const orchestrator = new Orchestrator({
@@ -154,7 +164,7 @@ describe('Orchestrator (thin coordinator)', () => {
 
     // Verify the insights error was logged (not thrown)
     const insightsErrorCalls = consoleSpy.mock.calls.filter(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('Insights')
+      (c: any[]) => typeof c[0] === 'string' && c[0].includes('Insights'),
     );
     expect(insightsErrorCalls.length).toBeGreaterThan(0);
 

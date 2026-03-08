@@ -21,6 +21,7 @@ Read the formatted transcript files provided in your prompt. These are readable 
 If you need to see a specific file's actual contents, read the file directly from the repo rather than trying to extract it from the transcript.
 
 When reading transcripts, focus on:
+
 - **Initial prompt quality**: Was the human's request clear? Did it include acceptance criteria?
 - **Exploration patterns**: How much time did the agent spend understanding vs. implementing?
 - **Error recovery**: Did the agent get stuck? How did it recover?
@@ -30,6 +31,7 @@ When reading transcripts, focus on:
 ### 2. Comment History
 
 Use the CLI commands provided in your prompt to fetch:
+
 - Current insights (work additively -- don't overwrite previous findings)
 - Cross-PR comment history for recurring pattern detection
 
@@ -56,6 +58,7 @@ Use the CLI commands provided in your prompt to fetch:
 Specific rules or instructions to add to the project's CLAUDE.md file. These should be concrete and actionable.
 
 Examples:
+
 - "Add rule: Always run tests before committing"
 - "Add rule: Never add error handling to internal functions unless the function crosses a system boundary"
 - "Add convention: Use `vi.fn()` for mocks, not manual stub objects"
@@ -69,13 +72,14 @@ Check both the project-level `CLAUDE.md` and global `~/.claude/CLAUDE.md` to avo
 
 When recommending CLAUDE.md additions, choose the right location:
 
-| Situation | Location | Example |
-|---|---|---|
-| Simple universal rule | Add directly to `CLAUDE.md` | "Use 2-space indentation" |
-| Detailed topic guide | Create file + `@path/to/file` import in CLAUDE.md | API design patterns doc |
-| Rule scoped to file types | `.claude/rules/name.md` with `paths` frontmatter | Rules for `src/api/**/*.ts` |
+| Situation                 | Location                                          | Example                     |
+| ------------------------- | ------------------------------------------------- | --------------------------- |
+| Simple universal rule     | Add directly to `CLAUDE.md`                       | "Use 2-space indentation"   |
+| Detailed topic guide      | Create file + `@path/to/file` import in CLAUDE.md | API design patterns doc     |
+| Rule scoped to file types | `.claude/rules/name.md` with `paths` frontmatter  | Rules for `src/api/**/*.ts` |
 
 Key principles:
+
 - Keep CLAUDE.md under 200 lines. Move details to separate files via `@imports` or `.claude/rules/`.
 - Be specific and concrete — verifiable instructions, not vague guidance.
 - Avoid conflicting instructions across files. Check existing CLAUDE.md and rules before adding.
@@ -83,12 +87,12 @@ Key principles:
 - Think of CLAUDE.md as a "lookup matrix" — an index pointing agents to the right context for a given situation, not a dumping ground for all instructions.
 
 Example `.claude/rules/` file with path scoping:
+
 ```yaml
 ---
 paths:
-  - "src/api/**/*.ts"
+  - 'src/api/**/*.ts'
 ---
-
 # API Rules
 - All endpoints must validate input
 - Use standard error response format
@@ -99,6 +103,7 @@ paths:
 New skills to create or existing skills to modify. Skills encode reusable methodology.
 
 Examples:
+
 - "Create a testing skill that enforces the project's test patterns"
 - "The submit-pr skill should include a step to verify all tests pass"
 
@@ -107,6 +112,7 @@ Examples:
 Coaching for the human on how they interact with agents. This is about the human's behavior, not the agent's.
 
 Examples:
+
 - "Your initial prompt was 12 words -- the agent spent 40% of tokens exploring to figure out what you wanted. Include acceptance criteria next time."
 - "You didn't respond to the agent's clarifying question, so it guessed wrong."
 - "The task description referenced 'the usual pattern' but the agent has no memory of previous sessions."
@@ -116,6 +122,7 @@ Examples:
 What the agent did wrong, why, and how to fix it. Every observation MUST include a concrete recommendation for improvement -- don't just describe the problem, prescribe the solution.
 
 Examples:
+
 - "Agent explored the codebase for 40% of the session instead of starting work. Recommendation: Add a CLAUDE.md rule to start implementation within the first 3 tool calls for well-scoped tasks, or add acceptance criteria to the prompt so the agent doesn't need to explore."
 - "Agent added unnecessary error handling in 4 files (lines X, Y, Z). Recommendation: Add a CLAUDE.md rule: 'Only add try/catch at system boundaries (API handlers, CLI entry points). Internal functions should let errors propagate.'"
 - "Agent created 3 helper functions that are only used once. Recommendation: Add a CLAUDE.md rule against premature abstraction, or reference the existing 'avoid over-engineering' instruction more prominently."
@@ -126,6 +133,7 @@ Examples:
 Cross-PR trends detected from comment history. Reference specific PRs where the pattern appeared.
 
 Examples:
+
 - "3rd time reviewer flagged unnecessary error handling (PRs: abc, def, ghi)"
 - "Reviewer has requested snake_case naming in 2 previous PRs"
 - "Agent consistently over-engineers validation logic"
@@ -143,28 +151,52 @@ For CLAUDE.md and skill recommendations: only commit file changes when confidenc
 ## Output Format
 
 Submit via CLI:
+
 ```bash
 echo '<json>' | agent-shepherd insights update <pr-id> --stdin
 ```
 
 JSON structure:
+
 ```json
 {
   "categories": {
     "claudeMdRecommendations": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "high", "appliedPath": "CLAUDE.md" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "high",
+        "appliedPath": "CLAUDE.md"
+      }
     ],
     "skillRecommendations": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "medium" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "medium"
+      }
     ],
     "promptEngineering": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "high" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "high"
+      }
     ],
     "agentBehaviorObservations": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "medium" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "medium"
+      }
     ],
     "recurringPatterns": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "high", "prIds": ["pr-id-1"] }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "high",
+        "prIds": ["pr-id-1"]
+      }
     ]
   }
 }

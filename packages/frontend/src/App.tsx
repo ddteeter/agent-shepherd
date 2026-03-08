@@ -3,7 +3,11 @@ import { Routes, Route, Link } from 'react-router-dom';
 import { Dashboard } from './pages/Dashboard.js';
 import { ProjectView } from './pages/ProjectView.js';
 import { PRReview } from './pages/PRReview.js';
-import { THEME_GROUPS, AVAILABLE_THEMES, getStoredSyntaxTheme } from './hooks/useHighlighter.js';
+import {
+  THEME_GROUPS,
+  AVAILABLE_THEMES,
+  getStoredSyntaxTheme,
+} from './hooks/useHighlighter.js';
 import { useSyntaxThemeColors } from './hooks/useSyntaxThemeColors.js';
 import logoIcon from './icons/agent-shepherd-logo-192-192.png';
 
@@ -15,14 +19,29 @@ export function App() {
     setSyntaxThemeState(value);
     try {
       localStorage.setItem('shepherd-syntax-theme', value);
-      window.dispatchEvent(new StorageEvent('storage', { key: 'shepherd-syntax-theme', newValue: value }));
+      window.dispatchEvent(
+        new StorageEvent('storage', {
+          key: 'shepherd-syntax-theme',
+          newValue: value,
+        }),
+      );
     } catch {}
   }, []);
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-      <header className="border-b px-6 py-3 shrink-0 flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
-        <Link to="/" className="text-xl font-semibold flex items-center gap-2 no-underline" style={{ color: 'inherit' }}>
+    <div
+      className="h-screen flex flex-col"
+      style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
+    >
+      <header
+        className="border-b px-6 py-3 shrink-0 flex items-center justify-between"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
+        <Link
+          to="/"
+          className="text-xl font-semibold flex items-center gap-2 no-underline"
+          style={{ color: 'inherit' }}
+        >
           <img src={logoIcon} alt="" className="h-6 w-6 rounded-sm" />
           Agent Shepherd
         </Link>
@@ -41,15 +60,20 @@ export function App() {
             {THEME_GROUPS.map((group) => (
               <optgroup key={group.label} label={group.label}>
                 {group.themes.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
                 ))}
               </optgroup>
             ))}
             <optgroup label="All Themes">
               {AVAILABLE_THEMES.filter(
-                (id) => !THEME_GROUPS.some((g) => g.themes.some((t) => t.id === id))
+                (id) =>
+                  !THEME_GROUPS.some((g) => g.themes.some((t) => t.id === id)),
               ).map((id) => (
-                <option key={id} value={id}>{id}</option>
+                <option key={id} value={id}>
+                  {id}
+                </option>
               ))}
             </optgroup>
           </select>
@@ -57,8 +81,22 @@ export function App() {
       </header>
       <main className="flex-1 overflow-hidden">
         <Routes>
-          <Route path="/" element={<div className="p-6 overflow-y-auto h-full"><Dashboard /></div>} />
-          <Route path="/projects/:projectId" element={<div className="p-6 overflow-y-auto h-full"><ProjectView /></div>} />
+          <Route
+            path="/"
+            element={
+              <div className="p-6 overflow-y-auto h-full">
+                <Dashboard />
+              </div>
+            }
+          />
+          <Route
+            path="/projects/:projectId"
+            element={
+              <div className="p-6 overflow-y-auto h-full">
+                <ProjectView />
+              </div>
+            }
+          />
           <Route path="/prs/:prId" element={<PRReview />} />
         </Routes>
       </main>

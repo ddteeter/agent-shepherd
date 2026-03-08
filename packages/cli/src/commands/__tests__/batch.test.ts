@@ -29,17 +29,30 @@ describe('batchCommand', () => {
     vi.mocked(readFile).mockResolvedValue(payload);
     client.post.mockResolvedValue({ created: 3 });
 
-    await program.parseAsync(['node', 'test', 'batch', 'pr-1', '-f', '/tmp/comments.json']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'batch',
+      'pr-1',
+      '-f',
+      '/tmp/comments.json',
+    ]);
 
     expect(readFile).toHaveBeenCalledWith('/tmp/comments.json', 'utf-8');
-    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/comments/batch', { comments: [] });
+    expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/comments/batch', {
+      comments: [],
+    });
     expect(logSpy).toHaveBeenCalledWith('Batch submitted: 3 items created');
   });
 
   it('errors when neither --file nor --stdin provided', async () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => { throw new Error('exit'); });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('exit');
+    });
 
-    await expect(program.parseAsync(['node', 'test', 'batch', 'pr-1'])).rejects.toThrow('exit');
+    await expect(
+      program.parseAsync(['node', 'test', 'batch', 'pr-1']),
+    ).rejects.toThrow('exit');
     expect(errorSpy).toHaveBeenCalledWith('Must specify --file or --stdin');
     exitSpy.mockRestore();
   });

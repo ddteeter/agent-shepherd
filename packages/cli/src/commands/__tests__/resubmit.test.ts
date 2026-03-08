@@ -26,7 +26,14 @@ describe('resubmitCommand', () => {
     vi.mocked(readFile).mockResolvedValue('Updated the config parsing logic');
     client.post.mockResolvedValue({ cycleNumber: 4 });
 
-    await program.parseAsync(['node', 'test', 'resubmit', 'pr-1', '-c', '/tmp/context.txt']);
+    await program.parseAsync([
+      'node',
+      'test',
+      'resubmit',
+      'pr-1',
+      '-c',
+      '/tmp/context.txt',
+    ]);
 
     expect(readFile).toHaveBeenCalledWith('/tmp/context.txt', 'utf-8');
     expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/resubmit', {

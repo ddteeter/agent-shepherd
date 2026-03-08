@@ -126,13 +126,13 @@ export function buildGroupedFileTree(
   groups: Array<{ name: string; description?: string; files: string[] }>,
   allFiles: string[],
 ): GroupTreeNode[] {
-  const groupedFiles = new Set(groups.flatMap(g => g.files));
+  const groupedFiles = new Set(groups.flatMap((g) => g.files));
   const result: GroupTreeNode[] = [];
 
   for (const group of groups) {
     const children: GroupTreeNode[] = group.files
-      .filter(f => allFiles.includes(f))
-      .map(f => ({ name: f, path: f, type: 'file' as const }));
+      .filter((f) => allFiles.includes(f))
+      .map((f) => ({ name: f, path: f, type: 'file' as const }));
     result.push({
       name: group.name,
       path: `__group__${group.name}`,
@@ -144,7 +144,7 @@ export function buildGroupedFileTree(
 
   // Ungrouped files
   const ungrouped = allFiles
-    .filter(f => !groupedFiles.has(f))
+    .filter((f) => !groupedFiles.has(f))
     .sort((a, b) => a.localeCompare(b));
 
   if (ungrouped.length > 0) {
@@ -152,7 +152,11 @@ export function buildGroupedFileTree(
       name: 'Other Changes',
       path: '__group__Other Changes',
       type: 'group',
-      children: ungrouped.map(f => ({ name: f, path: f, type: 'file' as const })),
+      children: ungrouped.map((f) => ({
+        name: f,
+        path: f,
+        type: 'file' as const,
+      })),
     });
   }
 

@@ -17,7 +17,12 @@ describe('statusCommand', () => {
 
   it('shows PR status with cycle info', async () => {
     client.get
-      .mockResolvedValueOnce({ title: 'Fix bug', status: 'open', sourceBranch: 'fix/bug', baseBranch: 'main' })
+      .mockResolvedValueOnce({
+        title: 'Fix bug',
+        status: 'open',
+        sourceBranch: 'fix/bug',
+        baseBranch: 'main',
+      })
       .mockResolvedValueOnce([{ cycleNumber: 2, status: 'pending-review' }]);
 
     await program.parseAsync(['node', 'test', 'status', 'pr-1']);
@@ -30,7 +35,12 @@ describe('statusCommand', () => {
 
   it('handles empty cycles', async () => {
     client.get
-      .mockResolvedValueOnce({ title: 'New PR', status: 'open', sourceBranch: 'feat/new', baseBranch: 'main' })
+      .mockResolvedValueOnce({
+        title: 'New PR',
+        status: 'open',
+        sourceBranch: 'feat/new',
+        baseBranch: 'main',
+      })
       .mockResolvedValueOnce([]);
 
     await program.parseAsync(['node', 'test', 'status', 'pr-1']);

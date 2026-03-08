@@ -19,7 +19,9 @@ describe('listProjectsCommand', () => {
   it('shows message when no projects', async () => {
     client.get.mockResolvedValue([]);
     await program.parseAsync(['node', 'test', 'list-projects']);
-    expect(logSpy).toHaveBeenCalledWith('No projects registered. Use "agent-shepherd init <path>" to register one.');
+    expect(logSpy).toHaveBeenCalledWith(
+      'No projects registered. Use "agent-shepherd init <path>" to register one.',
+    );
   });
 
   it('lists projects in table format', async () => {

@@ -12,7 +12,20 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
-    const { title, description, sourceBranch, baseBranch, workingDirectory, fileGroups } = request.body as Omit<CreatePRInput, 'projectId'> & { fileGroups?: Array<{ name: string; description?: string; files: string[] }> };
+    const {
+      title,
+      description,
+      sourceBranch,
+      baseBranch,
+      workingDirectory,
+      fileGroups,
+    } = request.body as Omit<CreatePRInput, 'projectId'> & {
+      fileGroups?: Array<{
+        name: string;
+        description?: string;
+        files: string[];
+      }>;
+    };
 
     // Verify project exists
     const project = db
@@ -65,7 +78,10 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     if (project) {
       try {
         const gitService = new GitService(project.path);
-        const diffData = await gitService.getDiff(baseBranch || project.baseBranch || 'main', sourceBranch);
+        const diffData = await gitService.getDiff(
+          baseBranch || project.baseBranch || 'main',
+          sourceBranch,
+        );
         db.insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
@@ -114,10 +130,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     const orchestrator = (fastify as any).orchestrator;
-    const agents = orchestrator ? {
-      codeFix: orchestrator.hasActiveAgent(id, 'code-fix'),
-      insights: orchestrator.hasActiveAgent(id, 'insights'),
-    } : undefined;
+    const agents = orchestrator
+      ? {
+          codeFix: orchestrator.hasActiveAgent(id, 'code-fix'),
+          insights: orchestrator.hasActiveAgent(id, 'insights'),
+        }
+      : undefined;
 
     return { ...pr, agents };
   });
@@ -206,7 +224,10 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       const orchestrator = (fastify as any).orchestrator;
       if (orchestrator) {
         orchestrator.handleRequestChanges(id).catch((err: Error) => {
-          fastify.log.error({ err, prId: id }, 'Orchestrator failed to handle request-changes');
+          fastify.log.error(
+            { err, prId: id },
+            'Orchestrator failed to handle request-changes',
+          );
         });
       }
 
@@ -218,7 +239,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { fileGroups } = (request.body as { fileGroups?: Array<{ name: string; description?: string; files: string[] }> } || {});
+    const { fileGroups } =
+      (request.body as {
+        fileGroups?: Array<{
+          name: string;
+          description?: string;
+          files: string[];
+        }>;
+      }) || {};
 
     const pr = db
       .select()
@@ -244,7 +272,10 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
       if (prevSnapshot?.fileGroups && !fileGroups) {
         reply.code(400).send({
-          error: 'This PR has file groups from the previous cycle. You must provide --file-groups. Run `shepherd file-groups ' + id + '` to fetch the current groups and update them.',
+          error:
+            'This PR has file groups from the previous cycle. You must provide --file-groups. Run `shepherd file-groups ' +
+            id +
+            '` to fetch the current groups and update them.',
         });
         return;
       }
@@ -298,7 +329,10 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     if (project) {
       try {
         const gitService = new GitService(project.path);
-        const diffData = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
+        const diffData = await gitService.getDiff(
+          pr.baseBranch,
+          pr.sourceBranch,
+        );
         db.insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
@@ -309,18 +343,29 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           .run();
       } catch {
         // Non-fatal: snapshot storage failure should not block agent-ready
-        fastify.log.warn({ prId: id }, 'Failed to store diff snapshot for new cycle');
+        fastify.log.warn(
+          { prId: id },
+          'Failed to store diff snapshot for new cycle',
+        );
       }
     }
 
     const broadcast = (fastify as any).broadcast;
-    if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
+    if (broadcast)
+      broadcast('pr:ready-for-review', {
+        prId: id,
+        cycleNumber: newCycle.cycleNumber,
+      });
 
     // Send OS notification that PR is ready for review
-    const notificationService: NotificationService | undefined =
-      (fastify as any).notificationService;
+    const notificationService: NotificationService | undefined = (
+      fastify as any
+    ).notificationService;
     if (notificationService) {
-      notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
+      notificationService.notifyPRReadyForReview(
+        pr.title,
+        project?.name ?? 'Unknown',
+      );
     }
 
     return newCycle;
@@ -399,7 +444,10 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     if (project) {
       try {
         const gitService = new GitService(project.path);
-        const diffData = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
+        const diffData = await gitService.getDiff(
+          pr.baseBranch,
+          pr.sourceBranch,
+        );
         db.insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
@@ -408,7 +456,10 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           })
           .run();
       } catch {
-        fastify.log.warn({ prId: id }, 'Failed to store diff snapshot for resubmit cycle');
+        fastify.log.warn(
+          { prId: id },
+          'Failed to store diff snapshot for resubmit cycle',
+        );
       }
     }
 
@@ -419,12 +470,20 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .run();
 
     const broadcast = (fastify as any).broadcast;
-    if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
+    if (broadcast)
+      broadcast('pr:ready-for-review', {
+        prId: id,
+        cycleNumber: newCycle.cycleNumber,
+      });
 
-    const notificationService: NotificationService | undefined =
-      (fastify as any).notificationService;
+    const notificationService: NotificationService | undefined = (
+      fastify as any
+    ).notificationService;
     if (notificationService) {
-      notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
+      notificationService.notifyPRReadyForReview(
+        pr.title,
+        project?.name ?? 'Unknown',
+      );
     }
 
     return newCycle;
@@ -492,14 +551,18 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     if (pr.status !== 'open') {
-      reply.code(400).send({ error: `Cannot close a PR with status '${pr.status}'` });
+      reply
+        .code(400)
+        .send({ error: `Cannot close a PR with status '${pr.status}'` });
       return;
     }
 
     const latestCycle = getLatestCycle(db, id);
 
     if (latestCycle?.status === 'agent_working') {
-      reply.code(409).send({ error: 'Agent is currently working. Cancel the agent first.' });
+      reply
+        .code(409)
+        .send({ error: 'Agent is currently working. Cancel the agent first.' });
       return;
     }
 

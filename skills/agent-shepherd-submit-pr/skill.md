@@ -117,9 +117,7 @@ Create a file (e.g., `file-groups.json`):
   {
     "name": "API Layer",
     "description": "REST endpoints that expose the new functionality.",
-    "files": [
-      "packages/backend/src/routes/feature.ts"
-    ]
+    "files": ["packages/backend/src/routes/feature.ts"]
   },
   {
     "name": "Frontend Components",
@@ -155,15 +153,15 @@ agent-shepherd submit \
 
 **Flags:**
 
-| Flag | Required | Description |
-|---|---|---|
-| `-p, --project <id>` | Yes | The project ID this PR belongs to |
-| `-t, --title <title>` | No | PR title (defaults to "Agent PR" -- always provide a real title) |
-| `-d, --description <desc>` | No | Short PR description |
-| `-s, --source-branch <branch>` | No | Source branch (auto-detected from HEAD if omitted) |
-| `-c, --context-file <path>` | No | Path to JSON file with structured agent context |
-| `--file-groups <path>` | No | Path to JSON file with logical file groupings for review |
-| (auto) | — | Working directory is automatically captured from `cwd` |
+| Flag                           | Required | Description                                                      |
+| ------------------------------ | -------- | ---------------------------------------------------------------- |
+| `-p, --project <id>`           | Yes      | The project ID this PR belongs to                                |
+| `-t, --title <title>`          | No       | PR title (defaults to "Agent PR" -- always provide a real title) |
+| `-d, --description <desc>`     | No       | Short PR description                                             |
+| `-s, --source-branch <branch>` | No       | Source branch (auto-detected from HEAD if omitted)               |
+| `-c, --context-file <path>`    | No       | Path to JSON file with structured agent context                  |
+| `--file-groups <path>`         | No       | Path to JSON file with logical file groupings for review         |
+| (auto)                         | —        | Working directory is automatically captured from `cwd`           |
 
 The command outputs the PR ID, title, and status on success. Save the PR ID -- you will need it if responding to review comments later.
 

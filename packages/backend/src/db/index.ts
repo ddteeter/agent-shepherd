@@ -8,7 +8,10 @@ import * as schema from './schema.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = resolve(__dirname, '../../drizzle');
 
-export function createDb(dbPath: string = './agent-shepherd.db'): { db: ReturnType<typeof drizzle>; sqlite: DatabaseType } {
+export function createDb(dbPath: string = './agent-shepherd.db'): {
+  db: ReturnType<typeof drizzle>;
+  sqlite: DatabaseType;
+} {
   const sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');

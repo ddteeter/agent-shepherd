@@ -15,6 +15,7 @@
 ### Task 1: Add `workingDirectory` column to schema + generate migration
 
 **Files:**
+
 - Modify: `packages/backend/src/db/schema.ts:12-23`
 
 **Step 1: Add column to schema**
@@ -51,6 +52,7 @@ git commit -m "feat: add workingDirectory column to pull_requests schema"
 ### Task 2: Update shared types
 
 **Files:**
+
 - Modify: `packages/shared/src/types.ts:24-35` (PullRequest interface)
 - Modify: `packages/shared/src/types.ts:87-94` (CreatePRInput interface)
 
@@ -82,6 +84,7 @@ git commit -m "feat: add workingDirectory to PullRequest and CreatePRInput types
 ### Task 3: Update PR creation API route to persist workingDirectory
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/pull-requests.ts:13-40`
 - Test: `packages/backend/src/routes/__tests__/pull-requests.test.ts`
 
@@ -134,7 +137,8 @@ Expected: FAIL — `workingDirectory` is not persisted or returned.
 In `packages/backend/src/routes/pull-requests.ts`, update the PR creation route (line 15) to destructure `workingDirectory` from the request body:
 
 ```typescript
-const { title, description, sourceBranch, baseBranch, workingDirectory } = request.body as Omit<CreatePRInput, 'projectId'>;
+const { title, description, sourceBranch, baseBranch, workingDirectory } =
+  request.body as Omit<CreatePRInput, 'projectId'>;
 ```
 
 Then add it to the insert values (around line 38, after `status: 'open'`):
@@ -163,6 +167,7 @@ git commit -m "feat: persist workingDirectory on PR creation"
 ### Task 4: Update orchestrator to use workingDirectory for agent spawning
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/index.ts:48-93`
 - Test: `packages/backend/src/orchestrator/__tests__/orchestrator.test.ts`
 
@@ -187,8 +192,11 @@ it('PR stores workingDirectory for orchestrator use', async () => {
 
   // Verify that both project.path and pr.workingDirectory are available
   const db = (server as any).db;
-  const project = db.select().from(schema.projects)
-    .where(eq(schema.projects.id, pr.projectId)).get();
+  const project = db
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.id, pr.projectId))
+    .get();
   expect(project.path).toBe('/tmp/test');
 
   // Orchestrator should prefer pr.workingDirectory over project.path
@@ -208,7 +216,10 @@ npm run test -- packages/backend/src/orchestrator/__tests__/orchestrator.test.ts
 In `packages/backend/src/orchestrator/index.ts`, in the `handleRequestChanges` method, change line 93 from:
 
 ```typescript
-const session = await this.adapter.startSession({ projectPath: project.path, prompt });
+const session = await this.adapter.startSession({
+  projectPath: project.path,
+  prompt,
+});
 ```
 
 to:
@@ -222,14 +233,17 @@ const { existsSync } = await import('fs');
 if (!existsSync(effectivePath)) {
   const error = new Error(
     `Working directory does not exist: ${effectivePath}\n` +
-    'The worktree may have been removed. Recreate it and try again.'
+      'The worktree may have been removed. Recreate it and try again.',
   );
   this.setCycleStatus(currentCycle.id, 'agent_error');
   this.broadcast?.('agent:error', { prId, error: error.message });
   throw error;
 }
 
-const session = await this.adapter.startSession({ projectPath: effectivePath, prompt });
+const session = await this.adapter.startSession({
+  projectPath: effectivePath,
+  prompt,
+});
 ```
 
 Add the `existsSync` import at the top of the file:
@@ -258,6 +272,7 @@ git commit -m "feat: orchestrator uses PR workingDirectory for agent spawning"
 ### Task 5: Update CLI submit command to auto-capture cwd
 
 **Files:**
+
 - Modify: `packages/cli/src/commands/submit.ts`
 
 **Step 1: Add workingDirectory to the POST body**
@@ -294,6 +309,7 @@ git commit -m "feat: CLI submit auto-captures working directory from cwd"
 ### Task 6: Show workingDirectory in frontend PR detail page
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx:444`
 
 **Step 1: Add workingDirectory display**
@@ -335,6 +351,7 @@ git commit -m "feat: show working directory metadata on PR detail page"
 ### Task 7: Update submit PR skill documentation
 
 **Files:**
+
 - Modify: `skills/agent-shepherd-submit-pr/SKILL.md`
 
 **Step 1: Update the skill**
@@ -385,6 +402,7 @@ Expected: Build succeeds across all packages.
 **Step 3: Manual smoke test (optional)**
 
 Start the dev server and verify:
+
 1. Submit a PR via CLI — check that `workingDirectory` appears in the database
 2. View the PR in the web UI — check that the working directory tag appears
 3. Verify existing PRs without `workingDirectory` still display correctly (no tag shown)

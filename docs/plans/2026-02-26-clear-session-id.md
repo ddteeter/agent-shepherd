@@ -24,6 +24,7 @@ When `action === 'request-changes'` and `clearSession === true`, set `agentSessi
 ### Frontend Change
 
 In `ReviewBar`, add a checkbox labeled "Start fresh session" that appears only when:
+
 - The PR has an existing `agentSessionId`
 - The reviewer is about to submit "Request Changes"
 
@@ -32,6 +33,7 @@ The checkbox value is passed through the `onReview` callback and included in the
 ### Orchestrator
 
 No changes. The orchestrator already branches on `pr.agentSessionId`:
+
 - If set: `adapter.resumeSession()`
 - If null: `adapter.startSession()`
 
@@ -42,9 +44,9 @@ No changes. The orchestrator already branches on `pr.agentSessionId`:
 
 ## Changes Summary
 
-| Layer | File | Change |
-|-------|------|--------|
-| Backend | `packages/backend/src/routes/pull-requests.ts` | Accept `clearSession` field, null out session ID |
-| Frontend | `packages/frontend/src/components/ReviewBar.tsx` | Add checkbox, pass value through |
-| Frontend | `packages/frontend/src/api.ts` | Pass `clearSession` in review request body |
-| Frontend | `packages/frontend/src/pages/PRReview.tsx` | Thread `agentSessionId` to ReviewBar, update handler |
+| Layer    | File                                             | Change                                               |
+| -------- | ------------------------------------------------ | ---------------------------------------------------- |
+| Backend  | `packages/backend/src/routes/pull-requests.ts`   | Accept `clearSession` field, null out session ID     |
+| Frontend | `packages/frontend/src/components/ReviewBar.tsx` | Add checkbox, pass value through                     |
+| Frontend | `packages/frontend/src/api.ts`                   | Pass `clearSession` in review request body           |
+| Frontend | `packages/frontend/src/pages/PRReview.tsx`       | Thread `agentSessionId` to ReviewBar, update handler |

@@ -9,8 +9,12 @@ const devMode = process.env.NODE_ENV === 'development';
 async function main() {
   const server = await buildServer({ port, host, devMode });
   await server.listen({ port, host });
-  console.log(`Agent Shepherd running at http://${host}:${port}${devMode ? ' (dev mode)' : ''}`);
-  console.log(`Session token written to ${join(homedir(), '.agent-shepherd', 'session-token')}`);
+  console.log(
+    `Agent Shepherd running at http://${host}:${port}${devMode ? ' (dev mode)' : ''}`,
+  );
+  console.log(
+    `Session token written to ${join(homedir(), '.agent-shepherd', 'session-token')}`,
+  );
 
   const shutdown = async () => {
     await server.close();

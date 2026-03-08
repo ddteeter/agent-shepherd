@@ -8,7 +8,12 @@ import type { SessionLog } from '../session-log/provider.js';
 const TOOL_RESULT_PREVIEW_LENGTH = 200;
 
 /** Params to truncate in tool_use blocks (contain large content) */
-const LARGE_PARAMS = new Set(['content', 'new_string', 'old_string', 'command']);
+const LARGE_PARAMS = new Set([
+  'content',
+  'new_string',
+  'old_string',
+  'command',
+]);
 
 /** Max chars for a large param value in tool_use output */
 const LARGE_PARAM_MAX = 120;
@@ -84,7 +89,9 @@ export async function formatTranscript(
           lines.push(block.text);
           lines.push('');
         } else if (block.type === 'tool_use' && block.name) {
-          lines.push(`**Tool:** \`${block.name}\`${formatToolParams(block.input)}`);
+          lines.push(
+            `**Tool:** \`${block.name}\`${formatToolParams(block.input)}`,
+          );
           lines.push('');
         }
       }
@@ -100,7 +107,9 @@ export async function formatTranscript(
           const size = resultText.length;
           const preview = resultText.slice(0, TOOL_RESULT_PREVIEW_LENGTH);
           const truncated = size > TOOL_RESULT_PREVIEW_LENGTH ? '...' : '';
-          lines.push(`**Tool Result** (${size} chars): \`${preview}${truncated}\``);
+          lines.push(
+            `**Tool Result** (${size} chars): \`${preview}${truncated}\``,
+          );
           lines.push('');
         }
       }

@@ -52,10 +52,18 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         claudeMdRecommendations: [
-          { title: 'Add lint rule', description: 'Consider adding ESLint rule', confidence: 'high' },
+          {
+            title: 'Add lint rule',
+            description: 'Consider adding ESLint rule',
+            confidence: 'high',
+          },
         ],
         skillRecommendations: [
-          { title: 'Create skill', description: 'Create a test skill', confidence: 'medium' },
+          {
+            title: 'Create skill',
+            description: 'Create a test skill',
+            confidence: 'medium',
+          },
         ],
         promptEngineering: [],
         agentBehaviorObservations: [],
@@ -63,7 +71,9 @@ describe('InsightsTab', () => {
       },
     });
 
-    render(<InsightsTab {...defaultProps} hasComments={true} insights={insights} />);
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
     expect(screen.getByText('Add lint rule')).toBeInTheDocument();
     expect(screen.getByText('Create skill')).toBeInTheDocument();
     expect(screen.getByText('High')).toBeInTheDocument();
@@ -72,7 +82,9 @@ describe('InsightsTab', () => {
 
   it('renders branch reference when present', () => {
     const insights = makeInsights({ branchRef: 'feat/my-feature' });
-    render(<InsightsTab {...defaultProps} hasComments={true} insights={insights} />);
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
     expect(screen.getByText('feat/my-feature')).toBeInTheDocument();
   });
 
@@ -80,7 +92,12 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         claudeMdRecommendations: [
-          { title: 'Rule', description: 'desc', confidence: 'high', appliedPath: 'CLAUDE.md' },
+          {
+            title: 'Rule',
+            description: 'desc',
+            confidence: 'high',
+            appliedPath: 'CLAUDE.md',
+          },
         ],
         skillRecommendations: [],
         promptEngineering: [],
@@ -89,7 +106,9 @@ describe('InsightsTab', () => {
       },
     });
 
-    render(<InsightsTab {...defaultProps} hasComments={true} insights={insights} />);
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
     expect(screen.getByText('CLAUDE.md')).toBeInTheDocument();
   });
 
@@ -101,12 +120,19 @@ describe('InsightsTab', () => {
         promptEngineering: [],
         agentBehaviorObservations: [],
         recurringPatterns: [
-          { title: 'Pattern', description: 'desc', confidence: 'low', prIds: ['pr-1', 'pr-2'] },
+          {
+            title: 'Pattern',
+            description: 'desc',
+            confidence: 'low',
+            prIds: ['pr-1', 'pr-2'],
+          },
         ],
       },
     });
 
-    render(<InsightsTab {...defaultProps} hasComments={true} insights={insights} />);
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
     expect(screen.getByText('Pattern')).toBeInTheDocument();
     expect(screen.getByText(/Seen in 2 PRs/)).toBeInTheDocument();
   });
@@ -125,7 +151,9 @@ describe('InsightsTab', () => {
       },
     });
 
-    render(<InsightsTab {...defaultProps} hasComments={true} insights={insights} />);
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
     expect(screen.getByText('Rule')).toBeInTheDocument();
 
     const sectionButton = screen.getByText('CLAUDE.md Recommendations');
@@ -136,7 +164,9 @@ describe('InsightsTab', () => {
 
   it('shows updated timestamp', () => {
     const insights = makeInsights({ updatedAt: '2026-06-15T10:30:00Z' });
-    render(<InsightsTab {...defaultProps} hasComments={true} insights={insights} />);
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
     expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
   });
 });

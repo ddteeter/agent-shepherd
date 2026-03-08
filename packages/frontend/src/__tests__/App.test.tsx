@@ -19,7 +19,13 @@ vi.mock('../pages/PRReview.js', () => ({
 vi.mock('../hooks/useHighlighter.js', () => ({
   getStoredSyntaxTheme: () => 'github-dark',
   THEME_GROUPS: [
-    { label: 'GitHub', themes: [{ id: 'github-dark', name: 'GitHub Dark' }, { id: 'github-light', name: 'GitHub Light' }] },
+    {
+      label: 'GitHub',
+      themes: [
+        { id: 'github-dark', name: 'GitHub Dark' },
+        { id: 'github-light', name: 'GitHub Light' },
+      ],
+    },
   ],
   AVAILABLE_THEMES: ['github-dark', 'github-light', 'nord'],
 }));

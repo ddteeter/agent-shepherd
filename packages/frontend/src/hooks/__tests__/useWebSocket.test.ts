@@ -73,7 +73,9 @@ describe('useWebSocket', () => {
     renderHook(() => useWebSocket(onMessage));
 
     act(() => {
-      mockWsInstances[0].onmessage({ data: JSON.stringify({ event: 'test', data: { foo: 1 } }) });
+      mockWsInstances[0].onmessage({
+        data: JSON.stringify({ event: 'test', data: { foo: 1 } }),
+      });
     });
 
     expect(onMessage).toHaveBeenCalledWith({ event: 'test', data: { foo: 1 } });

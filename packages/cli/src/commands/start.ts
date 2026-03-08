@@ -21,7 +21,11 @@ export function startCommand(program: Command) {
       }
 
       const port = parseInt(opts.port, 10);
-      const { buildServer } = await import(pathToFileURL(serverEntry).href) as { buildServer: (opts: { port?: number; host?: string }) => Promise<any> };
+      const { buildServer } = (await import(
+        pathToFileURL(serverEntry).href
+      )) as {
+        buildServer: (opts: { port?: number; host?: string }) => Promise<any>;
+      };
       const server = await buildServer({ port, host: opts.host });
 
       const shutdown = async () => {

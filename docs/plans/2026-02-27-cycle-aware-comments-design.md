@@ -12,12 +12,12 @@ Computed thread status badges + a filter bar, with file tree counts reflecting t
 
 Each top-level comment thread gets one computed status derived from existing data:
 
-| Status | Condition | Visual |
-|--------|-----------|--------|
-| **Resolved** | `resolved === true` | Dimmed (reduced opacity), collapsed by default |
-| **Agent Replied** | Has child with `author === 'agent'`, not resolved | Blue "Agent Replied" badge |
-| **Needs Attention** | No agent child, not resolved, from a previous cycle | Amber "Unaddressed" badge |
-| **New** | Created in current cycle by human, not resolved | No badge (obviously new) |
+| Status              | Condition                                           | Visual                                         |
+| ------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| **Resolved**        | `resolved === true`                                 | Dimmed (reduced opacity), collapsed by default |
+| **Agent Replied**   | Has child with `author === 'agent'`, not resolved   | Blue "Agent Replied" badge                     |
+| **Needs Attention** | No agent child, not resolved, from a previous cycle | Amber "Unaddressed" badge                      |
+| **New**             | Created in current cycle by human, not resolved     | No badge (obviously new)                       |
 
 ### Derivation
 
@@ -44,6 +44,7 @@ Segmented control placed above the comment list area:
 ## File Tree Integration
 
 File tree badge counts update based on the active filter:
+
 - "All" filter: total comment thread count per file (current behavior)
 - "Needs Attention" filter: only threads needing attention per file
 - "Agent Replied" filter: only agent-replied threads per file

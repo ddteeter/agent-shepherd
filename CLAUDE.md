@@ -13,20 +13,20 @@ Human-in-the-loop PR review app for AI coding agents. Monorepo with four npm wor
 
 ## Key Paths
 
-| Purpose | Path |
-|---|---|
-| DB schema (Drizzle) | `packages/backend/src/db/schema.ts` |
-| API routes | `packages/backend/src/routes/*.ts` |
-| Agent orchestrator | `packages/backend/src/orchestrator/` |
-| Prompt builder | `packages/backend/src/orchestrator/prompt-builder.ts` |
+| Purpose             | Path                                                       |
+| ------------------- | ---------------------------------------------------------- |
+| DB schema (Drizzle) | `packages/backend/src/db/schema.ts`                        |
+| API routes          | `packages/backend/src/routes/*.ts`                         |
+| Agent orchestrator  | `packages/backend/src/orchestrator/`                       |
+| Prompt builder      | `packages/backend/src/orchestrator/prompt-builder.ts`      |
 | Claude Code adapter | `packages/backend/src/orchestrator/claude-code-adapter.ts` |
-| Git service | `packages/backend/src/services/git.ts` |
-| Shared types | `packages/shared/src/types.ts` |
-| React pages | `packages/frontend/src/pages/` |
-| React components | `packages/frontend/src/components/` |
-| API client | `packages/frontend/src/api.ts` |
-| CLI commands | `packages/cli/src/commands/` |
-| Design docs | `docs/plans/` |
+| Git service         | `packages/backend/src/services/git.ts`                     |
+| Shared types        | `packages/shared/src/types.ts`                             |
+| React pages         | `packages/frontend/src/pages/`                             |
+| React components    | `packages/frontend/src/components/`                        |
+| API client          | `packages/frontend/src/api.ts`                             |
+| CLI commands        | `packages/cli/src/commands/`                               |
+| Design docs         | `docs/plans/`                                              |
 
 ## Commands
 
@@ -53,6 +53,7 @@ npm run test:coverage                        # Run tests with coverage (80% thre
 SQLite via better-sqlite3 + Drizzle ORM. Tables: `projects`, `pull_requests`, `review_cycles`, `comments`, `diff_snapshots`, `global_config`, `project_config`. Schema defined in `packages/backend/src/db/schema.ts`.
 
 When generating migrations, always use `--name` to give them a logical name:
+
 ```bash
 npx drizzle-kit generate --name <descriptive_name>
 # Example: npx drizzle-kit generate --name add_user_preferences
@@ -70,6 +71,7 @@ npx drizzle-kit generate --name <descriptive_name>
 ## API Structure
 
 REST under `/api/`. Key routes:
+
 - Projects: CRUD at `/api/projects`
 - PRs: `/api/projects/:projectId/prs` and `/api/prs/:id`
 - Reviews: `POST /api/prs/:id/review` (approve/request-changes)
@@ -97,6 +99,7 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 ## Agent Orchestrator
 
 The orchestrator (`packages/backend/src/orchestrator/`) manages the AI agent lifecycle:
+
 - `prompt-builder.ts` constructs structured prompts from review comments (grouped by file, includes severity and threading)
 - `claude-code-adapter.ts` spawns Claude Code CLI as subprocess (always starts a new session)
 - `AgentAdapter` interface allows future adapters (Cursor, Aider, etc.)

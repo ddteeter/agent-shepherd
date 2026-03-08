@@ -39,22 +39,49 @@ describe('Orchestrator cross-cycle comment query', () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/index.ts', startLine: 10, endLine: 10, body: 'Fix the null check', severity: 'must-fix', author: 'human' },
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 10,
+        body: 'Fix the null check',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/auth.ts', startLine: 5, endLine: 5, body: 'Add validation', severity: 'request', author: 'human' },
+      payload: {
+        filePath: 'src/auth.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'Add validation',
+        severity: 'request',
+        author: 'human',
+      },
     });
 
     // Build summary the way the orchestrator would
-    const allCycles = db.select().from(schema.reviewCycles).where(eq(schema.reviewCycles.prId, prId)).all();
+    const allCycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
     const cycleIds = allCycles.map((c: any) => c.id);
-    const allComments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
-    const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+    const allComments = db
+      .select()
+      .from(schema.comments)
+      .where(inArray(schema.comments.reviewCycleId, cycleIds))
+      .all();
+    const topLevel = allComments.filter(
+      (c: any) => !c.parentCommentId && !c.resolved,
+    );
 
     const bySeverity: Record<string, number> = {};
-    const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+    const fileMap = new Map<
+      string,
+      { count: number; bySeverity: Record<string, number> }
+    >();
     let generalCount = 0;
     for (const c of topLevel) {
       bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
@@ -75,7 +102,10 @@ describe('Orchestrator cross-cycle comment query', () => {
       commentSummary: {
         total: topLevel.length,
         bySeverity,
-        files: [...fileMap.entries()].map(([path, data]) => ({ path, ...data })),
+        files: [...fileMap.entries()].map(([path, data]) => ({
+          path,
+          ...data,
+        })),
         generalCount,
       },
     });
@@ -127,17 +157,28 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
 
     // Build summary (same logic as orchestrator)
-    const allCycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
+    const allCycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
     const cycleIds = allCycles.map((c: any) => c.id);
 
-    const allComments = db.select().from(schema.comments)
-      .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+    const allComments = db
+      .select()
+      .from(schema.comments)
+      .where(inArray(schema.comments.reviewCycleId, cycleIds))
+      .all();
 
-    const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+    const topLevel = allComments.filter(
+      (c: any) => !c.parentCommentId && !c.resolved,
+    );
 
     const bySeverity: Record<string, number> = {};
-    const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+    const fileMap = new Map<
+      string,
+      { count: number; bySeverity: Record<string, number> }
+    >();
     let generalCount = 0;
     for (const c of topLevel) {
       bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
@@ -158,7 +199,10 @@ describe('Orchestrator cross-cycle comment query', () => {
       commentSummary: {
         total: topLevel.length,
         bySeverity,
-        files: [...fileMap.entries()].map(([path, data]) => ({ path, ...data })),
+        files: [...fileMap.entries()].map(([path, data]) => ({
+          path,
+          ...data,
+        })),
         generalCount,
       },
     });
@@ -188,8 +232,11 @@ describe('Orchestrator cross-cycle comment query', () => {
 
     // Verify that both project.path and pr.workingDirectory are available
     const db = (server as any).db;
-    const project = db.select().from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId)).get();
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, pr.projectId))
+      .get();
     expect(project.path).toBe('/tmp/test');
 
     // Orchestrator should prefer pr.workingDirectory over project.path

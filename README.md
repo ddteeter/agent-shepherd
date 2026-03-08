@@ -84,16 +84,16 @@ Agent  <-->  CLI     <-->  Backend API
 
 ## Tech Stack
 
-| Component | Technology |
-|---|---|
-| Runtime | Node.js 20+ / TypeScript |
-| Backend | Fastify + WebSocket |
-| Database | SQLite via better-sqlite3 + Drizzle ORM |
-| Frontend | React 19 + Vite + Tailwind CSS 4 |
-| Syntax highlighting | Shiki |
-| CLI | Commander.js |
-| Git operations | simple-git |
-| Monorepo | npm workspaces |
+| Component           | Technology                              |
+| ------------------- | --------------------------------------- |
+| Runtime             | Node.js 20+ / TypeScript                |
+| Backend             | Fastify + WebSocket                     |
+| Database            | SQLite via better-sqlite3 + Drizzle ORM |
+| Frontend            | React 19 + Vite + Tailwind CSS 4        |
+| Syntax highlighting | Shiki                                   |
+| CLI                 | Commander.js                            |
+| Git operations      | simple-git                              |
+| Monorepo            | npm workspaces                          |
 
 ## Getting Started
 
@@ -136,11 +136,11 @@ agent-shepherd start [--port 3847]             # Start the server
 
 Agent Shepherd ships three [Claude Code skills](https://github.com/vercel-labs/skills) that teach agents how to interact with the review workflow:
 
-| Skill | Purpose |
-|---|---|
+| Skill                              | Purpose                                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `agent-shepherd:respond-to-review` | Guides agents through severity handling, batch response format, and the CLI workflow for addressing review comments |
-| `agent-shepherd:submit-pr` | Guides agents through commit preparation, context file creation, and the submit workflow |
-| `agent-shepherd:resubmit-pr` | Guides agents through context generation and the resubmit workflow for changes made outside the review flow |
+| `agent-shepherd:submit-pr`         | Guides agents through commit preparation, context file creation, and the submit workflow                            |
+| `agent-shepherd:resubmit-pr`       | Guides agents through context generation and the resubmit workflow for changes made outside the review flow         |
 
 Skills are installed automatically by `agent-shepherd setup` via `npx skills add`. They are installed globally to `~/.claude/skills/` so they are available in all repositories.
 
@@ -154,11 +154,13 @@ npm run setup:dev
 ```
 
 `setup:dev` does three things:
+
 1. **Builds** all packages (`npm run build`)
 2. **Links the CLI** via `npm link` -- puts `agent-shepherd` on your PATH pointing at the local repo's build output
 3. **Symlinks skills** into `~/.claude/skills/` -- because they're symlinks (not copies), edits to `skills/` are reflected immediately without re-running setup
 
 After setup, verify everything is working:
+
 ```bash
 agent-shepherd --version   # CLI is on PATH
 ls -la ~/.claude/skills/   # Skills are symlinked
@@ -224,15 +226,16 @@ Each PR goes through numbered review cycles. A cycle represents one round of hum
 
 Comments have three severity levels that guide agent behavior:
 
-| Severity | Agent behavior |
-|---|---|
-| **must-fix** | Make the change, no discussion |
-| **request** | Make the change unless there's a strong technical reason not to (explain in reply) |
-| **suggestion** | Use judgment -- fix or reply with reasoning |
+| Severity       | Agent behavior                                                                     |
+| -------------- | ---------------------------------------------------------------------------------- |
+| **must-fix**   | Make the change, no discussion                                                     |
+| **request**    | Make the change unless there's a strong technical reason not to (explain in reply) |
+| **suggestion** | Use judgment -- fix or reply with reasoning                                        |
 
 ### Agent Orchestration
 
 When a human requests changes, the orchestrator:
+
 1. Collects all comments from the current review cycle
 2. Builds a structured prompt grouped by file with severity instructions
 3. Spawns a new agent session with the full context (PR metadata, comments, agent context file)
@@ -247,14 +250,14 @@ When a human requests changes, the orchestrator:
 
 REST endpoints under `/api/`:
 
-| Resource | Endpoints |
-|---|---|
-| Projects | `GET/POST /projects`, `GET/PUT/DELETE /projects/:id` |
-| Pull Requests | `GET/POST /projects/:id/prs`, `GET/PUT /prs/:id` |
-| Reviews | `POST /prs/:id/review`, `POST /prs/:id/agent-ready` |
-| Comments | `GET/POST /prs/:prId/comments`, `PUT/DELETE /comments/:id`, `POST /prs/:prId/comments/batch` |
-| Diffs | `GET /prs/:id/diff?cycle=N` |
-| Config | `GET/PUT /config`, `GET/PUT /projects/:id/config` |
+| Resource      | Endpoints                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------- |
+| Projects      | `GET/POST /projects`, `GET/PUT/DELETE /projects/:id`                                         |
+| Pull Requests | `GET/POST /projects/:id/prs`, `GET/PUT /prs/:id`                                             |
+| Reviews       | `POST /prs/:id/review`, `POST /prs/:id/agent-ready`                                          |
+| Comments      | `GET/POST /prs/:prId/comments`, `PUT/DELETE /comments/:id`, `POST /prs/:prId/comments/batch` |
+| Diffs         | `GET /prs/:id/diff?cycle=N`                                                                  |
+| Config        | `GET/PUT /config`, `GET/PUT /projects/:id/config`                                            |
 
 WebSocket events: `pr:*`, `comment:*`, `review:submitted`, `agent:*`
 
@@ -277,12 +280,14 @@ Sometimes you'll make changes directly on a PR branch outside the review UI — 
 The agent analyzes the diff and recent commits to generate a context file describing what changed and why, then runs `agent-shepherd resubmit <prId>`.
 
 **What happens:**
+
 - The current cycle is marked `superseded` (preserving its diff snapshot and comments for history)
 - A new cycle is created with a fresh diff snapshot
 - Unresolved comments from previous cycles remain visible — no need to recreate them
 - The inter-cycle diff defaults to comparing against the last reviewed cycle
 
 This flow is useful when:
+
 - You're iterating on a PR directly in Claude Code
 - You made manual fixes and want to re-review the result
 - The agent's changes weren't right and you took over

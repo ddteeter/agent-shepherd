@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { PRReview } from '../PRReview.js';
@@ -83,7 +89,10 @@ describe('PRReview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockApi.prs.get.mockResolvedValue(mockPr);
-    mockApi.prs.diff.mockResolvedValue({ diff: SIMPLE_DIFF, files: ['src/app.ts'] });
+    mockApi.prs.diff.mockResolvedValue({
+      diff: SIMPLE_DIFF,
+      files: ['src/app.ts'],
+    });
     mockApi.prs.cycles.mockResolvedValue([]);
     mockApi.comments.list.mockResolvedValue([]);
     mockApi.insights.get.mockResolvedValue(null);
@@ -155,9 +164,13 @@ describe('PRReview', () => {
     const user = userEvent.setup();
     mockApi.prs.close.mockResolvedValue({ ...mockPr, status: 'closed' });
     // First call returns open PR, second returns closed after close action
-    mockApi.prs.get.mockResolvedValueOnce(mockPr).mockResolvedValueOnce({ ...mockPr, status: 'closed' });
+    mockApi.prs.get
+      .mockResolvedValueOnce(mockPr)
+      .mockResolvedValueOnce({ ...mockPr, status: 'closed' });
     renderPRReview();
-    await waitFor(() => expect(screen.getByText('Close PR')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Close PR')).toBeInTheDocument(),
+    );
 
     await user.click(screen.getByText('Close PR'));
     expect(mockApi.prs.close).toHaveBeenCalledWith('pr-1');
@@ -192,9 +205,13 @@ describe('PRReview', () => {
   it('calls review API on Approve click', async () => {
     const user = userEvent.setup();
     mockApi.prs.review.mockResolvedValue({});
-    mockApi.prs.get.mockResolvedValueOnce(mockPr).mockResolvedValue({ ...mockPr, status: 'approved' });
+    mockApi.prs.get
+      .mockResolvedValueOnce(mockPr)
+      .mockResolvedValue({ ...mockPr, status: 'approved' });
     renderPRReview();
-    await waitFor(() => expect(screen.getByText('Approve')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Approve')).toBeInTheDocument(),
+    );
 
     await user.click(screen.getByText('Approve'));
     expect(mockApi.prs.review).toHaveBeenCalledWith('pr-1', 'approve');
@@ -202,8 +219,26 @@ describe('PRReview', () => {
 
   it('renders cycle selector when cycles with snapshots exist', async () => {
     mockApi.prs.cycles.mockResolvedValue([
-      { id: 'c1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested', reviewedAt: '2026-01-01', agentCompletedAt: null, hasDiffSnapshot: true, context: null },
-      { id: 'c2', prId: 'pr-1', cycleNumber: 2, status: 'pending_review', reviewedAt: null, agentCompletedAt: null, hasDiffSnapshot: true, context: null },
+      {
+        id: 'c1',
+        prId: 'pr-1',
+        cycleNumber: 1,
+        status: 'changes_requested',
+        reviewedAt: '2026-01-01',
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
+      {
+        id: 'c2',
+        prId: 'pr-1',
+        cycleNumber: 2,
+        status: 'pending_review',
+        reviewedAt: null,
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
     ]);
     renderPRReview();
     await waitFor(() => {
@@ -212,7 +247,10 @@ describe('PRReview', () => {
   });
 
   it('shows working directory when present', async () => {
-    mockApi.prs.get.mockResolvedValue({ ...mockPr, workingDirectory: '/home/user/projects/my-app' });
+    mockApi.prs.get.mockResolvedValue({
+      ...mockPr,
+      workingDirectory: '/home/user/projects/my-app',
+    });
     renderPRReview();
     await waitFor(() => {
       expect(screen.getByText('projects/my-app')).toBeInTheDocument();
@@ -228,7 +266,9 @@ describe('PRReview', () => {
     mockApi.prs.diff.mockResolvedValue({ diff, files: ['new-file.ts'] });
     renderPRReview();
     await waitFor(() => {
-      expect(screen.getAllByText('new-file.ts').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('new-file.ts').length).toBeGreaterThanOrEqual(
+        1,
+      );
     });
     // FileTree renders an 'A' badge for added files
     expect(screen.getByText('A')).toBeInTheDocument();
@@ -274,8 +314,26 @@ describe('PRReview', () => {
 
   it('renders comment filter when multiple cycles exist', async () => {
     mockApi.prs.cycles.mockResolvedValue([
-      { id: 'c1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested', reviewedAt: '2026-01-01', agentCompletedAt: null, hasDiffSnapshot: true, context: null },
-      { id: 'c2', prId: 'pr-1', cycleNumber: 2, status: 'pending_review', reviewedAt: null, agentCompletedAt: null, hasDiffSnapshot: true, context: null },
+      {
+        id: 'c1',
+        prId: 'pr-1',
+        cycleNumber: 1,
+        status: 'changes_requested',
+        reviewedAt: '2026-01-01',
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
+      {
+        id: 'c2',
+        prId: 'pr-1',
+        cycleNumber: 2,
+        status: 'pending_review',
+        reviewedAt: null,
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
     ]);
     renderPRReview();
     await waitFor(() => {
@@ -287,7 +345,9 @@ describe('PRReview', () => {
     mockApi.prs.diff.mockResolvedValue({ diff: null, files: [] });
     renderPRReview();
     await waitFor(() => {
-      expect(screen.getByText(/Diff snapshot is unavailable/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Diff snapshot is unavailable/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -320,7 +380,16 @@ describe('PRReview', () => {
   it('calls cancel agent API', async () => {
     const user = userEvent.setup();
     mockApi.prs.cycles.mockResolvedValue([
-      { id: 'c1', prId: 'pr-1', cycleNumber: 1, status: 'agent_working', reviewedAt: null, agentCompletedAt: null, hasDiffSnapshot: false, context: null },
+      {
+        id: 'c1',
+        prId: 'pr-1',
+        cycleNumber: 1,
+        status: 'agent_working',
+        reviewedAt: null,
+        agentCompletedAt: null,
+        hasDiffSnapshot: false,
+        context: null,
+      },
     ]);
     mockApi.prs.cancelAgent.mockResolvedValue({});
     renderPRReview();
@@ -376,10 +445,13 @@ describe('PRReview', () => {
     const submitBtns = screen.getAllByText('Reply');
     await user.click(submitBtns[submitBtns.length - 1]);
 
-    expect(mockApi.comments.create).toHaveBeenCalledWith('pr-1', expect.objectContaining({
-      body: 'My reply',
-      parentCommentId: 'c1',
-    }));
+    expect(mockApi.comments.create).toHaveBeenCalledWith(
+      'pr-1',
+      expect.objectContaining({
+        body: 'My reply',
+        parentCommentId: 'c1',
+      }),
+    );
   });
 
   it('resolves a comment', async () => {
@@ -404,7 +476,9 @@ describe('PRReview', () => {
     await waitFor(() => screen.getByText('Fix this'));
 
     await user.click(screen.getByText('Resolve'));
-    expect(mockApi.comments.update).toHaveBeenCalledWith('c1', { resolved: true });
+    expect(mockApi.comments.update).toHaveBeenCalledWith('c1', {
+      resolved: true,
+    });
   });
 
   it('edits a comment', async () => {
@@ -434,7 +508,9 @@ describe('PRReview', () => {
     await user.type(textarea, 'New text');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(mockApi.comments.update).toHaveBeenCalledWith('c1', { body: 'New text' });
+    expect(mockApi.comments.update).toHaveBeenCalledWith('c1', {
+      body: 'New text',
+    });
   });
 
   it('deletes a comment', async () => {
@@ -465,14 +541,35 @@ describe('PRReview', () => {
   it('switches cycle and loads new diff', async () => {
     const user = userEvent.setup();
     mockApi.prs.cycles.mockResolvedValue([
-      { id: 'c1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested', reviewedAt: '2026-01-01', agentCompletedAt: null, hasDiffSnapshot: true, context: null },
-      { id: 'c2', prId: 'pr-1', cycleNumber: 2, status: 'pending_review', reviewedAt: null, agentCompletedAt: null, hasDiffSnapshot: true, context: null },
+      {
+        id: 'c1',
+        prId: 'pr-1',
+        cycleNumber: 1,
+        status: 'changes_requested',
+        reviewedAt: '2026-01-01',
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
+      {
+        id: 'c2',
+        prId: 'pr-1',
+        cycleNumber: 2,
+        status: 'pending_review',
+        reviewedAt: null,
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
     ]);
     renderPRReview();
     await waitFor(() => screen.getByLabelText('Viewing:'));
 
     // The diff mock is already set from beforeEach
-    mockApi.prs.diff.mockResolvedValue({ diff: SIMPLE_DIFF, files: ['src/app.ts'] });
+    mockApi.prs.diff.mockResolvedValue({
+      diff: SIMPLE_DIFF,
+      files: ['src/app.ts'],
+    });
 
     const select = screen.getByLabelText('Viewing:');
     await user.selectOptions(select, '1');
@@ -483,12 +580,24 @@ describe('PRReview', () => {
   it('renders selected cycle context when available', async () => {
     const user = userEvent.setup();
     mockApi.prs.cycles.mockResolvedValue([
-      { id: 'c1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested', reviewedAt: '2026-01-01', agentCompletedAt: null, hasDiffSnapshot: true, context: 'Resubmit with fixes' },
+      {
+        id: 'c1',
+        prId: 'pr-1',
+        cycleNumber: 1,
+        status: 'changes_requested',
+        reviewedAt: '2026-01-01',
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: 'Resubmit with fixes',
+      },
     ]);
     renderPRReview();
     await waitFor(() => screen.getByLabelText('Viewing:'));
 
-    mockApi.prs.diff.mockResolvedValue({ diff: SIMPLE_DIFF, files: ['src/app.ts'] });
+    mockApi.prs.diff.mockResolvedValue({
+      diff: SIMPLE_DIFF,
+      files: ['src/app.ts'],
+    });
 
     const select = screen.getByLabelText('Viewing:');
     await user.selectOptions(select, '1');
@@ -512,8 +621,32 @@ describe('PRReview', () => {
 
   it('computes comment counts per file', async () => {
     mockApi.comments.list.mockResolvedValue([
-      { id: 'c1', reviewCycleId: 'cycle-1', filePath: 'src/app.ts', startLine: 1, endLine: 1, body: 'Comment 1', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: false, createdAt: '2026-01-01T00:00:00Z' },
-      { id: 'c2', reviewCycleId: 'cycle-1', filePath: 'src/app.ts', startLine: 2, endLine: 2, body: 'Comment 2', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: false, createdAt: '2026-01-01T00:00:00Z' },
+      {
+        id: 'c1',
+        reviewCycleId: 'cycle-1',
+        filePath: 'src/app.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Comment 1',
+        severity: 'suggestion',
+        author: 'human',
+        parentCommentId: null,
+        resolved: false,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 'c2',
+        reviewCycleId: 'cycle-1',
+        filePath: 'src/app.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Comment 2',
+        severity: 'suggestion',
+        author: 'human',
+        parentCommentId: null,
+        resolved: false,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
     ]);
     renderPRReview();
     await waitFor(() => {
@@ -525,19 +658,75 @@ describe('PRReview', () => {
   it('filters comments when filter is changed', async () => {
     const user = userEvent.setup();
     mockApi.prs.cycles.mockResolvedValue([
-      { id: 'c1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested', reviewedAt: '2026-01-01', agentCompletedAt: null, hasDiffSnapshot: true, context: null },
-      { id: 'c2', prId: 'pr-1', cycleNumber: 2, status: 'pending_review', reviewedAt: null, agentCompletedAt: null, hasDiffSnapshot: true, context: null },
+      {
+        id: 'c1',
+        prId: 'pr-1',
+        cycleNumber: 1,
+        status: 'changes_requested',
+        reviewedAt: '2026-01-01',
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
+      {
+        id: 'c2',
+        prId: 'pr-1',
+        cycleNumber: 2,
+        status: 'pending_review',
+        reviewedAt: null,
+        agentCompletedAt: null,
+        hasDiffSnapshot: true,
+        context: null,
+      },
     ]);
     mockApi.comments.list.mockResolvedValue([
-      { id: 'c1', reviewCycleId: 'c1', filePath: 'src/app.ts', startLine: 1, endLine: 1, body: 'Old comment', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: false, createdAt: '2026-01-01T00:00:00Z' },
-      { id: 'c2', reviewCycleId: 'c1', filePath: 'src/app.ts', startLine: 2, endLine: 2, body: 'Replied comment', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: false, createdAt: '2026-01-01T00:00:00Z' },
-      { id: 'r1', reviewCycleId: 'c2', filePath: 'src/app.ts', startLine: 2, endLine: 2, body: 'Agent reply', severity: 'suggestion', author: 'agent', parentCommentId: 'c2', resolved: false, createdAt: '2026-01-02T00:00:00Z' },
+      {
+        id: 'c1',
+        reviewCycleId: 'c1',
+        filePath: 'src/app.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Old comment',
+        severity: 'suggestion',
+        author: 'human',
+        parentCommentId: null,
+        resolved: false,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 'c2',
+        reviewCycleId: 'c1',
+        filePath: 'src/app.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Replied comment',
+        severity: 'suggestion',
+        author: 'human',
+        parentCommentId: null,
+        resolved: false,
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+      {
+        id: 'r1',
+        reviewCycleId: 'c2',
+        filePath: 'src/app.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Agent reply',
+        severity: 'suggestion',
+        author: 'agent',
+        parentCommentId: 'c2',
+        resolved: false,
+        createdAt: '2026-01-02T00:00:00Z',
+      },
     ]);
     renderPRReview();
     await waitFor(() => screen.getByText('Old comment'));
 
     // Filter should be visible because cycles > 1
-    expect(screen.getByRole('button', { name: /agent replied/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /agent replied/i }),
+    ).toBeInTheDocument();
   });
 
   it('handles WebSocket comment:added event by refreshing comments', async () => {
@@ -627,7 +816,11 @@ describe('PRReview', () => {
         event: 'agent:output',
         data: {
           prId: 'pr-1',
-          entry: { timestamp: '2026-01-01T12:00:00Z', type: 'tool_use', summary: 'Running tests' },
+          entry: {
+            timestamp: '2026-01-01T12:00:00Z',
+            type: 'tool_use',
+            summary: 'Running tests',
+          },
         },
       });
     });
@@ -643,7 +836,11 @@ describe('PRReview', () => {
         data: {
           prId: 'pr-1',
           source: 'insights',
-          entry: { timestamp: '2026-01-01T12:00:00Z', type: 'tool_use', summary: 'Analyzing' },
+          entry: {
+            timestamp: '2026-01-01T12:00:00Z',
+            type: 'tool_use',
+            summary: 'Analyzing',
+          },
         },
       });
     });
@@ -654,7 +851,10 @@ describe('PRReview', () => {
     await waitFor(() => screen.getByText('Test PR'));
 
     act(() => {
-      wsCallback?.({ event: 'agent:error', data: { error: 'Something went wrong' } });
+      wsCallback?.({
+        event: 'agent:error',
+        data: { error: 'Something went wrong' },
+      });
     });
   });
 
@@ -663,7 +863,10 @@ describe('PRReview', () => {
     await waitFor(() => screen.getByText('Test PR'));
 
     act(() => {
-      wsCallback?.({ event: 'agent:error', data: { source: 'insights', error: 'Analyzer failed' } });
+      wsCallback?.({
+        event: 'agent:error',
+        data: { source: 'insights', error: 'Analyzer failed' },
+      });
     });
   });
 

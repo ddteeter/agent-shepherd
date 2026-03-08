@@ -65,10 +65,14 @@ describe('FeedbackIntegrator', () => {
     // Temporarily disable FK constraints to set a nonexistent projectId
     const sqlite = (server as any).sqlite;
     sqlite.exec('PRAGMA foreign_keys = OFF');
-    sqlite.exec(`UPDATE pull_requests SET project_id = 'nonexistent-project-id' WHERE id = '${pr.json().id}'`);
+    sqlite.exec(
+      `UPDATE pull_requests SET project_id = 'nonexistent-project-id' WHERE id = '${pr.json().id}'`,
+    );
     sqlite.exec('PRAGMA foreign_keys = ON');
 
-    await expect(integrator.run(pr.json().id)).rejects.toThrow('Project not found');
+    await expect(integrator.run(pr.json().id)).rejects.toThrow(
+      'Project not found',
+    );
   });
 
   it('builds prompt from comments and calls agentRunner.run', async () => {
@@ -175,9 +179,11 @@ describe('FeedbackIntegrator', () => {
     });
 
     // Make run call the onComplete callback
-    (mockRunner.run as any).mockImplementation(async (_config: any, callbacks: any) => {
-      callbacks.onComplete();
-    });
+    (mockRunner.run as any).mockImplementation(
+      async (_config: any, callbacks: any) => {
+        callbacks.onComplete();
+      },
+    );
 
     await integrator.run(prId);
 
@@ -185,10 +191,16 @@ describe('FeedbackIntegrator', () => {
     expect(mockNotifications.notifyPRReadyForReview).toHaveBeenCalled();
 
     // Verify cycle status was set to agent_completed
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
-    const latestCycle = cycles.reduce((best: any, c: any) =>
-      c.cycleNumber > (best?.cycleNumber ?? 0) ? c : best, null);
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
+    const latestCycle = cycles.reduce(
+      (best: any, c: any) =>
+        c.cycleNumber > (best?.cycleNumber ?? 0) ? c : best,
+      null,
+    );
     expect(latestCycle.status).toBe('agent_completed');
   });
 
@@ -212,17 +224,25 @@ describe('FeedbackIntegrator', () => {
     });
 
     // Make run call the onError callback
-    (mockRunner.run as any).mockImplementation(async (_config: any, callbacks: any) => {
-      callbacks.onError(new Error('Agent failed'));
-    });
+    (mockRunner.run as any).mockImplementation(
+      async (_config: any, callbacks: any) => {
+        callbacks.onError(new Error('Agent failed'));
+      },
+    );
 
     await integrator.run(prId);
 
     // Verify cycle status was set to agent_error
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
-    const latestCycle = cycles.reduce((best: any, c: any) =>
-      c.cycleNumber > (best?.cycleNumber ?? 0) ? c : best, null);
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
+    const latestCycle = cycles.reduce(
+      (best: any, c: any) =>
+        c.cycleNumber > (best?.cycleNumber ?? 0) ? c : best,
+      null,
+    );
     expect(latestCycle.status).toBe('agent_error');
   });
 
@@ -332,15 +352,17 @@ describe('FeedbackIntegrator', () => {
     });
     // Insert a PR directly without a cycle
     const prId = 'direct-pr-no-cycle';
-    db.insert(schema.pullRequests).values({
-      id: prId,
-      projectId: proj.json().id,
-      title: 'No Cycle PR',
-      description: '',
-      sourceBranch: 'feat/x',
-      baseBranch: 'main',
-      status: 'open',
-    }).run();
+    db.insert(schema.pullRequests)
+      .values({
+        id: prId,
+        projectId: proj.json().id,
+        title: 'No Cycle PR',
+        description: '',
+        sourceBranch: 'feat/x',
+        baseBranch: 'main',
+        status: 'open',
+      })
+      .run();
 
     await expect(integrator.run(prId)).rejects.toThrow('No review cycle found');
   });

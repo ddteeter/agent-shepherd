@@ -38,7 +38,8 @@ export class ApiClient {
     const res = await fetch(this.url(path), {
       headers: this.authHeaders(),
     });
-    if (!res.ok) throw new Error(`GET ${path}: ${res.status} ${await res.text()}`);
+    if (!res.ok)
+      throw new Error(`GET ${path}: ${res.status} ${await res.text()}`);
     return res.json() as T;
   }
 
@@ -50,7 +51,8 @@ export class ApiClient {
       headers,
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
-    if (!res.ok) throw new Error(`POST ${path}: ${res.status} ${await res.text()}`);
+    if (!res.ok)
+      throw new Error(`POST ${path}: ${res.status} ${await res.text()}`);
     return res.json() as T;
   }
 
@@ -63,7 +65,8 @@ export class ApiClient {
       },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`PUT ${path}: ${res.status} ${await res.text()}`);
+    if (!res.ok)
+      throw new Error(`PUT ${path}: ${res.status} ${await res.text()}`);
     return res.json() as T;
   }
 }

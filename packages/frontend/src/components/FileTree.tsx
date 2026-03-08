@@ -1,6 +1,11 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { FileIcon, FolderIcon } from '@react-symbols/icons/utils';
-import { buildFileTree, buildGroupedFileTree, type TreeNode, type GroupTreeNode } from './fileTreeUtils';
+import {
+  buildFileTree,
+  buildGroupedFileTree,
+  type TreeNode,
+  type GroupTreeNode,
+} from './fileTreeUtils';
 import type { FileStatus } from './DiffViewer.js';
 
 interface FileTreeProps {
@@ -9,7 +14,11 @@ interface FileTreeProps {
   onSelectFile: (file: string) => void;
   fileStatuses?: Record<string, FileStatus>;
   commentCounts?: Record<string, number>;
-  fileGroups?: Array<{ name: string; description?: string; files: string[] }> | null;
+  fileGroups?: Array<{
+    name: string;
+    description?: string;
+    files: string[];
+  }> | null;
   viewMode?: 'directory' | 'logical';
   onViewModeChange?: (mode: 'directory' | 'logical') => void;
 }
@@ -83,7 +92,9 @@ function TreeNodeList({
           );
         }
 
-        const badge = fileStatuses?.[node.path] ? STATUS_BADGE[fileStatuses[node.path]] : null;
+        const badge = fileStatuses?.[node.path]
+          ? STATUS_BADGE[fileStatuses[node.path]]
+          : null;
         const count = commentCounts?.[node.path] ?? 0;
         return (
           <li key={node.path}>
@@ -113,7 +124,8 @@ function TreeNodeList({
                 <span
                   className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
                   style={{
-                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                    backgroundColor:
+                      'color-mix(in srgb, var(--color-accent) 15%, transparent)',
                     color: 'var(--color-accent)',
                   }}
                 >
@@ -182,7 +194,9 @@ function GroupedTreeNodeList({
                   {node.children && (
                     <ul>
                       {node.children.map((child) => {
-                        const badge = fileStatuses?.[child.path] ? STATUS_BADGE[fileStatuses[child.path]] : null;
+                        const badge = fileStatuses?.[child.path]
+                          ? STATUS_BADGE[fileStatuses[child.path]]
+                          : null;
                         const count = commentCounts?.[child.path] ?? 0;
                         return (
                           <li key={child.path}>
@@ -196,23 +210,29 @@ function GroupedTreeNodeList({
                                 paddingLeft: (depth + 1) * 16 + 28,
                                 ...(selectedFile === child.path
                                   ? {
-                                      backgroundColor: 'var(--color-list-active-bg)',
+                                      backgroundColor:
+                                        'var(--color-list-active-bg)',
                                       color: 'var(--color-list-active-fg)',
                                     }
                                   : {}),
                               }}
                             >
                               <FileIcon
-                                fileName={child.path.split('/').pop() || child.path}
+                                fileName={
+                                  child.path.split('/').pop() || child.path
+                                }
                                 autoAssign
                                 className="w-4 h-4 shrink-0"
                               />
-                              <span className="whitespace-nowrap flex-1">{child.path}</span>
+                              <span className="whitespace-nowrap flex-1">
+                                {child.path}
+                              </span>
                               {count > 0 && (
                                 <span
                                   className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
                                   style={{
-                                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                                    backgroundColor:
+                                      'color-mix(in srgb, var(--color-accent) 15%, transparent)',
                                     color: 'var(--color-accent)',
                                   }}
                                 >
@@ -240,7 +260,9 @@ function GroupedTreeNodeList({
         }
 
         // File nodes at the top level (shouldn't happen in grouped view, but handle for safety)
-        const badge = fileStatuses?.[node.path] ? STATUS_BADGE[fileStatuses[node.path]] : null;
+        const badge = fileStatuses?.[node.path]
+          ? STATUS_BADGE[fileStatuses[node.path]]
+          : null;
         const count = commentCounts?.[node.path] ?? 0;
         return (
           <li key={node.path}>
@@ -270,7 +292,8 @@ function GroupedTreeNodeList({
                 <span
                   className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
                   style={{
-                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                    backgroundColor:
+                      'color-mix(in srgb, var(--color-accent) 15%, transparent)',
                     color: 'var(--color-accent)',
                   }}
                 >
@@ -296,7 +319,16 @@ function GroupedTreeNodeList({
 const MIN_WIDTH = 120;
 const MAX_WIDTH = 600;
 
-export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, commentCounts, fileGroups, viewMode, onViewModeChange }: FileTreeProps) {
+export function FileTree({
+  files,
+  selectedFile,
+  onSelectFile,
+  fileStatuses,
+  commentCounts,
+  fileGroups,
+  viewMode,
+  onViewModeChange,
+}: FileTreeProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [width, setWidth] = useState(256);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -354,11 +386,7 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
   );
 
   return (
-    <div
-      ref={containerRef}
-      className="flex shrink-0"
-      style={{ width }}
-    >
+    <div ref={containerRef} className="flex shrink-0" style={{ width }}>
       <div className="flex-1 flex flex-col min-w-0">
         <div
           className="flex items-center justify-between px-3 py-2 text-sm font-medium border-b"
@@ -373,7 +401,14 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
                     ? 'font-medium'
                     : 'opacity-60 hover:opacity-100'
                 }`}
-                style={viewMode === 'logical' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
+                style={
+                  viewMode === 'logical'
+                    ? {
+                        backgroundColor: 'var(--color-list-active-bg)',
+                        color: 'var(--color-list-active-fg)',
+                      }
+                    : {}
+                }
                 onClick={() => onViewModeChange('logical')}
               >
                 Logical
@@ -384,7 +419,14 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
                     ? 'font-medium'
                     : 'opacity-60 hover:opacity-100'
                 }`}
-                style={viewMode === 'directory' ? { backgroundColor: 'var(--color-list-active-bg)', color: 'var(--color-list-active-fg)' } : {}}
+                style={
+                  viewMode === 'directory'
+                    ? {
+                        backgroundColor: 'var(--color-list-active-bg)',
+                        color: 'var(--color-list-active-fg)',
+                      }
+                    : {}
+                }
                 onClick={() => onViewModeChange('directory')}
               >
                 Directory
@@ -423,8 +465,12 @@ export function FileTree({ files, selectedFile, onSelectFile, fileStatuses, comm
       <div
         onMouseDown={handleMouseDown}
         className="w-1.5 cursor-col-resize transition-colors"
-        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-accent)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--color-border)'; }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--color-accent)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--color-border)';
+        }}
         style={{ backgroundColor: 'var(--color-border)' }}
       />
     </div>

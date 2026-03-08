@@ -8,15 +8,22 @@ export function initCommand(program: Command, client: ApiClient) {
     .description('Register a project with Agent Shepherd')
     .option('-n, --name <name>', 'Project name')
     .option('-b, --base-branch <branch>', 'Base branch', 'main')
-    .action(async (path: string | undefined, opts: { name?: string; baseBranch: string }) => {
-      const projectPath = resolve(path || '.');
-      const name = opts.name || basename(projectPath);
+    .action(
+      async (
+        path: string | undefined,
+        opts: { name?: string; baseBranch: string },
+      ) => {
+        const projectPath = resolve(path || '.');
+        const name = opts.name || basename(projectPath);
 
-      const project = await client.post('/api/projects', {
-        name,
-        path: projectPath,
-        baseBranch: opts.baseBranch,
-      });
-      console.log(`Project registered: ${(project as any).name} (${(project as any).id})`);
-    });
+        const project = await client.post('/api/projects', {
+          name,
+          path: projectPath,
+          baseBranch: opts.baseBranch,
+        });
+        console.log(
+          `Project registered: ${(project as any).name} (${(project as any).id})`,
+        );
+      },
+    );
 }

@@ -6,7 +6,6 @@ import { execSync } from 'child_process';
 import type { FastifyInstance } from 'fastify';
 import { createTestServer } from './helpers.js';
 
-
 /**
  * Helper: create a temporary git repository with an initial commit on main
  * and a feature branch with changes for diff testing.
@@ -16,23 +15,44 @@ async function createTestRepo(): Promise<string> {
 
   execSync('git init', { cwd: repoPath, stdio: 'pipe' });
   execSync('git checkout -b main', { cwd: repoPath, stdio: 'pipe' });
-  execSync('git config user.email "test@test.com"', { cwd: repoPath, stdio: 'pipe' });
+  execSync('git config user.email "test@test.com"', {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
   execSync('git config user.name "Test"', { cwd: repoPath, stdio: 'pipe' });
 
   // Create initial files on main
   await mkdir(join(repoPath, 'src'), { recursive: true });
-  await writeFile(join(repoPath, 'src', 'index.ts'), 'export const VERSION = "1.0.0";\n');
-  await writeFile(join(repoPath, 'src', 'utils.ts'), 'export function add(a: number, b: number) {\n  return a + b;\n}\n');
-  execSync('git add . && git commit -m "initial commit"', { cwd: repoPath, stdio: 'pipe' });
+  await writeFile(
+    join(repoPath, 'src', 'index.ts'),
+    'export const VERSION = "1.0.0";\n',
+  );
+  await writeFile(
+    join(repoPath, 'src', 'utils.ts'),
+    'export function add(a: number, b: number) {\n  return a + b;\n}\n',
+  );
+  execSync('git add . && git commit -m "initial commit"', {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
 
   // Create a feature branch with changes
-  execSync('git checkout -b feat/add-multiply', { cwd: repoPath, stdio: 'pipe' });
+  execSync('git checkout -b feat/add-multiply', {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
   await writeFile(
     join(repoPath, 'src', 'utils.ts'),
     'export function add(a: number, b: number) {\n  return a + b;\n}\n\nexport function multiply(a: number, b: number) {\n  return a * b;\n}\n',
   );
-  await writeFile(join(repoPath, 'src', 'index.ts'), 'export const VERSION = "1.1.0";\nexport { add, multiply } from "./utils";\n');
-  execSync('git add . && git commit -m "add multiply function"', { cwd: repoPath, stdio: 'pipe' });
+  await writeFile(
+    join(repoPath, 'src', 'index.ts'),
+    'export const VERSION = "1.1.0";\nexport { add, multiply } from "./utils";\n',
+  );
+  execSync('git add . && git commit -m "add multiply function"', {
+    cwd: repoPath,
+    stdio: 'pipe',
+  });
 
   return repoPath;
 }
@@ -96,7 +116,10 @@ describe('E2E: Full PR Review Workflow', () => {
     expect(prGetRes.statusCode).toBe(200);
     expect(prGetRes.json().status).toBe('open');
 
-    const cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    const cyclesRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/cycles`,
+    });
     expect(cyclesRes.statusCode).toBe(200);
     const cycles = cyclesRes.json();
     expect(cycles).toHaveLength(1);
@@ -106,7 +129,10 @@ describe('E2E: Full PR Review Workflow', () => {
     // ---------------------------------------------------------------
     // Step 4: Get the diff and verify it contains expected changes
     // ---------------------------------------------------------------
-    const diffRes = await inject({ method: 'GET', url: `/api/prs/${prId}/diff` });
+    const diffRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff`,
+    });
     expect(diffRes.statusCode).toBe(200);
     const diff = diffRes.json();
     expect(diff.diff).toContain('+export function multiply');
@@ -194,7 +220,10 @@ describe('E2E: Full PR Review Workflow', () => {
     // Step 8: Verify PR is still 'open' and cycle status is
     //         'changes_requested'
     // ---------------------------------------------------------------
-    const prAfterReviewRes = await inject({ method: 'GET', url: `/api/prs/${prId}` });
+    const prAfterReviewRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}`,
+    });
     expect(prAfterReviewRes.statusCode).toBe(200);
     // PR status remains 'open' (only 'approve' changes it to 'approved')
     expect(prAfterReviewRes.json().status).toBe('open');
@@ -432,7 +461,10 @@ describe('E2E: Config System', () => {
     // Project DB config overrides project file config. To test this,
     // create a .agent-shepherd.yml in the repo with a key that the project DB
     // will override.
-    await writeFile(join(repoPath, '.agent-shepherd.yml'), 'reviewModel: file-model\nfileOnlyKey: from-file\n');
+    await writeFile(
+      join(repoPath, '.agent-shepherd.yml'),
+      'reviewModel: file-model\nfileOnlyKey: from-file\n',
+    );
 
     const projConfigWithFile = await inject({
       method: 'GET',
@@ -505,7 +537,10 @@ describe('E2E: Multiple Review Cycles', () => {
     const prId = prRes.json().id;
 
     // Verify cycle 1 exists
-    let cyclesRes = await inject({ method: 'GET', url: `/api/prs/${prId}/cycles` });
+    let cyclesRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/cycles`,
+    });
     expect(cyclesRes.json()).toHaveLength(1);
     expect(cyclesRes.json()[0].cycleNumber).toBe(1);
     expect(cyclesRes.json()[0].status).toBe('pending_review');
@@ -565,7 +600,9 @@ describe('E2E: Multiple Review Cycles', () => {
     const allCycles = cyclesRes.json();
     expect(allCycles).toHaveLength(3);
 
-    const sorted = allCycles.sort((a: any, b: any) => a.cycleNumber - b.cycleNumber);
+    const sorted = allCycles.sort(
+      (a: any, b: any) => a.cycleNumber - b.cycleNumber,
+    );
     expect(sorted[0].cycleNumber).toBe(1);
     expect(sorted[0].status).toBe('changes_requested');
     expect(sorted[0].agentCompletedAt).toBeTruthy();
@@ -590,7 +627,9 @@ describe('E2E: Multiple Review Cycles', () => {
     const details = detailsRes.json();
     expect(details).toHaveLength(3);
 
-    const detailsSorted = details.sort((a: any, b: any) => a.cycleNumber - b.cycleNumber);
+    const detailsSorted = details.sort(
+      (a: any, b: any) => a.cycleNumber - b.cycleNumber,
+    );
     // Cycle 1: has snapshot (created at PR submission)
     expect(detailsSorted[0].hasDiffSnapshot).toBe(true);
     // Cycle 2: has snapshot (created via agent-ready)
@@ -779,7 +818,9 @@ describe('E2E: Multiple Review Cycles', () => {
     const allComments = allRes.json();
     expect(allComments).toHaveLength(2);
 
-    const reply = allComments.find((c: any) => c.parentCommentId === humanCommentId);
+    const reply = allComments.find(
+      (c: any) => c.parentCommentId === humanCommentId,
+    );
     expect(reply).toBeDefined();
     expect(reply.body).toBe('Added try/catch wrapper - see updated diff');
     expect(reply.author).toBe('agent');
@@ -852,19 +893,34 @@ describe('E2E: Multiple Review Cycles', () => {
     const projectId = projectRes.json().id;
 
     const fileGroups = [
-      { name: 'Core Changes', description: 'Main utility updates', files: ['src/utils.ts'] },
-      { name: 'Exports', description: 'Re-export updates', files: ['src/index.ts'] },
+      {
+        name: 'Core Changes',
+        description: 'Main utility updates',
+        files: ['src/utils.ts'],
+      },
+      {
+        name: 'Exports',
+        description: 'Re-export updates',
+        files: ['src/index.ts'],
+      },
     ];
 
     const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
-      payload: { title: 'PR with file groups', sourceBranch: 'feat/add-multiply', fileGroups },
+      payload: {
+        title: 'PR with file groups',
+        sourceBranch: 'feat/add-multiply',
+        fileGroups,
+      },
     });
     expect(prRes.statusCode).toBe(201);
     const prId = prRes.json().id;
 
-    const diffRes = await inject({ method: 'GET', url: `/api/prs/${prId}/diff?cycle=1` });
+    const diffRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff?cycle=1`,
+    });
     expect(diffRes.statusCode).toBe(200);
     expect(diffRes.json().fileGroups).toEqual(fileGroups);
   });
@@ -885,14 +941,26 @@ describe('E2E: Multiple Review Cycles', () => {
     const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
-      payload: { title: 'PR needing groups on ready', sourceBranch: 'feat/add-multiply', fileGroups },
+      payload: {
+        title: 'PR needing groups on ready',
+        sourceBranch: 'feat/add-multiply',
+        fileGroups,
+      },
     });
     const prId = prRes.json().id;
 
-    await inject({ method: 'POST', url: `/api/prs/${prId}/review`, payload: { action: 'request-changes' } });
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/review`,
+      payload: { action: 'request-changes' },
+    });
 
     // Without file groups — should fail
-    const readyRes = await inject({ method: 'POST', url: `/api/prs/${prId}/agent-ready`, payload: {} });
+    const readyRes = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/agent-ready`,
+      payload: {},
+    });
     expect(readyRes.statusCode).toBe(400);
     expect(readyRes.json().error).toContain('file groups');
 
@@ -900,13 +968,24 @@ describe('E2E: Multiple Review Cycles', () => {
     const readyRes2 = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
-      payload: { fileGroups: [{ name: 'Utils', files: ['src/utils.ts'] }, { name: 'Index', files: ['src/index.ts'] }] },
+      payload: {
+        fileGroups: [
+          { name: 'Utils', files: ['src/utils.ts'] },
+          { name: 'Index', files: ['src/index.ts'] },
+        ],
+      },
     });
     expect(readyRes2.statusCode).toBe(200);
 
-    const diffRes = await inject({ method: 'GET', url: `/api/prs/${prId}/diff?cycle=2` });
+    const diffRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff?cycle=2`,
+    });
     expect(diffRes.statusCode).toBe(200);
-    expect(diffRes.json().fileGroups).toEqual([{ name: 'Utils', files: ['src/utils.ts'] }, { name: 'Index', files: ['src/index.ts'] }]);
+    expect(diffRes.json().fileGroups).toEqual([
+      { name: 'Utils', files: ['src/utils.ts'] },
+      { name: 'Index', files: ['src/index.ts'] },
+    ]);
   });
 
   it('allows agent-ready without file groups when previous cycle had none', async () => {
@@ -920,13 +999,24 @@ describe('E2E: Multiple Review Cycles', () => {
     const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
-      payload: { title: 'PR without groups', sourceBranch: 'feat/add-multiply' },
+      payload: {
+        title: 'PR without groups',
+        sourceBranch: 'feat/add-multiply',
+      },
     });
     const prId = prRes.json().id;
 
-    await inject({ method: 'POST', url: `/api/prs/${prId}/review`, payload: { action: 'request-changes' } });
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/review`,
+      payload: { action: 'request-changes' },
+    });
 
-    const readyRes = await inject({ method: 'POST', url: `/api/prs/${prId}/agent-ready`, payload: {} });
+    const readyRes = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/agent-ready`,
+      payload: {},
+    });
     expect(readyRes.statusCode).toBe(200);
   });
 
@@ -939,23 +1029,37 @@ describe('E2E: Multiple Review Cycles', () => {
     const projectId = projectRes.json().id;
 
     const fileGroups = [
-      { name: 'Utils', description: 'Utility functions', files: ['src/utils.ts'] },
+      {
+        name: 'Utils',
+        description: 'Utility functions',
+        files: ['src/utils.ts'],
+      },
       { name: 'Index', files: ['src/index.ts'] },
     ];
 
     const prRes = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
-      payload: { title: 'PR for file-groups endpoint', sourceBranch: 'feat/add-multiply', fileGroups },
+      payload: {
+        title: 'PR for file-groups endpoint',
+        sourceBranch: 'feat/add-multiply',
+        fileGroups,
+      },
     });
     const prId = prRes.json().id;
 
-    const fgRes = await inject({ method: 'GET', url: `/api/prs/${prId}/file-groups` });
+    const fgRes = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/file-groups`,
+    });
     expect(fgRes.statusCode).toBe(200);
     expect(fgRes.json().fileGroups).toEqual(fileGroups);
     expect(fgRes.json().cycleNumber).toBe(1);
 
-    const fgRes2 = await inject({ method: 'GET', url: `/api/prs/${prId}/file-groups?cycle=1` });
+    const fgRes2 = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/file-groups?cycle=1`,
+    });
     expect(fgRes2.statusCode).toBe(200);
     expect(fgRes2.json().fileGroups).toEqual(fileGroups);
 
@@ -963,10 +1067,16 @@ describe('E2E: Multiple Review Cycles', () => {
     const prRes2 = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
-      payload: { title: 'PR without groups', sourceBranch: 'feat/add-multiply' },
+      payload: {
+        title: 'PR without groups',
+        sourceBranch: 'feat/add-multiply',
+      },
     });
     const prId2 = prRes2.json().id;
-    const fgRes3 = await inject({ method: 'GET', url: `/api/prs/${prId2}/file-groups` });
+    const fgRes3 = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId2}/file-groups`,
+    });
     expect(fgRes3.statusCode).toBe(200);
     expect(fgRes3.json().fileGroups).toBeNull();
   });
@@ -998,11 +1108,18 @@ describe('E2E: Multiple Review Cycles', () => {
     });
 
     // Make a new commit on the feature branch before signaling ready
-    execSync('git checkout feat/add-multiply', { cwd: repoPath, stdio: 'pipe' });
-    await writeFile(join(repoPath, 'src', 'utils.ts'),
-      'export function add(a: number, b: number) {\n  return a + b;\n}\n\nexport function multiply(a: number, b: number) {\n  return a * b;\n}\n\nexport function subtract(a: number, b: number) {\n  return a - b;\n}\n'
+    execSync('git checkout feat/add-multiply', {
+      cwd: repoPath,
+      stdio: 'pipe',
+    });
+    await writeFile(
+      join(repoPath, 'src', 'utils.ts'),
+      'export function add(a: number, b: number) {\n  return a + b;\n}\n\nexport function multiply(a: number, b: number) {\n  return a * b;\n}\n\nexport function subtract(a: number, b: number) {\n  return a - b;\n}\n',
     );
-    execSync('git add . && git commit -m "add subtract function"', { cwd: repoPath, stdio: 'pipe' });
+    execSync('git add . && git commit -m "add subtract function"', {
+      cwd: repoPath,
+      stdio: 'pipe',
+    });
 
     await inject({
       method: 'POST',

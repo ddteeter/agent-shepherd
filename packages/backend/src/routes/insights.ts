@@ -3,7 +3,9 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
 
-export function migrateInsightCategories(categories: Record<string, any[]>): Record<string, any[]> {
+export function migrateInsightCategories(
+  categories: Record<string, any[]>,
+): Record<string, any[]> {
   const migrate = (items: any[]) =>
     items.map(({ applied, ...rest }) => ({
       ...rest,
@@ -15,7 +17,9 @@ export function migrateInsightCategories(categories: Record<string, any[]>): Rec
     claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
     skillRecommendations: migrate(categories.skillRecommendations ?? []),
     promptEngineering: migrate(categories.promptEngineering ?? []),
-    agentBehaviorObservations: migrate(categories.agentBehaviorObservations ?? []),
+    agentBehaviorObservations: migrate(
+      categories.agentBehaviorObservations ?? [],
+    ),
     recurringPatterns: migrate(categories.recurringPatterns ?? []),
   };
 }

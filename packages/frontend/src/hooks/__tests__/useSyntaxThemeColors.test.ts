@@ -89,7 +89,9 @@ describe('useSyntaxThemeColors', () => {
 
     await waitFor(() => {
       expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
-      expect(document.documentElement.style.getPropertyValue('--color-bg')).toBe('#000000');
+      expect(
+        document.documentElement.style.getPropertyValue('--color-bg'),
+      ).toBe('#000000');
     });
   });
 });

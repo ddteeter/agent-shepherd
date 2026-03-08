@@ -24,7 +24,10 @@ export function batchCommand(program: Command, client: ApiClient) {
         process.exit(1);
       }
 
-      const result = await client.post(`/api/prs/${prId}/comments/batch`, JSON.parse(payload));
+      const result = await client.post(
+        `/api/prs/${prId}/comments/batch`,
+        JSON.parse(payload),
+      );
       console.log(`Batch submitted: ${(result as any).created} items created`);
     });
 }

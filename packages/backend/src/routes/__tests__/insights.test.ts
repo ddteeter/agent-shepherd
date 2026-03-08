@@ -40,7 +40,13 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights creates insights on first call (upsert)', async () => {
     const categories = {
-      claudeMdRecommendations: [{ title: 'Add lint rule', description: 'Enable no-unused-vars', confidence: 'high' }],
+      claudeMdRecommendations: [
+        {
+          title: 'Add lint rule',
+          description: 'Enable no-unused-vars',
+          confidence: 'high',
+        },
+      ],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
@@ -65,15 +71,21 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights updates existing insights (upsert)', async () => {
     const categories1 = {
-      claudeMdRecommendations: [{ title: 'Rule A', description: 'Desc A', confidence: 'high' }],
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Desc A', confidence: 'high' },
+      ],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };
     const categories2 = {
-      claudeMdRecommendations: [{ title: 'Rule B', description: 'Desc B', confidence: 'medium' }],
-      skillRecommendations: [{ title: 'Skill 1', description: 'Do this', confidence: 'low' }],
+      claudeMdRecommendations: [
+        { title: 'Rule B', description: 'Desc B', confidence: 'medium' },
+      ],
+      skillRecommendations: [
+        { title: 'Skill 1', description: 'Do this', confidence: 'low' },
+      ],
       promptEngineering: [],
       agentBehaviorObservations: [],
       recurringPatterns: [],
@@ -113,14 +125,28 @@ describe('Insights API', () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'Fix in PR1', severity: 'must-fix', author: 'human' },
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Fix in PR1',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
 
     // Add a comment to PR 2
     await inject({
       method: 'POST',
       url: `/api/prs/${prId2}/comments`,
-      payload: { filePath: 'src/b.ts', startLine: 5, endLine: 5, body: 'Fix in PR2', severity: 'suggestion', author: 'human' },
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'Fix in PR2',
+        severity: 'suggestion',
+        author: 'human',
+      },
     });
 
     // Fetch comment history for the project
@@ -197,7 +223,13 @@ describe('Insights API', () => {
     const categories = {
       claudeMdRecommendations: [],
       skillRecommendations: [],
-      promptEngineering: [{ title: 'Better prompts', description: 'Use XML tags', confidence: 'high' }],
+      promptEngineering: [
+        {
+          title: 'Better prompts',
+          description: 'Use XML tags',
+          confidence: 'high',
+        },
+      ],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };

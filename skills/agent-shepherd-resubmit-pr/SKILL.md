@@ -41,6 +41,7 @@ agent-shepherd list-projects
 Create a file (e.g., `resubmit-context.json`) that describes what changed and why. Analyze the diff and recent commits to build this context.
 
 To understand what changed since the last cycle, review:
+
 - `git log --oneline` for recent commits
 - `git diff` against the base branch
 - Any relevant discussion or decisions that led to the changes
@@ -69,6 +70,7 @@ agent-shepherd resubmit <pr-id> --context-file resubmit-context.json
 ```
 
 This will:
+
 - Mark the current cycle as `superseded`
 - Create a new cycle with a fresh diff snapshot
 - Store the context for the reviewer

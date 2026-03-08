@@ -15,6 +15,7 @@
 ### Task 1: Backend — Close and Reopen Endpoints (Tests)
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/__tests__/pull-requests.test.ts`
 
 **Step 1: Write failing tests for close and reopen**
@@ -50,7 +51,10 @@ it('POST /api/prs/:id/close returns 400 for already-closed PR', async () => {
   const { id } = create.json();
 
   await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
-  const response = await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+  const response = await server.inject({
+    method: 'POST',
+    url: `/api/prs/${id}/close`,
+  });
   expect(response.statusCode).toBe(400);
 });
 
@@ -68,7 +72,10 @@ it('POST /api/prs/:id/close returns 400 for approved PR', async () => {
     payload: { action: 'approve' },
   });
 
-  const response = await server.inject({ method: 'POST', url: `/api/prs/${id}/close` });
+  const response = await server.inject({
+    method: 'POST',
+    url: `/api/prs/${id}/close`,
+  });
   expect(response.statusCode).toBe(400);
 });
 
@@ -127,6 +134,7 @@ Expected: 6 new tests FAIL (routes don't exist yet)
 ### Task 2: Backend — Implement Close and Reopen Endpoints
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/pull-requests.ts:315` (add after cancel-agent endpoint, before cycles endpoint)
 
 **Step 1: Add close endpoint**
@@ -150,7 +158,9 @@ fastify.post('/api/prs/:id/close', async (request, reply) => {
   }
 
   if (pr.status !== 'open') {
-    reply.code(400).send({ error: `Cannot close a PR with status '${pr.status}'` });
+    reply
+      .code(400)
+      .send({ error: `Cannot close a PR with status '${pr.status}'` });
     return;
   }
 
@@ -161,11 +171,16 @@ fastify.post('/api/prs/:id/close', async (request, reply) => {
     .where(eq(schema.reviewCycles.prId, id))
     .all();
 
-  const latestCycle = cycles.reduce((latest: any, cycle: any) =>
-    cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest, null);
+  const latestCycle = cycles.reduce(
+    (latest: any, cycle: any) =>
+      cycle.cycleNumber > (latest?.cycleNumber ?? 0) ? cycle : latest,
+    null,
+  );
 
   if (latestCycle?.status === 'agent_working') {
-    reply.code(409).send({ error: 'Agent is currently working. Cancel the agent first.' });
+    reply
+      .code(409)
+      .send({ error: 'Agent is currently working. Cancel the agent first.' });
     return;
   }
 
@@ -243,6 +258,7 @@ git commit -m "feat: add close and reopen PR endpoints with tests"
 ### Task 3: Frontend — API Client Methods
 
 **Files:**
+
 - Modify: `packages/frontend/src/api.ts:36` (add after `cancelAgent` in the `prs` object)
 
 **Step 1: Add close and reopen methods**
@@ -268,6 +284,7 @@ git commit -m "feat: add close/reopen API client methods"
 ### Task 4: Frontend — Close/Reopen on PR Detail Page (PRReview.tsx)
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 
 **Step 1: Add close/reopen handler**
@@ -309,7 +326,10 @@ In the header section, add a close/reopen button next to the "Comment on PR" but
     <button
       onClick={() => setGlobalCommentForm(!globalCommentForm)}
       className="text-xs px-2 py-1 rounded border hover:opacity-80"
-      style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+      style={{
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-accent)',
+      }}
     >
       Comment on PR
     </button>
@@ -326,7 +346,10 @@ Replace with:
     <button
       onClick={() => setGlobalCommentForm(!globalCommentForm)}
       className="text-xs px-2 py-1 rounded border hover:opacity-80"
-      style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+      style={{
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-accent)',
+      }}
     >
       Comment on PR
     </button>
@@ -344,7 +367,10 @@ Replace with:
     <button
       onClick={handleReopenPr}
       className="text-xs px-2 py-1 rounded border hover:opacity-80"
-      style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+      style={{
+        borderColor: 'var(--color-border)',
+        color: 'var(--color-accent)',
+      }}
     >
       Reopen
     </button>
@@ -364,6 +390,7 @@ git commit -m "feat: add close/reopen buttons to PR detail page"
 ### Task 5: Frontend — Close/Reopen on PR List (ProjectView.tsx)
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/ProjectView.tsx`
 
 **Step 1: Add close/reopen handlers and update PR card**
@@ -402,7 +429,10 @@ Then modify the PR list item. Replace the current `<Link>` block (lines 56-65):
 <Link
   to={`/prs/${pr.id}`}
   className="block p-4 rounded border hover:border-blue-400 transition-colors"
-  style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+  style={{
+    borderColor: 'var(--color-border)',
+    backgroundColor: 'var(--color-bg-secondary)',
+  }}
 >
   <div className="font-medium">{pr.title}</div>
   <div className="text-sm opacity-70">
@@ -417,7 +447,10 @@ With:
 <Link
   to={`/prs/${pr.id}`}
   className="block p-4 rounded border hover:border-blue-400 transition-colors"
-  style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+  style={{
+    borderColor: 'var(--color-border)',
+    backgroundColor: 'var(--color-bg-secondary)',
+  }}
 >
   <div className="flex items-center justify-between">
     <div className="font-medium">{pr.title}</div>
@@ -425,7 +458,10 @@ With:
       <button
         onClick={(e) => handleClosePr(e, pr.id)}
         className="text-xs px-2 py-1 rounded border hover:opacity-80"
-        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text)',
+        }}
       >
         Close
       </button>
@@ -434,7 +470,10 @@ With:
       <button
         onClick={(e) => handleReopenPr(e, pr.id)}
         className="text-xs px-2 py-1 rounded border hover:opacity-80"
-        style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-accent)',
+        }}
       >
         Reopen
       </button>
@@ -458,6 +497,7 @@ git commit -m "feat: add close/reopen buttons to PR list view"
 ### Task 6: Update ReviewBar for Closed State
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/ReviewBar.tsx`
 
 **Step 1: Update the non-open status message**
@@ -467,7 +507,13 @@ The ReviewBar currently shows "PR is {prStatus}" for non-open PRs. Update the st
 ```tsx
 if (prStatus !== 'open') {
   return (
-    <div className="px-6 py-3 border-t text-sm text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
+    <div
+      className="px-6 py-3 border-t text-sm text-center"
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary)',
+      }}
+    >
       PR is {prStatus}
     </div>
   );
@@ -479,7 +525,13 @@ With:
 ```tsx
 if (prStatus !== 'open') {
   return (
-    <div className="px-6 py-3 border-t text-sm text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
+    <div
+      className="px-6 py-3 border-t text-sm text-center"
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary)',
+      }}
+    >
       This PR has been {prStatus === 'approved' ? 'approved' : 'closed'}
     </div>
   );

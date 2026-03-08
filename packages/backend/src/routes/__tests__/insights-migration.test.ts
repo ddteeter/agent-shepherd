@@ -45,7 +45,12 @@ describe('migrateInsightCategories', () => {
   it('passes through items with new format unchanged', () => {
     const input = {
       claudeMdRecommendations: [
-        { title: 'Test', description: 'Desc', confidence: 'high', appliedPath: '.claude/rules/test.md' },
+        {
+          title: 'Test',
+          description: 'Desc',
+          confidence: 'high',
+          appliedPath: '.claude/rules/test.md',
+        },
       ],
       skillRecommendations: [],
       promptEngineering: [],

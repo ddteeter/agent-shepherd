@@ -10,7 +10,12 @@ describe('ws broadcast', () => {
 
 describe('websocketPlugin', () => {
   it('registers a /ws GET route with websocket enabled', async () => {
-    const routes: Array<{ url: string; method: string; websocket: boolean; handler: Function }> = [];
+    const routes: Array<{
+      url: string;
+      method: string;
+      websocket: boolean;
+      handler: Function;
+    }> = [];
     const fakeFastify = {
       get: vi.fn((url: string, opts: any, handler: Function) => {
         routes.push({ url, method: 'GET', websocket: opts.websocket, handler });
@@ -87,8 +92,12 @@ describe('websocketPlugin', () => {
     expect(closedSocket.send).not.toHaveBeenCalled();
 
     // Clean up: trigger close for both to avoid leaking into other tests
-    const openClose = openSocket.on.mock.calls.find((c: any) => c[0] === 'close');
-    const closedClose = closedSocket.on.mock.calls.find((c: any) => c[0] === 'close');
+    const openClose = openSocket.on.mock.calls.find(
+      (c: any) => c[0] === 'close',
+    );
+    const closedClose = closedSocket.on.mock.calls.find(
+      (c: any) => c[0] === 'close',
+    );
     if (openClose) openClose[1]();
     if (closedClose) closedClose[1]();
   });

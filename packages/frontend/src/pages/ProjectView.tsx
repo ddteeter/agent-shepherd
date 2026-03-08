@@ -26,13 +26,12 @@ export function ProjectView() {
 
   useEffect(() => {
     if (!projectId) return;
-    Promise.all([
-      api.projects.get(projectId),
-      api.prs.list(projectId),
-    ]).then(([proj, prList]) => {
-      setProject(proj);
-      setPrs(prList);
-    }).finally(() => setLoading(false));
+    Promise.all([api.projects.get(projectId), api.prs.list(projectId)])
+      .then(([proj, prList]) => {
+        setProject(proj);
+        setPrs(prList);
+      })
+      .finally(() => setLoading(false));
   }, [projectId]);
 
   const handleClosePr = async (e: React.MouseEvent, prId: string) => {
@@ -64,12 +63,17 @@ export function ProjectView() {
   return (
     <div>
       <div className="mb-4">
-        <Link to="/" className="text-sm opacity-70 hover:opacity-100">&larr; All Projects</Link>
+        <Link to="/" className="text-sm opacity-70 hover:opacity-100">
+          &larr; All Projects
+        </Link>
         <h2 className="text-lg font-semibold mt-1">{project?.name}</h2>
         <p className="text-sm opacity-70">{project?.path}</p>
       </div>
 
-      <div className="flex gap-4 border-b mb-4" style={{ borderColor: 'var(--color-border)' }}>
+      <div
+        className="flex gap-4 border-b mb-4"
+        style={{ borderColor: 'var(--color-border)' }}
+      >
         {tabs.map((t) => (
           <button
             key={t}
@@ -91,7 +95,10 @@ export function ProjectView() {
               <Link
                 to={`/prs/${pr.id}`}
                 className="block p-4 rounded border hover:border-blue-400 transition-colors"
-                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+                style={{
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'var(--color-bg-secondary)',
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{pr.title}</div>
@@ -99,7 +106,10 @@ export function ProjectView() {
                     <button
                       onClick={(e) => handleClosePr(e, pr.id)}
                       className="text-xs px-2 py-1 rounded border hover:opacity-80"
-                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                      style={{
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-text)',
+                      }}
                     >
                       Close
                     </button>
@@ -108,7 +118,10 @@ export function ProjectView() {
                     <button
                       onClick={(e) => handleReopenPr(e, pr.id)}
                       className="text-xs px-2 py-1 rounded border hover:opacity-80"
-                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+                      style={{
+                        borderColor: 'var(--color-border)',
+                        color: 'var(--color-accent)',
+                      }}
                     >
                       Reopen
                     </button>

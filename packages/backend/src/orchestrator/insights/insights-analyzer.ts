@@ -28,12 +28,18 @@ export class InsightsAnalyzer {
   }
 
   async run(prId: string): Promise<void> {
-    const pr = this.db.select().from(this.schema.pullRequests)
-      .where(eq(this.schema.pullRequests.id, prId)).get();
+    const pr = this.db
+      .select()
+      .from(this.schema.pullRequests)
+      .where(eq(this.schema.pullRequests.id, prId))
+      .get();
     if (!pr) throw new Error(`PR not found: ${prId}`);
 
-    const project = this.db.select().from(this.schema.projects)
-      .where(eq(this.schema.projects.id, pr.projectId)).get();
+    const project = this.db
+      .select()
+      .from(this.schema.projects)
+      .where(eq(this.schema.projects.id, pr.projectId))
+      .get();
     if (!project) throw new Error(`Project not found: ${pr.projectId}`);
 
     // Discover session logs for this branch
@@ -45,12 +51,15 @@ export class InsightsAnalyzer {
     // Format transcripts into readable markdown in a temp directory
     const outputDir = join(tmpdir(), 'agent-shepherd', 'transcripts', prId);
     const transcriptPaths = await Promise.all(
-      sessions.map(s => formatTranscript(s, outputDir)),
+      sessions.map((s) => formatTranscript(s, outputDir)),
     );
 
     // Check for existing insights to enable incremental analysis
-    const existingInsights = this.db.select().from(this.schema.insights)
-      .where(eq(this.schema.insights.prId, prId)).get();
+    const existingInsights = this.db
+      .select()
+      .from(this.schema.insights)
+      .where(eq(this.schema.insights.prId, prId))
+      .get();
 
     // Build prompt
     const prompt = buildInsightsPrompt({
@@ -81,13 +90,19 @@ export class InsightsAnalyzer {
           },
           onError: (error) => {
             cleanupTranscripts();
-            console.error(`Insights analyzer error for PR ${prId}:`, error.message);
+            console.error(
+              `Insights analyzer error for PR ${prId}:`,
+              error.message,
+            );
           },
         },
       );
     } catch (error) {
       await cleanupTranscripts();
-      console.error(`Insights analyzer failed to start for PR ${prId}:`, (error as Error).message);
+      console.error(
+        `Insights analyzer failed to start for PR ${prId}:`,
+        (error as Error).message,
+      );
     }
   }
 }

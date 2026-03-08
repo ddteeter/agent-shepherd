@@ -28,58 +28,97 @@ interface CommentThreadProps {
 }
 
 const severityColors: Record<string, string> = {
-  'suggestion': 'var(--color-accent)',
-  'request': 'var(--color-warning)',
+  suggestion: 'var(--color-accent)',
+  request: 'var(--color-warning)',
   'must-fix': 'var(--color-danger)',
 };
 
 export type { Comment };
 
-export function CommentThread({ comment, replies, onReply, onResolve, onEdit, onDelete, canEdit = false, threadStatus }: CommentThreadProps) {
+export function CommentThread({
+  comment,
+  replies,
+  onReply,
+  onResolve,
+  onEdit,
+  onDelete,
+  canEdit = false,
+  threadStatus,
+}: CommentThreadProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [userToggled, setUserToggled] = useState(false);
   const collapsed = threadStatus === 'resolved' && !userToggled;
 
   const isEditable = (c: Comment) => canEdit && c.author === 'human' && onEdit;
-  const isDeletable = (c: Comment) => canEdit && c.author === 'human' && onDelete;
+  const isDeletable = (c: Comment) =>
+    canEdit && c.author === 'human' && onDelete;
 
   return (
-    <div className="my-2 mx-4 border rounded text-sm" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)', opacity: threadStatus === 'resolved' ? 0.5 : 1 }}>
+    <div
+      className="my-2 mx-4 border rounded text-sm"
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg)',
+        opacity: threadStatus === 'resolved' ? 0.5 : 1,
+      }}
+    >
       {/* Main comment */}
       <div
         className="p-3"
         style={{ cursor: threadStatus === 'resolved' ? 'pointer' : undefined }}
-        onClick={threadStatus === 'resolved' ? () => setUserToggled((t) => !t) : undefined}
+        onClick={
+          threadStatus === 'resolved'
+            ? () => setUserToggled((t) => !t)
+            : undefined
+        }
       >
         <div className="flex items-center gap-2 mb-1">
           {threadStatus === 'resolved' && (
-            <span className="text-xs opacity-50">{collapsed ? '\u25B8' : '\u25BE'}</span>
+            <span className="text-xs opacity-50">
+              {collapsed ? '\u25B8' : '\u25BE'}
+            </span>
           )}
-          <span className="font-medium text-xs px-1.5 py-0.5 rounded" style={{
-            backgroundColor: comment.author === 'human' ? 'rgba(9, 105, 218, 0.15)' : 'rgba(130, 80, 223, 0.15)',
-            color: comment.author === 'human' ? 'var(--color-accent)' : '#8250df',
-          }}>
+          <span
+            className="font-medium text-xs px-1.5 py-0.5 rounded"
+            style={{
+              backgroundColor:
+                comment.author === 'human'
+                  ? 'rgba(9, 105, 218, 0.15)'
+                  : 'rgba(130, 80, 223, 0.15)',
+              color:
+                comment.author === 'human' ? 'var(--color-accent)' : '#8250df',
+            }}
+          >
             {comment.author}
           </span>
-          <span className="text-xs px-1.5 py-0.5 rounded" style={{
-            backgroundColor: `color-mix(in srgb, ${severityColors[comment.severity] || 'gray'} 15%, transparent)`,
-            color: severityColors[comment.severity] || 'gray',
-          }}>
+          <span
+            className="text-xs px-1.5 py-0.5 rounded"
+            style={{
+              backgroundColor: `color-mix(in srgb, ${severityColors[comment.severity] || 'gray'} 15%, transparent)`,
+              color: severityColors[comment.severity] || 'gray',
+            }}
+          >
             {comment.severity}
           </span>
           {comment.filePath == null ? (
-            <span className="text-xs px-1.5 py-0.5 rounded font-mono" style={{
-              backgroundColor: 'rgba(130, 80, 223, 0.15)',
-              color: '#8250df',
-            }}>
+            <span
+              className="text-xs px-1.5 py-0.5 rounded font-mono"
+              style={{
+                backgroundColor: 'rgba(130, 80, 223, 0.15)',
+                color: '#8250df',
+              }}
+            >
               PR
             </span>
           ) : comment.startLine == null ? (
-            <span className="text-xs px-1.5 py-0.5 rounded font-mono" style={{
-              backgroundColor: 'rgba(9, 105, 218, 0.15)',
-              color: 'var(--color-accent)',
-            }}>
+            <span
+              className="text-xs px-1.5 py-0.5 rounded font-mono"
+              style={{
+                backgroundColor: 'rgba(9, 105, 218, 0.15)',
+                color: 'var(--color-accent)',
+              }}
+            >
               File
             </span>
           ) : comment.startLine !== comment.endLine ? (
@@ -91,18 +130,24 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
             <span className="text-xs opacity-50">Resolved</span>
           )}
           {threadStatus === 'agent-replied' && (
-            <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{
-              backgroundColor: 'rgba(9, 105, 218, 0.15)',
-              color: 'var(--color-accent)',
-            }}>
+            <span
+              className="text-xs px-1.5 py-0.5 rounded font-medium"
+              style={{
+                backgroundColor: 'rgba(9, 105, 218, 0.15)',
+                color: 'var(--color-accent)',
+              }}
+            >
               Agent Replied
             </span>
           )}
           {threadStatus === 'needs-attention' && (
-            <span className="text-xs px-1.5 py-0.5 rounded font-medium" style={{
-              backgroundColor: 'rgba(210, 153, 34, 0.15)',
-              color: 'var(--color-warning, #d29922)',
-            }}>
+            <span
+              className="text-xs px-1.5 py-0.5 rounded font-medium"
+              style={{
+                backgroundColor: 'rgba(210, 153, 34, 0.15)',
+                color: 'var(--color-warning, #d29922)',
+              }}
+            >
               Unaddressed
             </span>
           )}
@@ -140,62 +185,81 @@ export function CommentThread({ comment, replies, onReply, onResolve, onEdit, on
       </div>
 
       {/* Replies */}
-      {!collapsed && replies.map((reply) => (
-        <div key={reply.id} className="p-3 border-t ml-4" style={{ borderColor: 'var(--color-border)' }}>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-xs px-1.5 py-0.5 rounded" style={{
-              backgroundColor: reply.author === 'human' ? 'rgba(9, 105, 218, 0.15)' : 'rgba(130, 80, 223, 0.15)',
-              color: reply.author === 'human' ? 'var(--color-accent)' : '#8250df',
-            }}>
-              {reply.author}
-            </span>
-            {isEditable(reply) && editingId !== reply.id && (
-              <button
-                onClick={() => setEditingId(reply.id)}
-                className="text-xs opacity-50 hover:opacity-100"
+      {!collapsed &&
+        replies.map((reply) => (
+          <div
+            key={reply.id}
+            className="p-3 border-t ml-4"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className="font-medium text-xs px-1.5 py-0.5 rounded"
+                style={{
+                  backgroundColor:
+                    reply.author === 'human'
+                      ? 'rgba(9, 105, 218, 0.15)'
+                      : 'rgba(130, 80, 223, 0.15)',
+                  color:
+                    reply.author === 'human'
+                      ? 'var(--color-accent)'
+                      : '#8250df',
+                }}
               >
-                Edit
-              </button>
-            )}
-            {isDeletable(reply) && (
-              <button
-                onClick={() => onDelete!(reply.id)}
-                className="text-xs opacity-50 hover:opacity-100"
-                style={{ color: 'var(--color-danger)' }}
-              >
-                Delete
-              </button>
+                {reply.author}
+              </span>
+              {isEditable(reply) && editingId !== reply.id && (
+                <button
+                  onClick={() => setEditingId(reply.id)}
+                  className="text-xs opacity-50 hover:opacity-100"
+                >
+                  Edit
+                </button>
+              )}
+              {isDeletable(reply) && (
+                <button
+                  onClick={() => onDelete!(reply.id)}
+                  className="text-xs opacity-50 hover:opacity-100"
+                  style={{ color: 'var(--color-danger)' }}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+            {editingId === reply.id ? (
+              <CommentForm
+                isEditing
+                initialBody={reply.body}
+                onSubmit={({ body }) => {
+                  onEdit!(reply.id, body);
+                  setEditingId(null);
+                }}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <p className="whitespace-pre-wrap">{reply.body}</p>
             )}
           </div>
-          {editingId === reply.id ? (
-            <CommentForm
-              isEditing
-              initialBody={reply.body}
-              onSubmit={({ body }) => {
-                onEdit!(reply.id, body);
-                setEditingId(null);
-              }}
-              onCancel={() => setEditingId(null)}
-            />
-          ) : (
-            <p className="whitespace-pre-wrap">{reply.body}</p>
-          )}
-        </div>
-      ))}
+        ))}
 
       {/* Actions */}
       {!collapsed && (
-        <div className="px-3 py-2 border-t flex gap-2" style={{ borderColor: 'var(--color-border)' }}>
+        <div
+          className="px-3 py-2 border-t flex gap-2"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
           <button
             onClick={() => setShowReplyForm(!showReplyForm)}
-            className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
+            className="text-xs px-2 py-1 rounded border"
+            style={{ borderColor: 'var(--color-border)' }}
           >
             Reply
           </button>
           {!comment.resolved && (
             <button
               onClick={() => onResolve(comment.id)}
-              className="text-xs px-2 py-1 rounded border" style={{ borderColor: 'var(--color-border)' }}
+              className="text-xs px-2 py-1 rounded border"
+              style={{ borderColor: 'var(--color-border)' }}
             >
               Resolve
             </button>

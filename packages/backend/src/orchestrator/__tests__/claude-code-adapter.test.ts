@@ -46,7 +46,12 @@ describe('ClaudeCodeAdapter', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'claude',
-        expect.arrayContaining(['--output-format', 'stream-json', '--verbose', '-p']),
+        expect.arrayContaining([
+          '--output-format',
+          'stream-json',
+          '--verbose',
+          '-p',
+        ]),
         expect.objectContaining({ cwd: '/tmp/project' }),
       );
       expect(proc.stdin.end).toHaveBeenCalledWith('Fix the bug');
@@ -89,10 +94,15 @@ describe('ClaudeCodeAdapter', () => {
       session.onComplete(onComplete);
 
       // Emit a non-end_turn assistant message
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: { stop_reason: 'tool_use', content: [] },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: { stop_reason: 'tool_use', content: [] },
+          }) + '\n',
+        ),
+      );
 
       proc.emit('exit', 0);
       expect(onComplete).toHaveBeenCalled();
@@ -114,7 +124,9 @@ describe('ClaudeCodeAdapter', () => {
       proc.emit('exit', 1);
 
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain('Claude Code exited with code 1');
+      expect(onError.mock.calls[0][0].message).toContain(
+        'Claude Code exited with code 1',
+      );
       expect(onError.mock.calls[0][0].message).toContain('some error');
     });
 
@@ -131,13 +143,18 @@ describe('ClaudeCodeAdapter', () => {
       session.onError(onError);
 
       // Emit an end_turn stop reason with text content
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          stop_reason: 'end_turn',
-          content: [{ type: 'text', text: 'I am done' }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              stop_reason: 'end_turn',
+              content: [{ type: 'text', text: 'I am done' }],
+            },
+          }) + '\n',
+        ),
+      );
 
       proc.emit('exit', 0);
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
@@ -174,19 +191,30 @@ describe('ClaudeCodeAdapter', () => {
       const onOutput = vi.fn();
       session.onOutput(onOutput);
 
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [
-            { type: 'tool_use', name: 'Read', input: { file_path: 'src/index.ts' } },
-          ],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [
+                {
+                  type: 'tool_use',
+                  name: 'Read',
+                  input: { file_path: 'src/index.ts' },
+                },
+              ],
+            },
+          }) + '\n',
+        ),
+      );
 
-      expect(onOutput).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'Read',
-        summary: 'Reading src/index.ts',
-      }));
+      expect(onOutput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'Read',
+          summary: 'Reading src/index.ts',
+        }),
+      );
     });
 
     it('handles session ID from init message', async () => {
@@ -198,11 +226,16 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'system',
-        subtype: 'init',
-        session_id: 'sess-abc-123',
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'system',
+            subtype: 'init',
+            session_id: 'sess-abc-123',
+          }) + '\n',
+        ),
+      );
 
       expect(session.id).toBe('sess-abc-123');
     });
@@ -282,10 +315,15 @@ describe('ClaudeCodeAdapter', () => {
       session.onError(onError);
 
       // Set stop_reason to end_turn but no text content
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: { stop_reason: 'end_turn', content: [] },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: { stop_reason: 'end_turn', content: [] },
+          }) + '\n',
+        ),
+      );
 
       proc.emit('exit', 0);
       expect(onError).toHaveBeenCalled();
@@ -320,25 +358,60 @@ describe('ClaudeCodeAdapter', () => {
       session.onOutput((entry) => outputs.push(entry));
 
       const tools = [
-        { name: 'Read', input: { file_path: 'a.ts' }, expected: 'Reading a.ts' },
-        { name: 'Edit', input: { file_path: 'b.ts' }, expected: 'Editing b.ts' },
-        { name: 'Write', input: { file_path: 'c.ts' }, expected: 'Writing c.ts' },
-        { name: 'Bash', input: { command: 'npm test' }, expected: 'Running npm test' },
-        { name: 'Grep', input: { pattern: 'foo' }, expected: 'Searching for foo' },
-        { name: 'Glob', input: { pattern: '*.ts' }, expected: 'Finding files matching *.ts' },
+        {
+          name: 'Read',
+          input: { file_path: 'a.ts' },
+          expected: 'Reading a.ts',
+        },
+        {
+          name: 'Edit',
+          input: { file_path: 'b.ts' },
+          expected: 'Editing b.ts',
+        },
+        {
+          name: 'Write',
+          input: { file_path: 'c.ts' },
+          expected: 'Writing c.ts',
+        },
+        {
+          name: 'Bash',
+          input: { command: 'npm test' },
+          expected: 'Running npm test',
+        },
+        {
+          name: 'Grep',
+          input: { pattern: 'foo' },
+          expected: 'Searching for foo',
+        },
+        {
+          name: 'Glob',
+          input: { pattern: '*.ts' },
+          expected: 'Finding files matching *.ts',
+        },
         { name: 'Task', input: {}, expected: 'Dispatching sub-agent' },
         { name: 'Unknown', input: {}, expected: 'Using Unknown' },
         { name: 'Read', input: {}, expected: 'Reading file' },
-        { name: 'Bash', input: { command: 'a'.repeat(100) }, expected: `Running ${'a'.repeat(60)}...` },
+        {
+          name: 'Bash',
+          input: { command: 'a'.repeat(100) },
+          expected: `Running ${'a'.repeat(60)}...`,
+        },
       ];
 
       for (const tool of tools) {
-        proc.stdout.emit('data', Buffer.from(JSON.stringify({
-          type: 'assistant',
-          message: {
-            content: [{ type: 'tool_use', name: tool.name, input: tool.input }],
-          },
-        }) + '\n'));
+        proc.stdout.emit(
+          'data',
+          Buffer.from(
+            JSON.stringify({
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'tool_use', name: tool.name, input: tool.input },
+                ],
+              },
+            }) + '\n',
+          ),
+        );
       }
 
       expect(outputs).toHaveLength(tools.length);
@@ -359,37 +432,61 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+        [];
       session.onOutput((entry) => outputs.push(entry));
 
       // Emit a text block
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [{ type: 'text', text: 'Thinking about the problem...' }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [
+                { type: 'text', text: 'Thinking about the problem...' },
+              ],
+            },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(1);
       expect(outputs[0].type).toBe('text');
       expect(outputs[0].detail).toBe('Thinking about the problem...');
 
       // Emit a tool_use block (should include detail in devMode)
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'x.ts' } }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [
+                {
+                  type: 'tool_use',
+                  name: 'Read',
+                  input: { file_path: 'x.ts' },
+                },
+              ],
+            },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(2);
       expect(outputs[1].detail).toContain('file_path');
 
       // Emit a result message (devMode only)
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'result',
-        result: 'some result text',
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'result',
+            result: 'some result text',
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(3);
       expect(outputs[2].type).toBe('tool_result');
@@ -406,13 +503,19 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+        [];
       session.onOutput((entry) => outputs.push(entry));
 
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'result',
-        result: { key: 'value' },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'result',
+            result: { key: 'value' },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(1);
       expect(outputs[0].type).toBe('tool_result');
@@ -428,16 +531,22 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+        [];
       session.onOutput((entry) => outputs.push(entry));
 
       const longText = 'x'.repeat(200);
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [{ type: 'text', text: longText }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [{ type: 'text', text: longText }],
+            },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs[0].summary.length).toBeLessThan(longText.length);
       expect(outputs[0].summary).toContain('...');
@@ -454,14 +563,20 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+        [];
       session.onOutput((entry) => outputs.push(entry));
 
       const longResult = 'y'.repeat(200);
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'result',
-        result: longResult,
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'result',
+            result: longResult,
+          }) + '\n',
+        ),
+      );
 
       expect(outputs[0].summary).toContain('...');
     });
@@ -483,7 +598,9 @@ describe('ClaudeCodeAdapter', () => {
       const fullLine = JSON.stringify({
         type: 'assistant',
         message: {
-          content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'test.ts' } }],
+          content: [
+            { type: 'tool_use', name: 'Read', input: { file_path: 'test.ts' } },
+          ],
         },
       });
 

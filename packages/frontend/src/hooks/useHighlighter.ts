@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createHighlighter, type Highlighter, type ThemedToken, bundledThemes } from 'shiki';
+import {
+  createHighlighter,
+  type Highlighter,
+  type ThemedToken,
+  bundledThemes,
+} from 'shiki';
 
 /** Map file extensions to shiki language IDs */
 const EXT_TO_LANG: Record<string, string> = {
@@ -44,7 +49,10 @@ export type TokenizedLine = ThemedToken[];
 export const AVAILABLE_THEMES = Object.keys(bundledThemes).sort();
 
 /** Curated themes grouped by type for the selector UI */
-export const THEME_GROUPS: { label: string; themes: { id: string; name: string }[] }[] = [
+export const THEME_GROUPS: {
+  label: string;
+  themes: { id: string; name: string }[];
+}[] = [
   {
     label: 'GitHub',
     themes: [
@@ -148,17 +156,21 @@ export function useHighlighter(filePaths: string[]) {
     createHighlighter({
       themes: [syntaxTheme],
       langs,
-    }).then((hl) => {
-      if (!disposed) {
-        loadedThemes.current.add(syntaxTheme);
-        setHighlighter(hl);
-        setReady(true);
-      }
-    }).catch(() => {
-      if (!disposed) setReady(true);
-    });
+    })
+      .then((hl) => {
+        if (!disposed) {
+          loadedThemes.current.add(syntaxTheme);
+          setHighlighter(hl);
+          setReady(true);
+        }
+      })
+      .catch(() => {
+        if (!disposed) setReady(true);
+      });
 
-    return () => { disposed = true; };
+    return () => {
+      disposed = true;
+    };
   }, [filePaths.join(',')]);
 
   // Load a new theme into the existing highlighter when syntaxTheme changes
@@ -166,14 +178,17 @@ export function useHighlighter(filePaths: string[]) {
     tokenCache.current.clear();
     if (!highlighter || loadedThemes.current.has(syntaxTheme)) return;
 
-    highlighter.loadTheme(syntaxTheme as any).then(() => {
-      loadedThemes.current.add(syntaxTheme);
-      // Force re-render by toggling ready
-      setReady(false);
-      requestAnimationFrame(() => setReady(true));
-    }).catch(() => {
-      // Fall back gracefully
-    });
+    highlighter
+      .loadTheme(syntaxTheme as any)
+      .then(() => {
+        loadedThemes.current.add(syntaxTheme);
+        // Force re-render by toggling ready
+        setReady(false);
+        requestAnimationFrame(() => setReady(true));
+      })
+      .catch(() => {
+        // Fall back gracefully
+      });
   }, [syntaxTheme, highlighter]);
 
   // Listen for storage events from the App-level theme selector
@@ -197,21 +212,27 @@ export function useHighlighter(filePaths: string[]) {
   }, []);
 
   /** Tokenize a single line of code (cached) */
-  const tokenizeLine = useCallback((code: string, lang: string, _theme?: string): TokenizedLine | null => {
-    if (!highlighter || !loadedThemes.current.has(syntaxTheme)) return null;
-    const cacheKey = `${syntaxTheme}\0${lang}\0${code}`;
-    const cached = tokenCache.current.get(cacheKey);
-    if (cached !== undefined) return cached;
-    try {
-      const result = highlighter.codeToTokens(code, { lang: lang as any, theme: syntaxTheme as any });
-      const tokens = result.tokens[0] || [];
-      tokenCache.current.set(cacheKey, tokens);
-      return tokens;
-    } catch {
-      tokenCache.current.set(cacheKey, null);
-      return null;
-    }
-  }, [highlighter, syntaxTheme]);
+  const tokenizeLine = useCallback(
+    (code: string, lang: string, _theme?: string): TokenizedLine | null => {
+      if (!highlighter || !loadedThemes.current.has(syntaxTheme)) return null;
+      const cacheKey = `${syntaxTheme}\0${lang}\0${code}`;
+      const cached = tokenCache.current.get(cacheKey);
+      if (cached !== undefined) return cached;
+      try {
+        const result = highlighter.codeToTokens(code, {
+          lang: lang as any,
+          theme: syntaxTheme as any,
+        });
+        const tokens = result.tokens[0] || [];
+        tokenCache.current.set(cacheKey, tokens);
+        return tokens;
+      } catch {
+        tokenCache.current.set(cacheKey, null);
+        return null;
+      }
+    },
+    [highlighter, syntaxTheme],
+  );
 
   return { ready, tokenizeLine, syntaxTheme, setSyntaxTheme };
 }

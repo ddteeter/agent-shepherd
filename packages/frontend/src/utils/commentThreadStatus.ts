@@ -1,6 +1,10 @@
 import type { Comment } from '../components/CommentThread.js';
 
-export type ThreadStatus = 'resolved' | 'agent-replied' | 'needs-attention' | 'new';
+export type ThreadStatus =
+  | 'resolved'
+  | 'agent-replied'
+  | 'needs-attention'
+  | 'new';
 
 export interface ThreadGroup {
   comment: Comment;

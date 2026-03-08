@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { getThreadStatus, groupThreads, type ThreadStatus } from '../commentThreadStatus.js';
+import {
+  getThreadStatus,
+  groupThreads,
+  type ThreadStatus,
+} from '../commentThreadStatus.js';
 import type { Comment } from '../../components/CommentThread.js';
 
 function makeComment(overrides: Partial<Comment> = {}): Comment {
@@ -28,14 +32,18 @@ describe('getThreadStatus', () => {
 
   it('returns "agent-replied" when thread has agent reply and is not resolved', () => {
     const comment = makeComment({ reviewCycleId: 'cycle-1' });
-    const replies = [makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' })];
+    const replies = [
+      makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' }),
+    ];
     expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('agent-replied');
   });
 
   it('returns "needs-attention" when no agent reply and from a previous cycle', () => {
     const comment = makeComment({ reviewCycleId: 'cycle-1' });
     const replies: Comment[] = [];
-    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('needs-attention');
+    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe(
+      'needs-attention',
+    );
   });
 
   it('returns "new" when comment is from the current cycle', () => {
@@ -52,14 +60,20 @@ describe('getThreadStatus', () => {
 
   it('resolved takes priority over agent-replied', () => {
     const comment = makeComment({ resolved: true, reviewCycleId: 'cycle-1' });
-    const replies = [makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' })];
+    const replies = [
+      makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1' }),
+    ];
     expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('resolved');
   });
 
   it('human-only replies do not count as agent-replied', () => {
     const comment = makeComment({ reviewCycleId: 'cycle-1' });
-    const replies = [makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1' })];
-    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe('needs-attention');
+    const replies = [
+      makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1' }),
+    ];
+    expect(getThreadStatus(comment, replies, 'cycle-2')).toBe(
+      'needs-attention',
+    );
   });
 
   it('returns "new" for agent-authored top-level comments (informational)', () => {

@@ -66,7 +66,11 @@ describe('CommentThread — scope badges', () => {
   it('shows PR badge for global comments (filePath is null)', () => {
     render(
       <CommentThread
-        comment={makeComment({ filePath: null, startLine: null, endLine: null })}
+        comment={makeComment({
+          filePath: null,
+          startLine: null,
+          endLine: null,
+        })}
         replies={[]}
         onReply={() => {}}
         onResolve={() => {}}
@@ -79,7 +83,11 @@ describe('CommentThread — scope badges', () => {
   it('shows File badge for file-level comments (startLine is null)', () => {
     render(
       <CommentThread
-        comment={makeComment({ filePath: 'src/index.ts', startLine: null, endLine: null })}
+        comment={makeComment({
+          filePath: 'src/index.ts',
+          startLine: null,
+          endLine: null,
+        })}
         replies={[]}
         onReply={() => {}}
         onResolve={() => {}}
@@ -163,7 +171,9 @@ describe('CommentThread — editing', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Edit' }),
+    ).not.toBeInTheDocument();
   });
 
   it('opens edit form with existing body when Edit is clicked', async () => {
@@ -294,7 +304,14 @@ describe('CommentThread — status badges', () => {
     render(
       <CommentThread
         comment={makeComment({ resolved: true })}
-        replies={[makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1', body: 'Agent reply' })]}
+        replies={[
+          makeComment({
+            id: 'r1',
+            author: 'agent',
+            parentCommentId: 'c1',
+            body: 'Agent reply',
+          }),
+        ]}
         onReply={() => {}}
         onResolve={() => {}}
         threadStatus="resolved"
@@ -311,7 +328,14 @@ describe('CommentThread — status badges', () => {
     render(
       <CommentThread
         comment={makeComment({ resolved: true, body: 'Resolved comment' })}
-        replies={[makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1', body: 'Agent reply' })]}
+        replies={[
+          makeComment({
+            id: 'r1',
+            author: 'agent',
+            parentCommentId: 'c1',
+            body: 'Agent reply',
+          }),
+        ]}
         onReply={() => {}}
         onResolve={() => {}}
         threadStatus="resolved"
@@ -331,8 +355,18 @@ describe('CommentThread — replies', () => {
       <CommentThread
         comment={makeComment()}
         replies={[
-          makeComment({ id: 'r1', author: 'agent', parentCommentId: 'c1', body: 'Agent reply here' }),
-          makeComment({ id: 'r2', author: 'human', parentCommentId: 'c1', body: 'Human reply here' }),
+          makeComment({
+            id: 'r1',
+            author: 'agent',
+            parentCommentId: 'c1',
+            body: 'Agent reply here',
+          }),
+          makeComment({
+            id: 'r2',
+            author: 'human',
+            parentCommentId: 'c1',
+            body: 'Human reply here',
+          }),
         ]}
         onReply={() => {}}
         onResolve={() => {}}
@@ -446,7 +480,14 @@ describe('CommentThread — reply editing', () => {
     render(
       <CommentThread
         comment={makeComment()}
-        replies={[makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1', body: 'Old reply' })]}
+        replies={[
+          makeComment({
+            id: 'r1',
+            author: 'human',
+            parentCommentId: 'c1',
+            body: 'Old reply',
+          }),
+        ]}
         onReply={() => {}}
         onResolve={() => {}}
         onEdit={onEdit}
@@ -469,7 +510,14 @@ describe('CommentThread — reply editing', () => {
     render(
       <CommentThread
         comment={makeComment()}
-        replies={[makeComment({ id: 'r1', author: 'human', parentCommentId: 'c1', body: 'Reply' })]}
+        replies={[
+          makeComment({
+            id: 'r1',
+            author: 'human',
+            parentCommentId: 'c1',
+            body: 'Reply',
+          }),
+        ]}
         onReply={() => {}}
         onResolve={() => {}}
         onDelete={onDelete}

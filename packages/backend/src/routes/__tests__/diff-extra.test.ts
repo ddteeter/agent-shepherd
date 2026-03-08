@@ -176,20 +176,25 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
     const prId = pr.json().id;
 
     // Clear the commit SHA from cycle 1
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
     db.update(schema.reviewCycles)
       .set({ commitSha: null })
       .where(eq(schema.reviewCycles.id, cycles[0].id))
       .run();
 
-    db.insert(schema.reviewCycles).values({
-      id: randomUUID(),
-      prId,
-      cycleNumber: 2,
-      status: 'pending_review',
-      commitSha: null,
-    }).run();
+    db.insert(schema.reviewCycles)
+      .values({
+        id: randomUUID(),
+        prId,
+        cycleNumber: 2,
+        status: 'pending_review',
+        commitSha: null,
+      })
+      .run();
 
     const response = await inject({
       method: 'GET',
@@ -215,8 +220,11 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
     const prId = pr.json().id;
 
     // Delete the snapshot that was created at PR submission
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
+    const cycles = db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
     db.delete(schema.diffSnapshots)
       .where(eq(schema.diffSnapshots.reviewCycleId, cycles[0].id))
       .run();

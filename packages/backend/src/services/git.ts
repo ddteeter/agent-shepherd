@@ -17,8 +17,14 @@ export class GitService {
     return result;
   }
 
-  async getChangedFiles(baseBranch: string, sourceBranch: string): Promise<string[]> {
-    const result = await this.git.diff(['--name-only', `${baseBranch}...${sourceBranch}`]);
+  async getChangedFiles(
+    baseBranch: string,
+    sourceBranch: string,
+  ): Promise<string[]> {
+    const result = await this.git.diff([
+      '--name-only',
+      `${baseBranch}...${sourceBranch}`,
+    ]);
     return result.trim().split('\n').filter(Boolean);
   }
 

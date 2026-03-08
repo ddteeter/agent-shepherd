@@ -164,7 +164,10 @@ describe('Pull Requests API', () => {
     const { id } = create.json();
 
     await inject({ method: 'POST', url: `/api/prs/${id}/close` });
-    const response = await inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${id}/close`,
+    });
     expect(response.statusCode).toBe(400);
   });
 
@@ -182,7 +185,10 @@ describe('Pull Requests API', () => {
       payload: { action: 'approve' },
     });
 
-    const response = await inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${id}/close`,
+    });
     expect(response.statusCode).toBe(400);
   });
 
@@ -262,7 +268,9 @@ describe('Pull Requests API', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().cycleNumber).toBe(2);
     expect(response.json().status).toBe('pending_review');
-    expect(response.json().context).toBe('Fixed the auth flow manually in Claude Code');
+    expect(response.json().context).toBe(
+      'Fixed the auth flow manually in Claude Code',
+    );
 
     // Check cycles — cycle 1 should be superseded
     const cycles = await inject({

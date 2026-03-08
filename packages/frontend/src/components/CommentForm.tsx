@@ -9,7 +9,14 @@ interface CommentFormProps {
   defaultSeverity?: string;
 }
 
-export function CommentForm({ onSubmit, onCancel, isReply = false, isEditing = false, initialBody = '', defaultSeverity = 'suggestion' }: CommentFormProps) {
+export function CommentForm({
+  onSubmit,
+  onCancel,
+  isReply = false,
+  isEditing = false,
+  initialBody = '',
+  defaultSeverity = 'suggestion',
+}: CommentFormProps) {
   const [body, setBody] = useState(initialBody);
   const [severity, setSeverity] = useState(defaultSeverity);
 
@@ -21,13 +28,23 @@ export function CommentForm({ onSubmit, onCancel, isReply = false, isEditing = f
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 border rounded mt-2" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg)' }}>
+    <form
+      onSubmit={handleSubmit}
+      className="p-3 border rounded mt-2"
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg)',
+      }}
+    >
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={isReply ? 'Write a reply...' : 'Write a comment...'}
         className="w-full p-2 border rounded text-sm resize-y min-h-[60px]"
-        style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+        style={{
+          borderColor: 'var(--color-border)',
+          backgroundColor: 'var(--color-bg-secondary)',
+        }}
         autoFocus
       />
       {!isReply && !isEditing && (
@@ -37,7 +54,10 @@ export function CommentForm({ onSubmit, onCancel, isReply = false, isEditing = f
             value={severity}
             onChange={(e) => setSeverity(e.target.value)}
             className="text-sm border rounded px-2 py-1"
-            style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+            style={{
+              borderColor: 'var(--color-border)',
+              backgroundColor: 'var(--color-bg-secondary)',
+            }}
           >
             <option value="suggestion">Suggestion</option>
             <option value="request">Request</option>
@@ -46,10 +66,19 @@ export function CommentForm({ onSubmit, onCancel, isReply = false, isEditing = f
         </div>
       )}
       <div className="mt-2 flex gap-2">
-        <button type="submit" className="px-3 py-1 text-sm rounded text-white" style={{ backgroundColor: 'var(--color-accent)' }}>
+        <button
+          type="submit"
+          className="px-3 py-1 text-sm rounded text-white"
+          style={{ backgroundColor: 'var(--color-accent)' }}
+        >
           {isEditing ? 'Save' : isReply ? 'Reply' : 'Add Comment'}
         </button>
-        <button type="button" onClick={onCancel} className="px-3 py-1 text-sm rounded border" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1 text-sm rounded border"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
           Cancel
         </button>
       </div>

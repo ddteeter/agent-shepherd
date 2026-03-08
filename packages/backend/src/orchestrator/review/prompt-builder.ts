@@ -1,7 +1,11 @@
 export interface CommentSummary {
   total: number;
   bySeverity: Record<string, number>;
-  files: Array<{ path: string; count: number; bySeverity: Record<string, number> }>;
+  files: Array<{
+    path: string;
+    count: number;
+    bySeverity: Record<string, number>;
+  }>;
   generalCount: number;
 }
 

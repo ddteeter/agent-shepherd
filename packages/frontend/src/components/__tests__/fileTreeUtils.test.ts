@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildFileTree, getFileTreeOrder, buildGroupedFileTree, getGroupedFileOrder, type TreeNode } from '../fileTreeUtils';
+import {
+  buildFileTree,
+  getFileTreeOrder,
+  buildGroupedFileTree,
+  getGroupedFileOrder,
+  type TreeNode,
+} from '../fileTreeUtils';
 
 describe('buildFileTree', () => {
   it('returns empty array for empty input', () => {
@@ -26,23 +32,24 @@ describe('buildFileTree', () => {
   });
 
   it('sorts directories before files at the same level', () => {
-    const result = buildFileTree([
-      'zebra.ts',
-      'src/index.ts',
-      'alpha.ts',
-    ]);
+    const result = buildFileTree(['zebra.ts', 'src/index.ts', 'alpha.ts']);
 
     expect(result[0].type).toBe('directory');
     expect(result[0].name).toBe('src');
-    expect(result[1]).toEqual({ name: 'alpha.ts', path: 'alpha.ts', type: 'file' });
-    expect(result[2]).toEqual({ name: 'zebra.ts', path: 'zebra.ts', type: 'file' });
+    expect(result[1]).toEqual({
+      name: 'alpha.ts',
+      path: 'alpha.ts',
+      type: 'file',
+    });
+    expect(result[2]).toEqual({
+      name: 'zebra.ts',
+      path: 'zebra.ts',
+      type: 'file',
+    });
   });
 
   it('does not collapse multi-child directories', () => {
-    const result = buildFileTree([
-      'src/a.ts',
-      'src/b.ts',
-    ]);
+    const result = buildFileTree(['src/a.ts', 'src/b.ts']);
     expect(result).toEqual([
       {
         name: 'src',
@@ -83,13 +90,21 @@ describe('buildFileTree', () => {
     // Directory first, then root file
     expect(result[0].type).toBe('directory');
     expect(result[0].name).toBe('src');
-    expect(result[1]).toEqual({ name: 'package.json', path: 'package.json', type: 'file' });
+    expect(result[1]).toEqual({
+      name: 'package.json',
+      path: 'package.json',
+      type: 'file',
+    });
 
     // Inside src: directory (utils) first, then file (index.ts)
     const srcChildren = result[0].children!;
     expect(srcChildren[0].type).toBe('directory');
     expect(srcChildren[0].name).toBe('utils');
-    expect(srcChildren[1]).toEqual({ name: 'index.ts', path: 'src/index.ts', type: 'file' });
+    expect(srcChildren[1]).toEqual({
+      name: 'index.ts',
+      path: 'src/index.ts',
+      type: 'file',
+    });
   });
 
   it('preserves full path in file nodes', () => {
@@ -102,7 +117,9 @@ describe('buildFileTree', () => {
     expect(dir.type).toBe('directory');
 
     const files = dir.children!;
-    expect(files[0].path).toBe('packages/frontend/src/components/DiffViewer.tsx');
+    expect(files[0].path).toBe(
+      'packages/frontend/src/components/DiffViewer.tsx',
+    );
     expect(files[1].path).toBe('packages/frontend/src/components/FileTree.tsx');
   });
 
@@ -183,10 +200,24 @@ describe('buildFileTree', () => {
 describe('buildGroupedFileTree', () => {
   it('creates tree nodes for each group with files inside', () => {
     const groups = [
-      { name: 'Database', description: 'Schema changes', files: ['packages/backend/src/db/schema.ts'] },
-      { name: 'API', files: ['packages/backend/src/routes/prs.ts', 'packages/backend/src/routes/diff.ts'] },
+      {
+        name: 'Database',
+        description: 'Schema changes',
+        files: ['packages/backend/src/db/schema.ts'],
+      },
+      {
+        name: 'API',
+        files: [
+          'packages/backend/src/routes/prs.ts',
+          'packages/backend/src/routes/diff.ts',
+        ],
+      },
     ];
-    const allFiles = ['packages/backend/src/db/schema.ts', 'packages/backend/src/routes/prs.ts', 'packages/backend/src/routes/diff.ts'];
+    const allFiles = [
+      'packages/backend/src/db/schema.ts',
+      'packages/backend/src/routes/prs.ts',
+      'packages/backend/src/routes/diff.ts',
+    ];
 
     const result = buildGroupedFileTree(groups, allFiles);
 
@@ -195,7 +226,9 @@ describe('buildGroupedFileTree', () => {
     expect(result[0].type).toBe('group');
     expect(result[0].description).toBe('Schema changes');
     expect(result[0].children).toHaveLength(1);
-    expect(result[0].children![0].name).toBe('packages/backend/src/db/schema.ts');
+    expect(result[0].children![0].name).toBe(
+      'packages/backend/src/db/schema.ts',
+    );
     expect(result[0].children![0].type).toBe('file');
 
     expect(result[1].name).toBe('API');
@@ -203,9 +236,7 @@ describe('buildGroupedFileTree', () => {
   });
 
   it('adds ungrouped files to an "Other Changes" section', () => {
-    const groups = [
-      { name: 'API', files: ['src/routes/prs.ts'] },
-    ];
+    const groups = [{ name: 'API', files: ['src/routes/prs.ts'] }];
     const allFiles = ['src/routes/prs.ts', 'src/utils.ts', 'README.md'];
 
     const result = buildGroupedFileTree(groups, allFiles);
@@ -214,7 +245,10 @@ describe('buildGroupedFileTree', () => {
     expect(result[0].name).toBe('API');
     expect(result[1].name).toBe('Other Changes');
     expect(result[1].children).toHaveLength(2);
-    expect(result[1].children!.map(c => c.name)).toEqual(['README.md', 'src/utils.ts']);
+    expect(result[1].children!.map((c) => c.name)).toEqual([
+      'README.md',
+      'src/utils.ts',
+    ]);
   });
 
   it('returns Other Changes group when groups array is empty', () => {
@@ -230,16 +264,22 @@ describe('getGroupedFileOrder', () => {
       { name: 'Database', files: ['src/db/schema.ts'] },
       { name: 'API', files: ['src/routes/prs.ts', 'src/routes/diff.ts'] },
     ];
-    const allFiles = ['src/db/schema.ts', 'src/routes/prs.ts', 'src/routes/diff.ts'];
+    const allFiles = [
+      'src/db/schema.ts',
+      'src/routes/prs.ts',
+      'src/routes/diff.ts',
+    ];
 
     const order = getGroupedFileOrder(groups, allFiles);
-    expect(order).toEqual(['src/db/schema.ts', 'src/routes/prs.ts', 'src/routes/diff.ts']);
+    expect(order).toEqual([
+      'src/db/schema.ts',
+      'src/routes/prs.ts',
+      'src/routes/diff.ts',
+    ]);
   });
 
   it('appends ungrouped files at the end', () => {
-    const groups = [
-      { name: 'API', files: ['src/routes/prs.ts'] },
-    ];
+    const groups = [{ name: 'API', files: ['src/routes/prs.ts'] }];
     const allFiles = ['src/routes/prs.ts', 'src/utils.ts'];
 
     const order = getGroupedFileOrder(groups, allFiles);

@@ -104,7 +104,13 @@ export async function buildServer(opts: ServerOptions = {}) {
   fastify.decorate('notificationService', notificationService);
 
   if (!opts.disableOrchestrator) {
-    const orchestrator = new Orchestrator({ db, schema, broadcast, notificationService, devMode: opts.devMode });
+    const orchestrator = new Orchestrator({
+      db,
+      schema,
+      broadcast,
+      notificationService,
+      devMode: opts.devMode,
+    });
     fastify.decorate('orchestrator', orchestrator);
   }
 
@@ -113,7 +119,10 @@ export async function buildServer(opts: ServerOptions = {}) {
     const url = request.url;
 
     // Skip auth for health check and non-API/non-WS routes (static files)
-    if (url === '/api/health' || (!url.startsWith('/api/') && !url.startsWith('/ws'))) {
+    if (
+      url === '/api/health' ||
+      (!url.startsWith('/api/') && !url.startsWith('/ws'))
+    ) {
       return;
     }
 

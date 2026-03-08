@@ -28,7 +28,9 @@ function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
       >
         <span className="opacity-50 shrink-0">{time}</span>
         {hasDetail && (
-          <span className="opacity-50 shrink-0 select-none">{expanded ? '\u25BC' : '\u25B6'}</span>
+          <span className="opacity-50 shrink-0 select-none">
+            {expanded ? '\u25BC' : '\u25B6'}
+          </span>
         )}
         <span className="truncate">{entry.summary}</span>
       </div>
@@ -50,7 +52,10 @@ function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
   );
 }
 
-export function AgentActivityPanel({ entries, active }: AgentActivityPanelProps) {
+export function AgentActivityPanel({
+  entries,
+  active,
+}: AgentActivityPanelProps) {
   const [expanded, setExpanded] = useState(active !== false);
   const prevActiveRef = useRef(active);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -74,7 +79,10 @@ export function AgentActivityPanel({ entries, active }: AgentActivityPanelProps)
   return (
     <div
       className="mx-6 my-1 rounded border text-xs"
-      style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary)',
+      }}
     >
       <button
         onClick={() => setExpanded(!expanded)}
@@ -84,7 +92,9 @@ export function AgentActivityPanel({ entries, active }: AgentActivityPanelProps)
         <span className="font-medium opacity-70">
           Agent Activity ({entries.length})
           {isVerbose && (
-            <span className="ml-2 opacity-50 text-[10px] uppercase tracking-wider">verbose</span>
+            <span className="ml-2 opacity-50 text-[10px] uppercase tracking-wider">
+              verbose
+            </span>
           )}
         </span>
         <span className="opacity-50">{expanded ? '\u25B2' : '\u25BC'}</span>

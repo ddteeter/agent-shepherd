@@ -22,9 +22,9 @@ file_groups TEXT -- JSON string, nullable
 
 ```typescript
 export interface FileGroup {
-  name: string;           // e.g., "Database Schema Changes"
-  description?: string;   // e.g., "Review the schema design first"
-  files: string[];        // Full paths, e.g., ["packages/backend/src/db/schema.ts"]
+  name: string; // e.g., "Database Schema Changes"
+  description?: string; // e.g., "Review the schema design first"
+  files: string[]; // Full paths, e.g., ["packages/backend/src/db/schema.ts"]
 }
 ```
 
@@ -116,12 +116,16 @@ Returns the file groups from the most recent cycle's diff snapshot as JSON. Used
 Updated to teach agents to create `file-groups.json`:
 
 **Format:**
+
 ```json
 [
   {
     "name": "Database Schema",
     "description": "New tables and migration. Review schema design first.",
-    "files": ["packages/backend/src/db/schema.ts", "drizzle/0005_add_feature.sql"]
+    "files": [
+      "packages/backend/src/db/schema.ts",
+      "drizzle/0005_add_feature.sql"
+    ]
   },
   {
     "name": "API Layer",
@@ -132,6 +136,7 @@ Updated to teach agents to create `file-groups.json`:
 ```
 
 **Guidance:**
+
 - Group by logical concern, not directory structure
 - Name groups to describe what they represent ("Authentication Flow" not "src/auth/")
 - Descriptions should tell the reviewer what to look for
@@ -140,6 +145,7 @@ Updated to teach agents to create `file-groups.json`:
 - Keep group count reasonable (2-6 for most PRs)
 
 **Fix-cycle instructions:**
+
 1. Run `agent-shepherd file-groups <pr-id>` to fetch current groups
 2. Review which files you've changed or added
 3. Add new files to the most appropriate existing group, or create a new group if they represent a distinct concern

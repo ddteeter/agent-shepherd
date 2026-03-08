@@ -10,9 +10,15 @@ export function submitCommand(program: Command, client: ApiClient) {
     .requiredOption('-p, --project <id>', 'Project ID')
     .option('-t, --title <title>', 'PR title')
     .option('-d, --description <desc>', 'PR description', '')
-    .option('-s, --source-branch <branch>', 'Source branch (auto-detected if omitted)')
+    .option(
+      '-s, --source-branch <branch>',
+      'Source branch (auto-detected if omitted)',
+    )
     .option('-c, --context-file <path>', 'Path to JSON file with agent context')
-    .option('--file-groups <path>', 'Path to JSON file with logical file groupings')
+    .option(
+      '--file-groups <path>',
+      'Path to JSON file with logical file groupings',
+    )
     .action(async (opts) => {
       let agentContext: string | undefined;
       if (opts.contextFile) {
@@ -22,7 +28,9 @@ export function submitCommand(program: Command, client: ApiClient) {
       let sourceBranch = opts.sourceBranch;
       if (!sourceBranch) {
         try {
-          sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
+          sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+            encoding: 'utf-8',
+          }).trim();
         } catch {
           sourceBranch = 'HEAD';
         }
