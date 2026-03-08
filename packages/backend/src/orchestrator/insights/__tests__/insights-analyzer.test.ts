@@ -27,10 +27,10 @@ function createMockSessionLogProvider(
   };
 }
 
-function createMockDb(opts?: { pr?: any; project?: any; insights?: any }) {
+function createMockDatabase(options?: { pr?: any; project?: any; insights?: any }) {
   const pr =
-    opts !== undefined && 'pr' in opts
-      ? opts.pr
+    options !== undefined && 'pr' in options
+      ? options.pr
       : {
           id: 'pr-1',
           projectId: 'proj-1',
@@ -39,11 +39,11 @@ function createMockDb(opts?: { pr?: any; project?: any; insights?: any }) {
           workingDirectory: '/tmp/worktree',
         };
   const project =
-    opts !== undefined && 'project' in opts
-      ? opts.project
+    options !== undefined && 'project' in options
+      ? options.project
       : { id: 'proj-1', path: '/tmp/project', name: 'Test' };
   const insightsRow =
-    opts !== undefined && 'insights' in opts ? opts.insights : null;
+    options !== undefined && 'insights' in options ? options.insights : null;
 
   let callCount = 0;
   return {
@@ -76,10 +76,10 @@ describe('InsightsAnalyzer', () => {
       },
     ]);
 
-    const db = createMockDb();
+    const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider,
@@ -118,9 +118,9 @@ describe('InsightsAnalyzer', () => {
   });
 
   it('throws when PR is not found', async () => {
-    const db = createMockDb({ pr: null });
+    const database = createMockDatabase({ pr: null });
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: createMockRunner(),
       sessionLogProvider: createMockSessionLogProvider(),
@@ -130,9 +130,9 @@ describe('InsightsAnalyzer', () => {
   });
 
   it('throws when project is not found', async () => {
-    const db = createMockDb({ project: null });
+    const database = createMockDatabase({ project: null });
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: createMockRunner(),
       sessionLogProvider: createMockSessionLogProvider(),
@@ -144,10 +144,10 @@ describe('InsightsAnalyzer', () => {
   it('spawns agent even with empty session logs', async () => {
     const runner = createMockRunner();
     const sessionLogProvider = createMockSessionLogProvider([]);
-    const db = createMockDb();
+    const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider,
@@ -163,10 +163,10 @@ describe('InsightsAnalyzer', () => {
 
   it('uses workingDirectory when available, falls back to project.path', async () => {
     const runner = createMockRunner();
-    const db = createMockDb();
+    const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
@@ -183,7 +183,7 @@ describe('InsightsAnalyzer', () => {
 
   it('falls back to project.path when workingDirectory is null', async () => {
     const runner = createMockRunner();
-    const db = createMockDb({
+    const database = createMockDatabase({
       pr: {
         id: 'pr-1',
         projectId: 'proj-1',
@@ -194,7 +194,7 @@ describe('InsightsAnalyzer', () => {
     });
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
@@ -211,7 +211,7 @@ describe('InsightsAnalyzer', () => {
 
   it('passes previousUpdatedAt to prompt when insights exist', async () => {
     const runner = createMockRunner();
-    const db = createMockDb({
+    const database = createMockDatabase({
       insights: {
         id: 'ins-1',
         prId: 'pr-1',
@@ -220,7 +220,7 @@ describe('InsightsAnalyzer', () => {
     });
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
@@ -235,10 +235,10 @@ describe('InsightsAnalyzer', () => {
 
   it('omits previousUpdatedAt when no prior insights exist', async () => {
     const runner = createMockRunner();
-    const db = createMockDb();
+    const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),
@@ -253,10 +253,10 @@ describe('InsightsAnalyzer', () => {
   it('does not throw when agentRunner.run fails (non-critical)', async () => {
     const runner = createMockRunner();
     (runner.run as any).mockRejectedValue(new Error('spawn failed'));
-    const db = createMockDb();
+    const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db,
+      db: database,
       schema: { pullRequests: {}, projects: {}, insights: {} } as any,
       agentRunner: runner,
       sessionLogProvider: createMockSessionLogProvider(),

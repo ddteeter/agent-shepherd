@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { execSync } from 'child_process';
+import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
 import type { FastifyInstance } from 'fastify';
 import { createTestServer } from './helpers.js';
 

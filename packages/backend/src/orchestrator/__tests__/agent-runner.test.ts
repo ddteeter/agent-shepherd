@@ -17,14 +17,14 @@ function createMockSession(id = 'session-1'): AgentSession & {
 
   return {
     id,
-    onComplete: vi.fn((cb) => {
-      onComplete = cb;
+    onComplete: vi.fn((callback) => {
+      onComplete = callback;
     }),
-    onError: vi.fn((cb) => {
-      onError = cb;
+    onError: vi.fn((callback) => {
+      onError = callback;
     }),
-    onOutput: vi.fn((cb) => {
-      onOutput = cb;
+    onOutput: vi.fn((callback) => {
+      onOutput = callback;
     }),
     kill: vi.fn(async () => {}),
     get _onComplete() {

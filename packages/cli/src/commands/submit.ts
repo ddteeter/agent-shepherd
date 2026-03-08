@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { execSync } from 'child_process';
-import { readFile } from 'fs/promises';
+import { execSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
 export function submitCommand(program: Command, client: ApiClient) {
@@ -19,13 +19,13 @@ export function submitCommand(program: Command, client: ApiClient) {
       '--file-groups <path>',
       'Path to JSON file with logical file groupings',
     )
-    .action(async (opts) => {
+    .action(async (options) => {
       let agentContext: string | undefined;
-      if (opts.contextFile) {
-        agentContext = await readFile(opts.contextFile, 'utf-8');
+      if (options.contextFile) {
+        agentContext = await readFile(options.contextFile, 'utf-8');
       }
 
-      let sourceBranch = opts.sourceBranch;
+      let sourceBranch = options.sourceBranch;
       if (!sourceBranch) {
         try {
           sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
@@ -37,14 +37,14 @@ export function submitCommand(program: Command, client: ApiClient) {
       }
 
       let fileGroups: any[] | undefined;
-      if (opts.fileGroups) {
-        const raw = await readFile(opts.fileGroups, 'utf-8');
+      if (options.fileGroups) {
+        const raw = await readFile(options.fileGroups, 'utf-8');
         fileGroups = JSON.parse(raw);
       }
 
-      const pr = await client.post(`/api/projects/${opts.project}/prs`, {
-        title: opts.title || 'Agent PR',
-        description: opts.description,
+      const pr = await client.post(`/api/projects/${options.project}/prs`, {
+        title: options.title || 'Agent PR',
+        description: options.description,
         sourceBranch,
         agentContext,
         workingDirectory: process.cwd(),

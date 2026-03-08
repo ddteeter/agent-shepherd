@@ -5,12 +5,12 @@ vi.mock('fs', () => ({
 }));
 
 import { ApiClient } from '../api-client.js';
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 
 describe('ApiClient', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
   });
 
   afterEach(() => {

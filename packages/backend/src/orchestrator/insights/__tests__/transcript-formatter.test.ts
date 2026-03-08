@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { formatTranscript } from '../transcript-formatter.js';
 import type { SessionLog } from '../../session-log/provider.js';
 
-async function createTempJsonl(lines: object[]): Promise<{
+async function createTemporaryJsonl(lines: object[]): Promise<{
   inputPath: string;
   outputDir: string;
   cleanup: () => Promise<void>;
@@ -39,12 +39,12 @@ describe('TranscriptFormatter', () => {
   const cleanups: (() => Promise<void>)[] = [];
 
   afterEach(async () => {
-    await Promise.all(cleanups.map((fn) => fn()));
+    await Promise.all(cleanups.map((function_) => function_()));
     cleanups.length = 0;
   });
 
   it('produces frontmatter with session metadata', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: { content: [{ type: 'text', text: 'Hello' }] },
@@ -62,7 +62,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('preserves assistant text blocks fully', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: {
@@ -87,7 +87,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('formats tool_use blocks with key params', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: {
@@ -113,7 +113,7 @@ describe('TranscriptFormatter', () => {
 
   it('truncates large params in tool_use blocks', async () => {
     const largeContent = 'x'.repeat(200);
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: {
@@ -137,7 +137,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('preserves user text blocks', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'user',
         message: {
@@ -156,7 +156,7 @@ describe('TranscriptFormatter', () => {
 
   it('truncates tool_result blocks with preview', async () => {
     const longResult = 'A'.repeat(500);
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'user',
         message: {
@@ -177,7 +177,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('handles tool_result with nested content blocks', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'user',
         message: {
@@ -201,7 +201,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('skips progress and file-history-snapshot types', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       { type: 'progress', data: { percent: 50 } },
       { type: 'file-history-snapshot', files: [] },
       {
@@ -220,7 +220,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('includes correct line numbers', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       { type: 'progress', data: {} },
       {
         type: 'assistant',
@@ -242,7 +242,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('writes output to the correct path', async () => {
-    const { inputPath, outputDir, cleanup } = await createTempJsonl([
+    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: { content: [{ type: 'text', text: 'hi' }] },

@@ -9,14 +9,14 @@ export default tseslint.config(
   // Global ignores
   {
     ignores: [
-      'node_modules/',
-      'dist/',
-      'coverage/',
-      'drizzle/',
-      '*.db',
-      '*.config.js',
-      '*.config.ts',
-      'vite-env.d.ts',
+      '**/node_modules/',
+      '**/dist/',
+      '**/coverage/',
+      '**/drizzle/',
+      '**/*.db',
+      '**/*.config.js',
+      '**/*.config.ts',
+      '**/vite-env.d.ts',
     ],
   },
 

@@ -29,8 +29,8 @@ const EXT_TO_LANG: Record<string, string> = {
 };
 
 export function getLangFromPath(filePath: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase() || '';
-  return EXT_TO_LANG[ext] || 'text';
+  const extension = filePath.split('.').pop()?.toLowerCase() || '';
+  return EXT_TO_LANG[extension] || 'text';
 }
 
 /** Collect unique languages needed for a set of file paths */
@@ -184,7 +184,7 @@ export function useHighlighter(filePaths: string[]) {
         loadedThemes.current.add(syntaxTheme);
         // Force re-render by toggling ready
         setReady(false);
-        requestAnimationFrame(() => setReady(true));
+        requestAnimationFrame(() => { setReady(true); });
       })
       .catch(() => {
         // Fall back gracefully
@@ -198,8 +198,8 @@ export function useHighlighter(filePaths: string[]) {
         setSyntaxThemeState(e.newValue);
       }
     };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
+    globalThis.addEventListener('storage', handler);
+    return () => { globalThis.removeEventListener('storage', handler); };
   }, []);
 
   const setSyntaxTheme = useCallback((theme: string) => {

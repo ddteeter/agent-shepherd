@@ -8,7 +8,7 @@ export function statusCommand(program: Command, client: ApiClient) {
     .action(async (prId: string) => {
       const pr = await client.get<any>(`/api/prs/${prId}`);
       const cycles = await client.get<any[]>(`/api/prs/${prId}/cycles`);
-      const currentCycle = cycles[cycles.length - 1];
+      const currentCycle = cycles.at(-1);
 
       console.log(`PR: ${pr.title}`);
       console.log(`Status: ${pr.status}`);

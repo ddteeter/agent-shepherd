@@ -22,8 +22,8 @@ export function insightsCommand(program: Command, client: ApiClient) {
     .command('update <pr-id>')
     .description('Update insights for a PR')
     .option('--stdin', 'Read insights JSON from stdin')
-    .action(async (prId: string, opts: { stdin?: boolean }) => {
-      if (!opts.stdin) {
+    .action(async (prId: string, options: { stdin?: boolean }) => {
+      if (!options.stdin) {
         console.error('Must specify --stdin');
         process.exit(1);
       }

@@ -4,21 +4,21 @@ import type { FastifyInstance } from 'fastify';
 
 describe('ws broadcast', () => {
   it('does not throw when called with no clients', () => {
-    expect(() => broadcast('test:event', { foo: 'bar' })).not.toThrow();
+    expect(() => { broadcast('test:event', { foo: 'bar' }); }).not.toThrow();
   });
 });
 
 describe('websocketPlugin', () => {
   it('registers a /ws GET route with websocket enabled', async () => {
-    const routes: Array<{
+    const routes: {
       url: string;
       method: string;
       websocket: boolean;
       handler: Function;
-    }> = [];
+    }[] = [];
     const fakeFastify = {
-      get: vi.fn((url: string, opts: any, handler: Function) => {
-        routes.push({ url, method: 'GET', websocket: opts.websocket, handler });
+      get: vi.fn((url: string, options: any, handler: Function) => {
+        routes.push({ url, method: 'GET', websocket: options.websocket, handler });
       }),
     } as unknown as FastifyInstance;
 
@@ -32,7 +32,7 @@ describe('websocketPlugin', () => {
   it('adds socket to clients on connection and removes on close', async () => {
     let capturedHandler: Function | undefined;
     const fakeFastify = {
-      get: vi.fn((_url: string, _opts: any, handler: Function) => {
+      get: vi.fn((_url: string, _options: any, handler: Function) => {
         capturedHandler = handler;
       }),
     } as unknown as FastifyInstance;
@@ -43,8 +43,8 @@ describe('websocketPlugin', () => {
     const mockSocket = {
       readyState: 1,
       send: vi.fn(),
-      on: vi.fn((event: string, cb: Function) => {
-        if (event === 'close') closeHandlers.push(cb);
+      on: vi.fn((event: string, callback: Function) => {
+        if (event === 'close') closeHandlers.push(callback);
       }),
     };
 
@@ -65,7 +65,7 @@ describe('websocketPlugin', () => {
   it('skips clients that are not in OPEN readyState', async () => {
     let capturedHandler: Function | undefined;
     const fakeFastify = {
-      get: vi.fn((_url: string, _opts: any, handler: Function) => {
+      get: vi.fn((_url: string, _options: any, handler: Function) => {
         capturedHandler = handler;
       }),
     } as unknown as FastifyInstance;

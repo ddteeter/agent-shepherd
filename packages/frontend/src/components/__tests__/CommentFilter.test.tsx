@@ -60,7 +60,7 @@ describe('CommentFilter', () => {
         counts={{ all: 5, needsAttention: 2, agentReplied: 3 }}
       />,
     );
-    const btn = screen.getByRole('button', { name: /needs attention/i });
-    expect(btn.getAttribute('data-active')).toBe('true');
+    const button = screen.getByRole('button', { name: /needs attention/i });
+    expect(button.dataset.active).toBe('true');
   });
 });

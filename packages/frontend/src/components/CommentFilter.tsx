@@ -1,6 +1,6 @@
 export type CommentFilterValue = 'all' | 'needs-attention' | 'agent-replied';
 
-interface CommentFilterProps {
+interface CommentFilterProperties {
   activeFilter: CommentFilterValue;
   onFilterChange: (filter: CommentFilterValue) => void;
   counts: {
@@ -13,7 +13,7 @@ interface CommentFilterProps {
 const filters: {
   value: CommentFilterValue;
   label: string;
-  countKey: keyof CommentFilterProps['counts'];
+  countKey: keyof CommentFilterProperties['counts'];
 }[] = [
   { value: 'all', label: 'All', countKey: 'all' },
   {
@@ -28,7 +28,7 @@ export function CommentFilter({
   activeFilter,
   onFilterChange,
   counts,
-}: CommentFilterProps) {
+}: CommentFilterProperties) {
   return (
     <div className="flex gap-1 p-2" role="group" aria-label="Comment filter">
       {filters.map(({ value, label, countKey }) => {
@@ -37,7 +37,7 @@ export function CommentFilter({
           <button
             key={value}
             data-active={isActive}
-            onClick={() => onFilterChange(value)}
+            onClick={() => { onFilterChange(value); }}
             className="text-xs px-2.5 py-1 rounded border font-medium transition-colors"
             style={{
               borderColor: isActive

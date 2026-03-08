@@ -11,7 +11,7 @@ vi.mock('../../paths.js', () => ({
   FRONTEND_DIST: '/mock/packages/frontend/dist',
 }));
 
-import { existsSync } from 'fs';
+import { existsSync } from 'node:fs';
 
 describe('startCommand', () => {
   let program: Command;
@@ -53,7 +53,7 @@ describe('startCommand', () => {
 
     const mockServer = {
       close: vi.fn(),
-      listen: vi.fn().mockResolvedValue(undefined),
+      listen: vi.fn().mockResolvedValue(),
     };
     const mockImport = vi.fn().mockResolvedValue({
       buildServer: vi.fn().mockResolvedValue(mockServer),

@@ -7,7 +7,7 @@ export interface ActivityEntry {
   detail?: string;
 }
 
-interface AgentActivityPanelProps {
+interface AgentActivityPanelProperties {
   entries: ActivityEntry[];
   active?: boolean;
 }
@@ -24,7 +24,7 @@ function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
       <div
         className={`flex gap-2 ${hasDetail ? 'cursor-pointer hover:opacity-100' : ''} ${isText || isToolResult ? 'opacity-50' : 'opacity-80'}`}
         style={isText ? { fontStyle: 'italic' } : undefined}
-        onClick={hasDetail ? () => setExpanded(!expanded) : undefined}
+        onClick={hasDetail ? () => { setExpanded(!expanded); } : undefined}
       >
         <span className="opacity-50 shrink-0">{time}</span>
         {hasDetail && (
@@ -55,22 +55,22 @@ function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
 export function AgentActivityPanel({
   entries,
   active,
-}: AgentActivityPanelProps) {
+}: AgentActivityPanelProperties) {
   const [expanded, setExpanded] = useState(active !== false);
-  const prevActiveRef = useRef(active);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const previousActiveReference = useRef(active);
+  const scrollReference = useRef<HTMLDivElement>(null);
   const isVerbose = entries.some((e) => e.detail);
 
   useEffect(() => {
-    if (prevActiveRef.current === true && active === false) {
+    if (previousActiveReference.current === true && active === false) {
       setExpanded(false);
     }
-    prevActiveRef.current = active;
+    previousActiveReference.current = active;
   }, [active]);
 
   useEffect(() => {
-    if (expanded && scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (expanded && scrollReference.current) {
+      scrollReference.current.scrollTop = scrollReference.current.scrollHeight;
     }
   }, [entries, expanded]);
 
@@ -85,7 +85,7 @@ export function AgentActivityPanel({
       }}
     >
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => { setExpanded(!expanded); }}
         className="w-full flex items-center justify-between px-3 py-1.5 text-left hover:opacity-80"
         style={{ color: 'var(--color-text)' }}
       >
@@ -101,12 +101,12 @@ export function AgentActivityPanel({
       </button>
       {expanded && (
         <div
-          ref={scrollRef}
+          ref={scrollReference}
           className="px-3 pb-2 overflow-y-auto"
           style={{ maxHeight: isVerbose ? '24rem' : '10rem' }}
         >
-          {entries.map((entry, i) => (
-            <ActivityEntryRow key={i} entry={entry} />
+          {entries.map((entry, index) => (
+            <ActivityEntryRow key={index} entry={entry} />
           ))}
         </div>
       )}

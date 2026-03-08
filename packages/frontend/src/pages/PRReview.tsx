@@ -36,7 +36,7 @@ export function PRReview() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [visibleFile, setVisibleFile] = useState<string | null>(null);
   const [scrollToFile, setScrollToFile] = useState<string | null>(null);
-  const scrollKeyRef = useRef(0);
+  const scrollKeyReference = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cycles, setCycles] = useState<ReviewCycle[]>([]);
@@ -51,37 +51,35 @@ export function PRReview() {
   const [insightsActivity, setInsightsActivity] = useState<ActivityEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'review' | 'insights'>('review');
   const [analyzerRunning, setAnalyzerRunning] = useState(false);
-  const [fileGroups, setFileGroups] = useState<Array<{
+  const [fileGroups, setFileGroups] = useState<{
     name: string;
     description?: string;
     files: string[];
-  }> | null>(null);
+  }[] | null>(null);
   const [viewMode, setViewMode] = useState<'directory' | 'logical'>(
     'directory',
   );
 
-  const { connected } = useWebSocket((msg) => {
-    if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
+  const { connected } = useWebSocket((message) => {
+    if (message.event === 'comment:added' || message.event === 'comment:updated') {
       fetchComments();
     }
-    if (
-      msg.event === 'review:submitted' ||
-      msg.event === 'pr:ready-for-review' ||
-      msg.event === 'pr:updated'
-    ) {
-      if (prId) {
+    if ((
+      message.event === 'review:submitted' ||
+      message.event === 'pr:ready-for-review' ||
+      message.event === 'pr:updated'
+    ) && prId) {
         api.prs.get(prId).then(setPr);
         fetchCycles();
       }
-    }
     if (
-      msg.event === 'agent:working' ||
-      msg.event === 'agent:completed' ||
-      msg.event === 'agent:cancelled'
+      message.event === 'agent:working' ||
+      message.event === 'agent:completed' ||
+      message.event === 'agent:cancelled'
     ) {
       setAgentError(null);
-      if (msg.event === 'agent:working') {
-        if (msg.data?.source === 'insights') {
+      if (message.event === 'agent:working') {
+        if (message.data?.source === 'insights') {
           setInsightsActivity([]);
           setAnalyzerRunning(true);
         } else {
@@ -89,33 +87,33 @@ export function PRReview() {
         }
       }
       if (
-        (msg.event === 'agent:completed' || msg.event === 'agent:cancelled') &&
-        msg.data?.source === 'insights'
+        (message.event === 'agent:completed' || message.event === 'agent:cancelled') &&
+        message.data?.source === 'insights'
       ) {
         setAnalyzerRunning(false);
         fetchInsights();
       }
-      if (msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
+      if (message.event === 'agent:completed' || message.event === 'agent:cancelled') {
         fetchComments();
       }
       fetchCycles();
     }
     if (
-      msg.event === 'agent:output' &&
-      msg.data?.prId === prId &&
-      msg.data?.entry
+      message.event === 'agent:output' &&
+      message.data?.prId === prId &&
+      message.data?.entry
     ) {
-      if (msg.data.source === 'insights') {
-        setInsightsActivity((prev) => [...prev.slice(-49), msg.data.entry]);
+      if (message.data.source === 'insights') {
+        setInsightsActivity((previous) => [...previous.slice(-49), message.data.entry]);
       } else {
-        setAgentActivity((prev) => [...prev.slice(-49), msg.data.entry]);
+        setAgentActivity((previous) => [...previous.slice(-49), message.data.entry]);
       }
     }
-    if (msg.event === 'agent:error') {
-      if (msg.data?.source === 'insights') {
+    if (message.event === 'agent:error') {
+      if (message.data?.source === 'insights') {
         setAnalyzerRunning(false);
       }
-      setAgentError(msg.data?.error || 'Unknown error');
+      setAgentError(message.data?.error || 'Unknown error');
       fetchCycles();
     }
   });
@@ -160,14 +158,14 @@ export function PRReview() {
         if (cycleValue === 'current') {
           diff = await api.prs.diff(prId);
         } else if (cycleValue.startsWith('inter:')) {
-          const [, fromStr, toStr] = cycleValue.split(':');
+          const [, fromString, toString_] = cycleValue.split(':');
           diff = await api.prs.diff(prId, {
-            from: parseInt(fromStr, 10),
-            to: parseInt(toStr, 10),
+            from: Number.parseInt(fromString, 10),
+            to: Number.parseInt(toString_, 10),
           });
         } else {
-          const cycleNum = parseInt(cycleValue, 10);
-          diff = await api.prs.diff(prId, { cycle: cycleNum });
+          const cycleNumber = Number.parseInt(cycleValue, 10);
+          diff = await api.prs.diff(prId, { cycle: cycleNumber });
         }
         setDiffData(diff);
         if (diff.fileGroups) {
@@ -179,9 +177,9 @@ export function PRReview() {
         }
         setScrollToFile(null);
         setVisibleFile(null);
-      } catch (err) {
+      } catch (error_) {
         setDiffError(
-          err instanceof Error ? err.message : 'Failed to load diff',
+          error_ instanceof Error ? error_.message : 'Failed to load diff',
         );
       } finally {
         setDiffLoading(false);
@@ -204,10 +202,10 @@ export function PRReview() {
           setViewMode('logical');
         }
       })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Failed to load PR');
+      .catch((error_) => {
+        setError(error_ instanceof Error ? error_.message : 'Failed to load PR');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); });
 
     fetchComments();
     fetchCycles();
@@ -223,7 +221,7 @@ export function PRReview() {
   );
 
   const handleFileSelect = useCallback((file: string) => {
-    scrollKeyRef.current++;
+    scrollKeyReference.current++;
     setScrollToFile(file);
     setVisibleFile(file);
   }, []);
@@ -246,8 +244,8 @@ export function PRReview() {
         author: 'human',
       });
       await fetchComments();
-    } catch (err) {
-      console.error('Failed to add comment:', err);
+    } catch (error_) {
+      console.error('Failed to add comment:', error_);
       alert('Failed to add comment. Check the console for details.');
     }
   };
@@ -266,8 +264,8 @@ export function PRReview() {
         parentCommentId: commentId,
       });
       await fetchComments();
-    } catch (err) {
-      console.error('Failed to reply:', err);
+    } catch (error_) {
+      console.error('Failed to reply:', error_);
       alert('Failed to add reply. Check the console for details.');
     }
   };
@@ -276,8 +274,8 @@ export function PRReview() {
     try {
       await api.comments.update(commentId, { resolved: true });
       await fetchComments();
-    } catch (err) {
-      console.error('Failed to resolve comment:', err);
+    } catch (error_) {
+      console.error('Failed to resolve comment:', error_);
       alert('Failed to resolve comment.');
     }
   };
@@ -286,8 +284,8 @@ export function PRReview() {
     try {
       await api.comments.update(commentId, { body });
       await fetchComments();
-    } catch (err) {
-      console.error('Failed to edit comment:', err);
+    } catch (error_) {
+      console.error('Failed to edit comment:', error_);
       alert('Failed to edit comment.');
     }
   };
@@ -296,8 +294,8 @@ export function PRReview() {
     try {
       await api.comments.delete(commentId);
       await fetchComments();
-    } catch (err) {
-      console.error('Failed to delete comment:', err);
+    } catch (error_) {
+      console.error('Failed to delete comment:', error_);
       alert('Failed to delete comment.');
     }
   };
@@ -315,8 +313,8 @@ export function PRReview() {
     try {
       await api.prs.cancelAgent(prId);
       await fetchCycles();
-    } catch (err) {
-      console.error('Failed to cancel agent:', err);
+    } catch (error_) {
+      console.error('Failed to cancel agent:', error_);
     }
   };
 
@@ -324,8 +322,8 @@ export function PRReview() {
     if (!prId) return;
     try {
       await api.insights.runAnalyzer(prId);
-    } catch (err) {
-      console.error('Failed to start insights analyzer:', err);
+    } catch (error_) {
+      console.error('Failed to start insights analyzer:', error_);
     }
   };
 
@@ -333,8 +331,8 @@ export function PRReview() {
     if (!prId) return;
     try {
       await api.prs.cancelAgent(prId, 'insights');
-    } catch (err) {
-      console.error('Failed to cancel analyzer:', err);
+    } catch (error_) {
+      console.error('Failed to cancel analyzer:', error_);
     }
   };
 
@@ -343,8 +341,8 @@ export function PRReview() {
     try {
       const updated = await api.prs.close(prId);
       setPr(updated);
-    } catch (err) {
-      console.error('Failed to close PR:', err);
+    } catch (error_) {
+      console.error('Failed to close PR:', error_);
       alert('Failed to close PR.');
     }
   };
@@ -354,8 +352,8 @@ export function PRReview() {
     try {
       const updated = await api.prs.reopen(prId);
       setPr(updated);
-    } catch (err) {
-      console.error('Failed to reopen PR:', err);
+    } catch (error_) {
+      console.error('Failed to reopen PR:', error_);
       alert('Failed to reopen PR.');
     }
   };
@@ -409,8 +407,8 @@ export function PRReview() {
   const selectedCycleData = useMemo(() => {
     if (selectedCycle === 'current') return null;
     if (selectedCycle.startsWith('inter:')) return null;
-    const num = parseInt(selectedCycle, 10);
-    return cycles.find((c) => c.cycleNumber === num) ?? null;
+    const number_ = Number.parseInt(selectedCycle, 10);
+    return cycles.find((c) => c.cycleNumber === number_) ?? null;
   }, [selectedCycle, cycles]);
 
   const filterCounts = useMemo(() => {
@@ -481,7 +479,7 @@ export function PRReview() {
             <h2 className="text-lg font-semibold">{pr.title}</h2>
             {selectedCycle === 'current' && (
               <button
-                onClick={() => setGlobalCommentForm(!globalCommentForm)}
+                onClick={() => { setGlobalCommentForm(!globalCommentForm); }}
                 className="text-xs px-2 py-1 rounded border hover:opacity-80"
                 style={{
                   borderColor: 'var(--color-border)',
@@ -524,7 +522,7 @@ export function PRReview() {
               <select
                 id="cycle-select"
                 value={selectedCycle}
-                onChange={(e) => handleCycleChange(e.target.value)}
+                onChange={(e) => { handleCycleChange(e.target.value); }}
                 disabled={diffLoading}
                 className="text-sm px-2 py-1 rounded border"
                 style={{
@@ -556,21 +554,21 @@ export function PRReview() {
                       const options: React.ReactNode[] = [];
 
                       // Sequential inter-cycle diffs
-                      sorted.slice(1).forEach((cycle) => {
-                        const prevCycle = sorted.find(
+                      for (const cycle of sorted.slice(1)) {
+                        const previousCycle = sorted.find(
                           (c) => c.cycleNumber === cycle.cycleNumber - 1,
                         );
-                        if (!prevCycle) return;
+                        if (!previousCycle) continue;
                         options.push(
                           <option
-                            key={`inter-${prevCycle.cycleNumber}-${cycle.cycleNumber}`}
-                            value={`inter:${prevCycle.cycleNumber}:${cycle.cycleNumber}`}
+                            key={`inter-${previousCycle.cycleNumber}-${cycle.cycleNumber}`}
+                            value={`inter:${previousCycle.cycleNumber}:${cycle.cycleNumber}`}
                           >
-                            Changes: Cycle {prevCycle.cycleNumber} →{' '}
+                            Changes: Cycle {previousCycle.cycleNumber} →{' '}
                             {cycle.cycleNumber}
                           </option>,
                         );
-                      });
+                      }
 
                       // "Since last reviewed" diffs (skip superseded cycles)
                       const reviewedCycles = sorted.filter(
@@ -578,10 +576,10 @@ export function PRReview() {
                           c.status !== 'superseded' &&
                           c.status !== 'pending_review',
                       );
-                      const latestCycle = sorted[sorted.length - 1];
+                      const latestCycle = sorted.at(-1);
                       if (reviewedCycles.length > 0 && latestCycle) {
                         const lastReviewed =
-                          reviewedCycles[reviewedCycles.length - 1];
+                          reviewedCycles.at(-1);
                         // Only add if it's different from a sequential diff already shown
                         if (
                           lastReviewed.cycleNumber !==
@@ -676,7 +674,7 @@ export function PRReview() {
         style={{ borderColor: 'var(--color-border)' }}
       >
         <button
-          onClick={() => setActiveTab('review')}
+          onClick={() => { setActiveTab('review'); }}
           className={`px-4 py-2 text-sm flex items-center gap-1.5 ${activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
           style={
             activeTab === 'review'
@@ -693,7 +691,7 @@ export function PRReview() {
           )}
         </button>
         <button
-          onClick={() => setActiveTab('insights')}
+          onClick={() => { setActiveTab('insights'); }}
           className={`px-4 py-2 text-sm flex items-center gap-1.5 ${activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
           style={
             activeTab === 'insights'
@@ -743,20 +741,7 @@ export function PRReview() {
                   <p className="text-xs opacity-50 mt-1">{diffError}</p>
                 </div>
               </div>
-            ) : typeof diffData.diff !== 'string' ? (
-              <div className="flex-1 flex items-center justify-center p-6">
-                <div className="text-center">
-                  <p className="text-sm opacity-70">
-                    Diff snapshot is unavailable for this cycle.
-                  </p>
-                  <p className="text-xs opacity-50 mt-1">
-                    This cycle was superseded before a diff snapshot could be
-                    captured, or the snapshot data was lost. Try viewing a more
-                    recent cycle instead.
-                  </p>
-                </div>
-              </div>
-            ) : (
+            ) : typeof diffData.diff === 'string' ? (
               <>
                 <FileTree
                   files={diffData.files}
@@ -772,7 +757,7 @@ export function PRReview() {
                   diff={diffData.diff}
                   files={diffData.files}
                   scrollToFile={scrollToFile}
-                  scrollKey={scrollKeyRef.current}
+                  scrollKey={scrollKeyReference.current}
                   onVisibleFileChange={setVisibleFile}
                   comments={filteredComments}
                   threadStatusMap={threadStatusMap}
@@ -784,12 +769,25 @@ export function PRReview() {
                   canEditComments={selectedCycle === 'current'}
                   globalCommentForm={globalCommentForm}
                   onToggleGlobalCommentForm={() =>
-                    setGlobalCommentForm(!globalCommentForm)
+                    { setGlobalCommentForm(!globalCommentForm); }
                   }
                   fileGroups={fileGroups}
                   viewMode={viewMode}
                 />
               </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="text-center">
+                  <p className="text-sm opacity-70">
+                    Diff snapshot is unavailable for this cycle.
+                  </p>
+                  <p className="text-xs opacity-50 mt-1">
+                    This cycle was superseded before a diff snapshot could be
+                    captured, or the snapshot data was lost. Try viewing a more
+                    recent cycle instead.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
         </div>

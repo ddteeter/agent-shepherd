@@ -81,13 +81,13 @@ export class FeedbackIntegrator {
 
     for (const c of topLevel) {
       bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
-      if (!c.filePath) {
-        generalCount++;
-      } else {
+      if (c.filePath) {
         const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
         entry.count++;
         entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
         fileMap.set(c.filePath, entry);
+      } else {
+        generalCount++;
       }
     }
 
@@ -116,7 +116,7 @@ export class FeedbackIntegrator {
         {
           onComplete: () => {
             const latestCycle = this.getLatestCycle(prId);
-            if (latestCycle && latestCycle.status === 'agent_working') {
+            if (latestCycle?.status === 'agent_working') {
               this.setCycleStatus(latestCycle.id, 'agent_completed');
             }
             this.notificationService.notifyPRReadyForReview(

@@ -35,10 +35,10 @@ vi.mock('../../api.js', () => ({
   },
 }));
 
-let wsCallback: ((msg: any) => void) | undefined;
+let wsCallback: ((message: any) => void) | undefined;
 vi.mock('../../hooks/useWebSocket.js', () => ({
-  useWebSocket: vi.fn().mockImplementation((cb?: (msg: any) => void) => {
-    wsCallback = cb;
+  useWebSocket: vi.fn().mockImplementation((callback?: (message: any) => void) => {
+    wsCallback = callback;
     return { connected: true };
   }),
 }));
@@ -443,7 +443,7 @@ describe('PRReview', () => {
     await user.type(textarea, 'My reply');
 
     const submitBtns = screen.getAllByText('Reply');
-    await user.click(submitBtns[submitBtns.length - 1]);
+    await user.click(submitBtns.at(-1));
 
     expect(mockApi.comments.create).toHaveBeenCalledWith(
       'pr-1',
@@ -530,7 +530,7 @@ describe('PRReview', () => {
         createdAt: '2026-01-01T00:00:00Z',
       },
     ]);
-    mockApi.comments.delete.mockResolvedValue(undefined);
+    mockApi.comments.delete.mockResolvedValue();
     renderPRReview();
     await waitFor(() => screen.getByText('Delete me'));
 

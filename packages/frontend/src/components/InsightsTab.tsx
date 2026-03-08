@@ -26,7 +26,7 @@ interface InsightCategories {
   recurringPatterns: RecurringPatternItem[];
 }
 
-interface InsightsTabProps {
+interface InsightsTabProperties {
   insights: {
     categories: InsightCategories;
     branchRef: string | null;
@@ -45,7 +45,7 @@ function CategorySection({
 }: {
   title: string;
   items: any[];
-  renderItem: (item: any, i: number) => React.ReactNode;
+  renderItem: (item: any, index: number) => React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -54,7 +54,7 @@ function CategorySection({
   return (
     <div className="mb-4">
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={() => { setCollapsed(!collapsed); }}
         className="flex items-center gap-2 text-sm font-medium mb-2 hover:opacity-80"
         style={{ color: 'var(--color-text)' }}
       >
@@ -64,7 +64,7 @@ function CategorySection({
       </button>
       {!collapsed && (
         <div className="space-y-2 ml-4">
-          {items.map((item, i) => renderItem(item, i))}
+          {items.map((item, index) => renderItem(item, index))}
         </div>
       )}
     </div>
@@ -93,7 +93,7 @@ const confidenceColors: Record<
 };
 
 function InsightCard({ item }: { item: InsightItem }) {
-  const conf = confidenceColors[item.confidence] ?? confidenceColors.medium;
+  const config = confidenceColors[item.confidence] ?? confidenceColors.medium;
   return (
     <div
       className="p-3 rounded border text-sm"
@@ -106,9 +106,9 @@ function InsightCard({ item }: { item: InsightItem }) {
         {item.title}
         <span
           className="text-xs px-1.5 py-0.5 rounded"
-          style={{ backgroundColor: conf.bg, color: conf.text }}
+          style={{ backgroundColor: config.bg, color: config.text }}
         >
-          {conf.label}
+          {config.label}
         </span>
       </div>
       <div className="mt-1 opacity-80">{item.description}</div>
@@ -133,7 +133,7 @@ export function InsightsTab({
   analyzerRunning,
   analyzerActivity,
   onCancelAnalyzer,
-}: InsightsTabProps) {
+}: InsightsTabProperties) {
   // Empty state — no comments yet
   if (!hasComments && !insights && !analyzerRunning) {
     return (
@@ -185,33 +185,33 @@ export function InsightsTab({
             <CategorySection
               title="CLAUDE.md Recommendations"
               items={insights.categories.claudeMdRecommendations}
-              renderItem={(item, i) => <InsightCard key={i} item={item} />}
+              renderItem={(item, index) => <InsightCard key={index} item={item} />}
             />
             <CategorySection
               title="Skill Recommendations"
               items={insights.categories.skillRecommendations}
-              renderItem={(item, i) => <InsightCard key={i} item={item} />}
+              renderItem={(item, index) => <InsightCard key={index} item={item} />}
             />
             <CategorySection
               title="Prompt & Context Engineering"
               items={insights.categories.promptEngineering}
-              renderItem={(item, i) => <InsightCard key={i} item={item} />}
+              renderItem={(item, index) => <InsightCard key={index} item={item} />}
             />
             <CategorySection
               title="Agent Behavior Observations"
               items={insights.categories.agentBehaviorObservations}
-              renderItem={(item, i) => <InsightCard key={i} item={item} />}
+              renderItem={(item, index) => <InsightCard key={index} item={item} />}
             />
             <CategorySection
               title="Recurring Patterns"
               items={insights.categories.recurringPatterns}
-              renderItem={(item, i) => (
-                <div key={i}>
+              renderItem={(item, index) => (
+                <div key={index}>
                   <InsightCard item={item} />
                   {item.prIds.length > 0 && (
                     <div className="ml-3 mt-1 text-xs opacity-60">
                       Seen in {item.prIds.length} PR
-                      {item.prIds.length !== 1 ? 's' : ''}
+                      {item.prIds.length === 1 ? '' : 's'}
                     </div>
                   )}
                 </div>

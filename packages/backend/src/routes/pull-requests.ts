@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { CreatePRInput, SubmitReviewInput } from '@agent-shepherd/shared';
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 import { NotificationService } from '../services/notifications.js';
 
 export async function pullRequestRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
+  const database = (fastify as any).db;
 
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
@@ -20,15 +20,15 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       workingDirectory,
       fileGroups,
     } = request.body as Omit<CreatePRInput, 'projectId'> & {
-      fileGroups?: Array<{
+      fileGroups?: {
         name: string;
         description?: string;
         files: string[];
-      }>;
+      }[];
     };
 
     // Verify project exists
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, projectId))
@@ -40,7 +40,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     const prId = randomUUID();
-    db.insert(schema.pullRequests)
+    database.insert(schema.pullRequests)
       .values({
         id: prId,
         projectId,
@@ -64,7 +64,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     // Create first review cycle
     const cycleId = randomUUID();
-    db.insert(schema.reviewCycles)
+    database.insert(schema.reviewCycles)
       .values({
         id: cycleId,
         prId,
@@ -82,7 +82,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           baseBranch || project.baseBranch || 'main',
           sourceBranch,
         );
-        db.insert(schema.diffSnapshots)
+        database.insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
             reviewCycleId: cycleId,
@@ -95,7 +95,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       }
     }
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, prId))
@@ -109,7 +109,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/projects/:projectId/prs', async (request) => {
     const { projectId } = request.params as { projectId: string };
-    return db
+    return database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.projectId, projectId))
@@ -118,7 +118,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/prs/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -148,7 +148,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       status: string;
     }>;
 
-    const existing = db
+    const existing = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -159,12 +159,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    db.update(schema.pullRequests)
+    database.update(schema.pullRequests)
       .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(eq(schema.pullRequests.id, id))
       .run();
 
-    return db
+    return database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -175,7 +175,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { action } = request.body as SubmitReviewInput;
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -186,19 +186,19 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const latestCycle = getLatestCycle(db, id);
+    const latestCycle = getLatestCycle(database, id);
     const now = new Date().toISOString();
 
     if (action === 'approve') {
       // Set PR status to approved
-      db.update(schema.pullRequests)
+      database.update(schema.pullRequests)
         .set({ status: 'approved', updatedAt: now })
         .where(eq(schema.pullRequests.id, id))
         .run();
 
       // Set cycle status to approved
       if (latestCycle) {
-        db.update(schema.reviewCycles)
+        database.update(schema.reviewCycles)
           .set({ status: 'approved', reviewedAt: now })
           .where(eq(schema.reviewCycles.id, latestCycle.id))
           .run();
@@ -211,7 +211,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     } else if (action === 'request-changes') {
       // Set cycle status to changes_requested
       if (latestCycle) {
-        db.update(schema.reviewCycles)
+        database.update(schema.reviewCycles)
           .set({ status: 'changes_requested', reviewedAt: now })
           .where(eq(schema.reviewCycles.id, latestCycle.id))
           .run();
@@ -223,9 +223,9 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       // Fire and forget: kick off the agent orchestrator
       const orchestrator = (fastify as any).orchestrator;
       if (orchestrator) {
-        orchestrator.handleRequestChanges(id).catch((err: Error) => {
+        orchestrator.handleRequestChanges(id).catch((error: Error) => {
           fastify.log.error(
-            { err, prId: id },
+            { err: error, prId: id },
             'Orchestrator failed to handle request-changes',
           );
         });
@@ -241,14 +241,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { fileGroups } =
       (request.body as {
-        fileGroups?: Array<{
+        fileGroups?: {
           name: string;
           description?: string;
           files: string[];
-        }>;
+        }[];
       }) || {};
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -259,18 +259,18 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const latestCycle = getLatestCycle(db, id);
+    const latestCycle = getLatestCycle(database, id);
     const now = new Date().toISOString();
 
     // Check if previous cycle's snapshot had file groups
     if (latestCycle) {
-      const prevSnapshot = db
+      const previousSnapshot = database
         .select()
         .from(schema.diffSnapshots)
         .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
         .get();
 
-      if (prevSnapshot?.fileGroups && !fileGroups) {
+      if (previousSnapshot?.fileGroups && !fileGroups) {
         reply.code(400).send({
           error:
             'This PR has file groups from the previous cycle. You must provide --file-groups. Run `shepherd file-groups ' +
@@ -283,14 +283,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     // Mark current cycle's agentCompletedAt
     if (latestCycle) {
-      db.update(schema.reviewCycles)
+      database.update(schema.reviewCycles)
         .set({ agentCompletedAt: now })
         .where(eq(schema.reviewCycles.id, latestCycle.id))
         .run();
     }
 
     // Look up project for git operations (SHA capture + diff snapshot)
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))
@@ -310,7 +310,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     // Create new review cycle with incremented cycleNumber
     const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
     const newCycleId = randomUUID();
-    db.insert(schema.reviewCycles)
+    database.insert(schema.reviewCycles)
       .values({
         id: newCycleId,
         prId: id,
@@ -320,7 +320,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       })
       .run();
 
-    const newCycle = db
+    const newCycle = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.id, newCycleId))
@@ -333,7 +333,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           pr.baseBranch,
           pr.sourceBranch,
         );
-        db.insert(schema.diffSnapshots)
+        database.insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
             reviewCycleId: newCycleId,
@@ -380,7 +380,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -391,19 +391,19 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const latestCycle = getLatestCycle(db, id);
+    const latestCycle = getLatestCycle(database, id);
     const now = new Date().toISOString();
 
     // Mark current cycle as superseded
     if (latestCycle) {
-      db.update(schema.reviewCycles)
+      database.update(schema.reviewCycles)
         .set({ status: 'superseded' })
         .where(eq(schema.reviewCycles.id, latestCycle.id))
         .run();
     }
 
     // Look up project for git operations
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))
@@ -423,7 +423,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     // Create new review cycle
     const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
     const newCycleId = randomUUID();
-    db.insert(schema.reviewCycles)
+    database.insert(schema.reviewCycles)
       .values({
         id: newCycleId,
         prId: id,
@@ -434,7 +434,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       })
       .run();
 
-    const newCycle = db
+    const newCycle = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.id, newCycleId))
@@ -448,7 +448,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           pr.baseBranch,
           pr.sourceBranch,
         );
-        db.insert(schema.diffSnapshots)
+        database.insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
             reviewCycleId: newCycleId,
@@ -464,7 +464,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     // Update PR updatedAt
-    db.update(schema.pullRequests)
+    database.update(schema.pullRequests)
       .set({ updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
@@ -492,7 +492,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/run-insights', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -505,8 +505,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     const orchestrator = (fastify as any).orchestrator;
     if (orchestrator) {
-      orchestrator.runInsights(id).catch((err: Error) => {
-        fastify.log.error({ err, prId: id }, 'Insights analysis failed');
+      orchestrator.runInsights(id).catch((error: Error) => {
+        fastify.log.error({ err: error, prId: id }, 'Insights analysis failed');
       });
     }
 
@@ -517,7 +517,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { source } = request.query as { source?: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -539,7 +539,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/close', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -557,7 +557,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const latestCycle = getLatestCycle(db, id);
+    const latestCycle = getLatestCycle(database, id);
 
     if (latestCycle?.status === 'agent_working') {
       reply
@@ -567,12 +567,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     const now = new Date().toISOString();
-    db.update(schema.pullRequests)
+    database.update(schema.pullRequests)
       .set({ status: 'closed', updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
 
-    const updated = db
+    const updated = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -587,7 +587,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/reopen', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -604,12 +604,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     const now = new Date().toISOString();
-    db.update(schema.pullRequests)
+    database.update(schema.pullRequests)
       .set({ status: 'open', updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
 
-    const updated = db
+    const updated = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -624,7 +624,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.get('/api/prs/:id/cycles', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -635,7 +635,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    return db
+    return database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, id))

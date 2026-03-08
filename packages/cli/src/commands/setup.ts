@@ -1,13 +1,13 @@
 import { Command } from 'commander';
-import { execSync } from 'child_process';
-import { PACKAGE_ROOT, isDevMode } from '../paths.js';
+import { execSync } from 'node:child_process';
+import { PACKAGE_ROOT, isDevMode as isDevelopmentMode } from '../paths.js';
 
 export function setupCommand(program: Command) {
   program
     .command('setup')
     .description('Install skills and verify prerequisites')
     .action(async () => {
-      const results: Array<{ label: string; ok: boolean; detail?: string }> =
+      const results: { label: string; ok: boolean; detail?: string }[] =
         [];
 
       // 1. Verify claude is on PATH
@@ -45,7 +45,7 @@ export function setupCommand(program: Command) {
       }
 
       // 3. In dev mode, npm link to put agent-shepherd on PATH
-      if (isDevMode()) {
+      if (isDevelopmentMode()) {
         try {
           execSync('npm link', {
             cwd: PACKAGE_ROOT,

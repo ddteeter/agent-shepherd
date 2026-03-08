@@ -58,8 +58,8 @@ export class Orchestrator {
   async handleRequestChanges(prId: string): Promise<void> {
     // Run both in parallel — insights errors don't block code-fix
     const codeFixPromise = this.feedbackIntegrator.run(prId);
-    const insightsPromise = this.insightsAnalyzer.run(prId).catch((err) => {
-      console.error(`Insights analysis failed for PR ${prId}:`, err.message);
+    const insightsPromise = this.insightsAnalyzer.run(prId).catch((error) => {
+      console.error(`Insights analysis failed for PR ${prId}:`, error.message);
     });
 
     await Promise.all([codeFixPromise, insightsPromise]);

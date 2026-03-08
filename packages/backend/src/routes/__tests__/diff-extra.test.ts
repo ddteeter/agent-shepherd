@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { execSync } from 'child_process';
-import { randomUUID } from 'crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { createTestServer } from '../../__tests__/helpers.js';
@@ -161,7 +161,7 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
   });
 
   it('returns 400 when inter-cycle diff has cycles without commit SHAs', async () => {
-    const db = (server as any).db;
+    const database = (server as any).db;
 
     const proj = await inject({
       method: 'POST',
@@ -176,17 +176,17 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
     const prId = pr.json().id;
 
     // Clear the commit SHA from cycle 1
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
       .all();
-    db.update(schema.reviewCycles)
+    database.update(schema.reviewCycles)
       .set({ commitSha: null })
       .where(eq(schema.reviewCycles.id, cycles[0].id))
       .run();
 
-    db.insert(schema.reviewCycles)
+    database.insert(schema.reviewCycles)
       .values({
         id: randomUUID(),
         prId,
@@ -205,7 +205,7 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
   });
 
   it('returns 404 for snapshot on cycle without stored snapshot', async () => {
-    const db = (server as any).db;
+    const database = (server as any).db;
 
     const proj = await inject({
       method: 'POST',
@@ -220,12 +220,12 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
     const prId = pr.json().id;
 
     // Delete the snapshot that was created at PR submission
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
       .all();
-    db.delete(schema.diffSnapshots)
+    database.delete(schema.diffSnapshots)
       .where(eq(schema.diffSnapshots.reviewCycleId, cycles[0].id))
       .run();
 

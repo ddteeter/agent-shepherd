@@ -1,7 +1,7 @@
 import { AgentActivityPanel } from './AgentActivityPanel.js';
 import type { ActivityEntry } from './AgentActivityPanel.js';
 
-interface AgentStatusSectionProps {
+interface AgentStatusSectionProperties {
   active: boolean;
   activity: ActivityEntry[];
   onCancel: () => void;
@@ -15,7 +15,7 @@ export function AgentStatusSection({
   onCancel,
   label = 'Agent working...',
   error,
-}: AgentStatusSectionProps) {
+}: AgentStatusSectionProperties) {
   const showActivity = active || activity.length > 0;
 
   if (!active && !error && !showActivity) return null;

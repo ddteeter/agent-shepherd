@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 
 export function migrateInsightCategories(
@@ -25,13 +25,13 @@ export function migrateInsightCategories(
 }
 
 export async function insightsRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
+  const database = (fastify as any).db;
 
   // GET /api/prs/:prId/insights — returns insights row with parsed categories, or null
   fastify.get('/api/prs/:prId/insights', async (request) => {
     const { prId } = request.params as { prId: string };
 
-    const row = db
+    const row = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))
@@ -58,25 +58,25 @@ export async function insightsRoutes(fastify: FastifyInstance) {
 
     const categoriesJson = JSON.stringify(categories);
 
-    const existing = db
+    const existing = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))
       .get();
 
     if (existing) {
-      db.update(schema.insights)
+      database.update(schema.insights)
         .set({
           categories: categoriesJson,
-          ...(branchRef !== undefined ? { branchRef } : {}),
-          ...(worktreePath !== undefined ? { worktreePath } : {}),
+          ...(branchRef === undefined ? {} : { branchRef }),
+          ...(worktreePath === undefined ? {} : { worktreePath }),
           updatedAt: new Date().toISOString(),
         })
         .where(eq(schema.insights.id, existing.id))
         .run();
     } else {
       const id = randomUUID();
-      db.insert(schema.insights)
+      database.insert(schema.insights)
         .values({
           id,
           prId,
@@ -88,7 +88,7 @@ export async function insightsRoutes(fastify: FastifyInstance) {
         .run();
     }
 
-    const row = db
+    const row = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))

@@ -46,22 +46,22 @@ vi.mock('shiki', () => ({
 
 describe('useSyntaxThemeColors', () => {
   afterEach(() => {
-    document.documentElement.removeAttribute('data-theme');
+    delete document.documentElement.dataset.theme;
     const style = document.documentElement.style;
     style.removeProperty('--color-bg');
     style.removeProperty('--color-text');
   });
 
   it('sets data-theme attribute based on theme type', async () => {
-    renderHook(() => useSyntaxThemeColors('github-dark'));
+    renderHook(() => { useSyntaxThemeColors('github-dark'); });
 
     await waitFor(() => {
-      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+      expect(document.documentElement.dataset.theme).toBe('dark');
     });
   });
 
   it('sets CSS custom properties from theme colors', async () => {
-    renderHook(() => useSyntaxThemeColors('github-dark'));
+    renderHook(() => { useSyntaxThemeColors('github-dark'); });
 
     await waitFor(() => {
       const style = document.documentElement.style;
@@ -72,23 +72,23 @@ describe('useSyntaxThemeColors', () => {
 
   it('removes CSS custom properties without matching theme colors', async () => {
     document.documentElement.style.setProperty('--color-border', '#test');
-    renderHook(() => useSyntaxThemeColors('github-light'));
+    renderHook(() => { useSyntaxThemeColors('github-light'); });
 
     await waitFor(() => {
-      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+      expect(document.documentElement.dataset.theme).toBe('light');
     });
   });
 
   it('does nothing for unknown theme IDs', () => {
-    renderHook(() => useSyntaxThemeColors('nonexistent-theme'));
-    expect(document.documentElement.getAttribute('data-theme')).toBeNull();
+    renderHook(() => { useSyntaxThemeColors('nonexistent-theme'); });
+    expect(document.documentElement.dataset.theme).toBeNull();
   });
 
   it('handles theme modules without default export', async () => {
-    renderHook(() => useSyntaxThemeColors('no-default-theme'));
+    renderHook(() => { useSyntaxThemeColors('no-default-theme'); });
 
     await waitFor(() => {
-      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+      expect(document.documentElement.dataset.theme).toBe('dark');
       expect(
         document.documentElement.style.getPropertyValue('--color-bg'),
       ).toBe('#000000');

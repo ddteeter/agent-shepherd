@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 
 // Mock child_process.spawn before importing the adapter
 const mockSpawn = vi.fn();
 vi.mock('child_process', () => ({
-  spawn: (...args: any[]) => mockSpawn(...args),
+  spawn: (...arguments_: any[]) => mockSpawn(...arguments_),
 }));
 
 const { ClaudeCodeAdapter } = await import('../claude-code-adapter.js');
@@ -17,7 +17,7 @@ function createMockProcess() {
   proc.stdin = stdin;
   proc.stdout = stdout;
   proc.stderr = stderr;
-  proc.pid = 12345;
+  proc.pid = 12_345;
   proc.kill = vi.fn();
   return proc;
 }
@@ -68,15 +68,15 @@ describe('ClaudeCodeAdapter', () => {
         additionalDirs: ['/tmp/other', '/tmp/third'],
       });
 
-      const args = mockSpawn.mock.calls[0][1] as string[];
-      expect(args).toContain('--add-dir');
-      const addDirIndices = args.reduce((acc: number[], val, idx) => {
-        if (val === '--add-dir') acc.push(idx);
-        return acc;
+      const arguments_ = mockSpawn.mock.calls[0][1] as string[];
+      expect(arguments_).toContain('--add-dir');
+      const addDirIndices = arguments_.reduce((accumulator: number[], value, index) => {
+        if (value === '--add-dir') accumulator.push(index);
+        return accumulator;
       }, []);
       expect(addDirIndices).toHaveLength(2);
-      expect(args[addDirIndices[0] + 1]).toBe('/tmp/other');
-      expect(args[addDirIndices[1] + 1]).toBe('/tmp/third');
+      expect(arguments_[addDirIndices[0] + 1]).toBe('/tmp/other');
+      expect(arguments_[addDirIndices[1] + 1]).toBe('/tmp/third');
     });
   });
 
@@ -354,7 +354,7 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string }> = [];
+      const outputs: { type: string; summary: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       const tools = [
@@ -415,24 +415,24 @@ describe('ClaudeCodeAdapter', () => {
       }
 
       expect(outputs).toHaveLength(tools.length);
-      tools.forEach((tool, i) => {
-        expect(outputs[i].summary).toBe(tool.expected);
-      });
+      for (const [index, tool] of tools.entries()) {
+        expect(outputs[index].summary).toBe(tool.expected);
+      }
     });
   });
 
   describe('devMode', () => {
     it('emits text blocks and tool details in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+      const outputs: { type: string; summary: string; detail?: string }[] =
         [];
       session.onOutput((entry) => outputs.push(entry));
 
@@ -494,16 +494,16 @@ describe('ClaudeCodeAdapter', () => {
     });
 
     it('handles result as object in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+      const outputs: { type: string; summary: string; detail?: string }[] =
         [];
       session.onOutput((entry) => outputs.push(entry));
 
@@ -522,16 +522,16 @@ describe('ClaudeCodeAdapter', () => {
     });
 
     it('truncates long text in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+      const outputs: { type: string; summary: string; detail?: string }[] =
         [];
       session.onOutput((entry) => outputs.push(entry));
 
@@ -554,16 +554,16 @@ describe('ClaudeCodeAdapter', () => {
     });
 
     it('truncates long result in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> =
+      const outputs: { type: string; summary: string; detail?: string }[] =
         [];
       session.onOutput((entry) => outputs.push(entry));
 

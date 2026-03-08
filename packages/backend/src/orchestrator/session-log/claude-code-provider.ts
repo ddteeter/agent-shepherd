@@ -6,15 +6,15 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
   readonly name = 'claude-code';
   private readonly homeDir: string;
 
-  constructor(opts?: { homeDir?: string }) {
-    this.homeDir = opts?.homeDir ?? process.env.HOME ?? '';
+  constructor(options?: { homeDir?: string }) {
+    this.homeDir = options?.homeDir ?? process.env.HOME ?? '';
   }
 
   projectDirKey(projectPath: string): string {
-    return projectPath.replace(/\//g, '-');
+    return projectPath.replaceAll('/', '-');
   }
 
-  async findSessions(opts: {
+  async findSessions(options: {
     projectPath: string;
     branch: string;
   }): Promise<SessionLog[]> {
@@ -22,7 +22,7 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
       this.homeDir,
       '.claude',
       'projects',
-      this.projectDirKey(opts.projectPath),
+      this.projectDirKey(options.projectPath),
     );
 
     let entries: string[];
@@ -37,7 +37,7 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
 
     for (const file of jsonlFiles) {
       const filePath = join(projectDir, file);
-      const session = await this.parseSessionFile(filePath, opts.branch);
+      const session = await this.parseSessionFile(filePath, options.branch);
       if (session) {
         results.push(session);
       }

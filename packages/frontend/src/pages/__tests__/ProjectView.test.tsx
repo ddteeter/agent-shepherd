@@ -17,10 +17,10 @@ vi.mock('../../api.js', () => ({
   },
 }));
 
-let pvWsCallback: ((msg: any) => void) | undefined;
+let pvWsCallback: ((message: any) => void) | undefined;
 vi.mock('../../hooks/useWebSocket.js', () => ({
-  useWebSocket: vi.fn().mockImplementation((cb?: (msg: any) => void) => {
-    pvWsCallback = cb;
+  useWebSocket: vi.fn().mockImplementation((callback?: (message: any) => void) => {
+    pvWsCallback = callback;
     return { connected: true };
   }),
 }));

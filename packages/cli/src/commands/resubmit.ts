@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
 export function resubmitCommand(program: Command, client: ApiClient) {
@@ -10,8 +10,8 @@ export function resubmitCommand(program: Command, client: ApiClient) {
       '-c, --context-file <path>',
       'Path to context file describing what changed',
     )
-    .action(async (prId: string, opts: { contextFile: string }) => {
-      const context = await readFile(opts.contextFile, 'utf-8');
+    .action(async (prId: string, options: { contextFile: string }) => {
+      const context = await readFile(options.contextFile, 'utf-8');
 
       const result = await client.post(`/api/prs/${prId}/resubmit`, {
         context,

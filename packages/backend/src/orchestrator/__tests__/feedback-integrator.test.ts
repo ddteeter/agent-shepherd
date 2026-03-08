@@ -9,9 +9,9 @@ import type { NotificationService } from '../../services/notifications.js';
 
 function createMockAgentRunner(): AgentRunner {
   return {
-    run: vi.fn().mockResolvedValue(undefined),
+    run: vi.fn().mockResolvedValue(),
     hasActiveSession: vi.fn().mockReturnValue(false),
-    cancel: vi.fn().mockResolvedValue(undefined),
+    cancel: vi.fn().mockResolvedValue(),
   } as any;
 }
 
@@ -24,18 +24,18 @@ function createMockNotificationService(): NotificationService {
 describe('FeedbackIntegrator', () => {
   let server: FastifyInstance;
   let inject: Awaited<ReturnType<typeof createTestServer>>['inject'];
-  let db: any;
+  let database: any;
   let integrator: FeedbackIntegrator;
   let mockRunner: ReturnType<typeof createMockAgentRunner>;
   let mockNotifications: ReturnType<typeof createMockNotificationService>;
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
-    db = (server as any).db;
+    database = (server as any).db;
     mockRunner = createMockAgentRunner();
     mockNotifications = createMockNotificationService();
     integrator = new FeedbackIntegrator({
-      db,
+      db: database,
       schema,
       agentRunner: mockRunner,
       notificationService: mockNotifications,
@@ -191,7 +191,7 @@ describe('FeedbackIntegrator', () => {
     expect(mockNotifications.notifyPRReadyForReview).toHaveBeenCalled();
 
     // Verify cycle status was set to agent_completed
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
@@ -233,7 +233,7 @@ describe('FeedbackIntegrator', () => {
     await integrator.run(prId);
 
     // Verify cycle status was set to agent_error
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
@@ -352,7 +352,7 @@ describe('FeedbackIntegrator', () => {
     });
     // Insert a PR directly without a cycle
     const prId = 'direct-pr-no-cycle';
-    db.insert(schema.pullRequests)
+    database.insert(schema.pullRequests)
       .values({
         id: prId,
         projectId: proj.json().id,

@@ -8,17 +8,17 @@ import {
 } from './fileTreeUtils';
 import type { FileStatus } from './DiffViewer.js';
 
-interface FileTreeProps {
+interface FileTreeProperties {
   files: string[];
   selectedFile: string | null;
   onSelectFile: (file: string) => void;
   fileStatuses?: Record<string, FileStatus>;
   commentCounts?: Record<string, number>;
-  fileGroups?: Array<{
+  fileGroups?: {
     name: string;
     description?: string;
     files: string[];
-  }> | null;
+  }[] | null;
   viewMode?: 'directory' | 'logical';
   onViewModeChange?: (mode: 'directory' | 'logical') => void;
 }
@@ -56,7 +56,7 @@ function TreeNodeList({
           return (
             <li key={node.path}>
               <button
-                onClick={() => toggleDir(node.path)}
+                onClick={() => { toggleDir(node.path); }}
                 className="file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap opacity-70"
                 style={{ paddingLeft: depth * 16 + 8 }}
               >
@@ -100,7 +100,7 @@ function TreeNodeList({
           <li key={node.path}>
             <button
               data-file-path={node.path}
-              onClick={() => onSelectFile(node.path)}
+              onClick={() => { onSelectFile(node.path); }}
               className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
                 selectedFile === node.path ? 'font-medium' : ''
               }`}
@@ -175,7 +175,7 @@ function GroupedTreeNodeList({
           return (
             <li key={node.path}>
               <button
-                onClick={() => toggleDir(node.path)}
+                onClick={() => { toggleDir(node.path); }}
                 className="file-tree-item w-full text-left flex items-center gap-1.5 py-1.5 pr-3 text-sm font-medium"
                 style={{ paddingLeft: depth * 16 + 8 }}
               >
@@ -202,7 +202,7 @@ function GroupedTreeNodeList({
                           <li key={child.path}>
                             <button
                               data-file-path={child.path}
-                              onClick={() => onSelectFile(child.path)}
+                              onClick={() => { onSelectFile(child.path); }}
                               className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
                                 selectedFile === child.path ? 'font-medium' : ''
                               }`}
@@ -268,7 +268,7 @@ function GroupedTreeNodeList({
           <li key={node.path}>
             <button
               data-file-path={node.path}
-              onClick={() => onSelectFile(node.path)}
+              onClick={() => { onSelectFile(node.path); }}
               className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
                 selectedFile === node.path ? 'font-medium' : ''
               }`}
@@ -328,11 +328,11 @@ export function FileTree({
   fileGroups,
   viewMode,
   onViewModeChange,
-}: FileTreeProps) {
+}: FileTreeProperties) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [width, setWidth] = useState(256);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerReference = useRef<HTMLDivElement>(null);
+  const scrollReference = useRef<HTMLDivElement>(null);
 
   const tree = useMemo(() => buildFileTree(files), [files]);
   const groupedTree = useMemo(
@@ -341,8 +341,8 @@ export function FileTree({
   );
 
   const toggleDir = (path: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
+    setCollapsed((previous) => {
+      const next = new Set(previous);
       if (next.has(path)) {
         next.delete(path);
       } else {
@@ -353,11 +353,11 @@ export function FileTree({
   };
 
   useEffect(() => {
-    if (!selectedFile || !scrollRef.current) return;
-    const btn = scrollRef.current.querySelector<HTMLElement>(
+    if (!selectedFile || !scrollReference.current) return;
+    const button = scrollReference.current.querySelector<HTMLElement>(
       `[data-file-path="${CSS.escape(selectedFile)}"]`,
     );
-    btn?.scrollIntoView({ block: 'nearest' });
+    button?.scrollIntoView({ block: 'nearest' });
   }, [selectedFile]);
 
   const handleMouseDown = useCallback(
@@ -386,7 +386,7 @@ export function FileTree({
   );
 
   return (
-    <div ref={containerRef} className="flex shrink-0" style={{ width }}>
+    <div ref={containerReference} className="flex shrink-0" style={{ width }}>
       <div className="flex-1 flex flex-col min-w-0">
         <div
           className="flex items-center justify-between px-3 py-2 text-sm font-medium border-b"
@@ -409,7 +409,7 @@ export function FileTree({
                       }
                     : {}
                 }
-                onClick={() => onViewModeChange('logical')}
+                onClick={() => { onViewModeChange('logical'); }}
               >
                 Logical
               </button>
@@ -427,14 +427,14 @@ export function FileTree({
                       }
                     : {}
                 }
-                onClick={() => onViewModeChange('directory')}
+                onClick={() => { onViewModeChange('directory'); }}
               >
                 Directory
               </button>
             </div>
           )}
         </div>
-        <div ref={scrollRef} className="overflow-auto flex-1">
+        <div ref={scrollReference} className="overflow-auto flex-1">
           <ul className="flex flex-col w-max min-w-full">
             {viewMode === 'logical' && groupedTree ? (
               <GroupedTreeNodeList

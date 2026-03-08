@@ -11,11 +11,11 @@ export async function createTestServer(overrides?: Partial<ServerOptions>) {
     ...overrides,
   });
 
-  const inject = (opts: InjectOptions) =>
+  const inject = (options: InjectOptions) =>
     server.inject({
-      ...opts,
+      ...options,
       headers: {
-        ...opts.headers,
+        ...options.headers,
         'x-session-token': TEST_TOKEN,
       },
     });

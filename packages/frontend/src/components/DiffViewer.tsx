@@ -10,7 +10,7 @@ import {
 import { getFileTreeOrder, getGroupedFileOrder } from './fileTreeUtils.js';
 import type { ThreadStatus } from '../utils/commentThreadStatus.js';
 
-interface DiffViewerProps {
+interface DiffViewerProperties {
   diff: string;
   files: string[];
   scrollToFile: string | null;
@@ -32,11 +32,11 @@ interface DiffViewerProps {
   canEditComments?: boolean;
   globalCommentForm?: boolean;
   onToggleGlobalCommentForm?: () => void;
-  fileGroups?: Array<{
+  fileGroups?: {
     name: string;
     description?: string;
     files: string[];
-  }> | null;
+  }[] | null;
   viewMode?: 'directory' | 'logical';
 }
 
@@ -78,7 +78,7 @@ function parseDiff(rawDiff: string): FileDiff[] {
     if (line.startsWith('diff --git')) {
       if (currentFile) files.push(currentFile);
       // Extract path from "diff --git a/path b/path" as fallback for binary files
-      const gitPathMatch = line.match(/^diff --git a\/.+ b\/(.+)$/);
+      const gitPathMatch = /^diff --git a\/.+ b\/(.+)$/.exec(line);
       currentFile = {
         path: gitPathMatch?.[1] ?? '',
         hunks: [],
@@ -106,10 +106,10 @@ function parseDiff(rawDiff: string): FileDiff[] {
         currentFile.status = fromNull ? 'added' : 'modified';
       }
     } else if (line.startsWith('@@')) {
-      const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
+      const match = /@@ -(\d+),?\d* \+(\d+),?\d* @@/.exec(line);
       if (match) {
-        oldLine = parseInt(match[1], 10);
-        newLine = parseInt(match[2], 10);
+        oldLine = Number.parseInt(match[1], 10);
+        newLine = Number.parseInt(match[2], 10);
       }
       currentHunk = { header: line, lines: [] };
       if (currentFile) currentFile.hunks.push(currentHunk);
@@ -159,8 +159,8 @@ function HighlightedContent({
   }
   return (
     <span className="whitespace-pre">
-      {tokens.map((token, i) => (
-        <span key={i} style={{ color: token.color }}>
+      {tokens.map((token, index) => (
+        <span key={index} style={{ color: token.color }}>
           {token.content}
         </span>
       ))}
@@ -211,7 +211,7 @@ function FileDiff({
   onDragOver: (filePath: string, lineNo: number) => void;
   onFinalizeDrag: () => void;
   onCancelComment: () => void;
-  onAddComment?: DiffViewerProps['onAddComment'];
+  onAddComment?: DiffViewerProperties['onAddComment'];
   handleAddComment: (
     filePath: string | null,
     startLine: number | null,
@@ -219,10 +219,10 @@ function FileDiff({
     body: string,
     severity: string,
   ) => void;
-  onReplyComment?: DiffViewerProps['onReplyComment'];
-  onResolveComment?: DiffViewerProps['onResolveComment'];
-  onEditComment?: DiffViewerProps['onEditComment'];
-  onDeleteComment?: DiffViewerProps['onDeleteComment'];
+  onReplyComment?: DiffViewerProperties['onReplyComment'];
+  onResolveComment?: DiffViewerProperties['onResolveComment'];
+  onEditComment?: DiffViewerProperties['onEditComment'];
+  onDeleteComment?: DiffViewerProperties['onDeleteComment'];
   canEditComments?: boolean;
   commentRangeLines: Set<string>;
   tokenizeLine: (code: string, lang: string) => TokenizedLine | null;
@@ -247,7 +247,7 @@ function FileDiff({
           backgroundColor: 'var(--color-bg)',
           color: 'var(--color-text)',
         }}
-        onClick={() => setExpanded(true)}
+        onClick={() => { setExpanded(true); }}
       >
         <span style={{ opacity: 0.6 }}>
           {file.lineCount} lines — click to expand
@@ -314,15 +314,15 @@ function FileDiff({
               color: 'var(--color-text)',
               opacity: 0.6,
             }}
-            onClick={() => setExpanded(false)}
+            onClick={() => { setExpanded(false); }}
           >
             <span>{file.lineCount} lines</span>
             <button className="text-xs underline">Collapse</button>
           </div>
         )}
         <div className="min-w-fit">
-          {file.hunks.map((hunk, hunkIdx) => (
-            <div key={hunkIdx}>
+          {file.hunks.map((hunk, hunkIndex) => (
+            <div key={hunkIndex}>
               <div
                 className="px-4 py-1 text-xs"
                 style={{
@@ -333,7 +333,7 @@ function FileDiff({
               >
                 {hunk.header}
               </div>
-              {hunk.lines.map((line, lineIdx) => {
+              {hunk.lines.map((line, lineIndex) => {
                 const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
                 const lineKey = `${file.path}:${lineNo}`;
                 // Use dragSelection for highlighting during drag, otherwise commentFormLine
@@ -350,7 +350,7 @@ function FileDiff({
                 const tokens = tokenizeLine(line.content, lang);
 
                 return (
-                  <div key={lineIdx}>
+                  <div key={lineIndex}>
                     <div
                       className="diff-line px-4 py-0 flex relative cursor-pointer"
                       style={{
@@ -368,7 +368,7 @@ function FileDiff({
                       }}
                       onClick={
                         onAddComment
-                          ? (e) => onLineClick(file.path, lineNo, e.shiftKey)
+                          ? (e) => { onLineClick(file.path, lineNo, e.shiftKey); }
                           : undefined
                       }
                       onMouseDown={
@@ -382,20 +382,20 @@ function FileDiff({
                           : undefined
                       }
                       onMouseEnter={() => {
-                        setHoveredLineKey(`${hunkIdx}:${lineIdx}`);
+                        setHoveredLineKey(`${hunkIndex}:${lineIndex}`);
                         onDragOver(file.path, lineNo);
                       }}
                       onMouseLeave={() =>
-                        setHoveredLineKey((prev) =>
-                          prev === `${hunkIdx}:${lineIdx}` ? null : prev,
-                        )
+                        { setHoveredLineKey((previous) =>
+                          previous === `${hunkIndex}:${lineIndex}` ? null : previous,
+                        ); }
                       }
                       onMouseUp={onFinalizeDrag}
                     >
                       {onAddComment &&
                         !isInSelectedRange &&
                         !buttonsHidden &&
-                        hoveredLineKey === `${hunkIdx}:${lineIdx}` && (
+                        hoveredLineKey === `${hunkIndex}:${lineIndex}` && (
                           <span
                             className="diff-line-btn absolute left-0 top-0 w-5 h-5 flex items-center justify-center text-xs rounded-sm"
                             style={{
@@ -503,11 +503,11 @@ function FileDiff({
           </div>
           {orphanedComments.map((comment) => (
             <div key={comment.id} className="px-4 py-1">
-              {comment.startLine != null && (
+              {comment.startLine != undefined && (
                 <div className="text-xs mb-1" style={{ opacity: 0.5 }}>
                   Line
                   {comment.startLine !== comment.endLine &&
-                  comment.endLine != null
+                  comment.endLine != undefined
                     ? `s ${comment.startLine}–${comment.endLine}`
                     : ` ${comment.startLine}`}
                 </div>
@@ -548,9 +548,9 @@ export function DiffViewer({
   onToggleGlobalCommentForm,
   fileGroups,
   viewMode,
-}: DiffViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const fileRefs = useRef<Record<string, HTMLDivElement | null>>({});
+}: DiffViewerProperties) {
+  const containerReference = useRef<HTMLDivElement>(null);
+  const fileReferences = useRef<Record<string, HTMLDivElement | null>>({});
   const [commentFormLine, setCommentFormLine] = useState<{
     file: string;
     startLine: number;
@@ -575,18 +575,18 @@ export function DiffViewer({
 
   // Virtualization: track which files are near the viewport
   const [visible, setVisible] = useState<Set<string>>(new Set());
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const observerReference = useRef<IntersectionObserver | null>(null);
   // Store measured heights so placeholders preserve scroll position
   const measuredHeights = useRef<Record<string, number>>({});
   // Force-pinned files (e.g. scrollToFile target) that bypass visibility
-  const pinnedRef = useRef<string | null>(null);
+  const pinnedReference = useRef<string | null>(null);
 
   // Memoize expensive diff parsing, sorted to match file tree display order
   const parsedFiles = useMemo(() => {
     const parsed = parseDiff(diff);
     if (viewMode === 'logical' && fileGroups) {
       const groupedOrder = getGroupedFileOrder(fileGroups, files);
-      const orderIndex = new Map(groupedOrder.map((f, i) => [f, i]));
+      const orderIndex = new Map(groupedOrder.map((f, index) => [f, index]));
       return parsed.sort(
         (a, b) =>
           (orderIndex.get(a.path) ?? Infinity) -
@@ -594,7 +594,7 @@ export function DiffViewer({
       );
     }
     const treeOrder = getFileTreeOrder(files);
-    const orderIndex = new Map(treeOrder.map((f, i) => [f, i]));
+    const orderIndex = new Map(treeOrder.map((f, index) => [f, index]));
     return parsed.sort(
       (a, b) =>
         (orderIndex.get(a.path) ?? Infinity) -
@@ -626,13 +626,13 @@ export function DiffViewer({
 
   // Set up IntersectionObserver for virtualizing file diffs
   useEffect(() => {
-    const container = containerRef.current;
+    const container = containerReference.current;
     if (!container) return;
 
-    observerRef.current = new IntersectionObserver(
+    observerReference.current = new IntersectionObserver(
       (entries) => {
-        setVisible((prev) => {
-          const next = new Set(prev);
+        setVisible((previous) => {
+          const next = new Set(previous);
           let changed = false;
           for (const entry of entries) {
             const path = (entry.target as HTMLElement).dataset.filePath;
@@ -644,39 +644,39 @@ export function DiffViewer({
               }
             } else {
               // Record height before deactivating
-              const el = fileRefs.current[path];
-              if (el)
+              const element = fileReferences.current[path];
+              if (element)
                 measuredHeights.current[path] =
-                  el.getBoundingClientRect().height;
-              if (next.has(path) && path !== pinnedRef.current) {
+                  element.getBoundingClientRect().height;
+              if (next.has(path) && path !== pinnedReference.current) {
                 next.delete(path);
                 changed = true;
               }
             }
           }
-          return changed ? next : prev;
+          return changed ? next : previous;
         });
       },
       { root: container, rootMargin: '800px 0px' },
     );
 
     // Observe all file containers
-    for (const path of Object.keys(fileRefs.current)) {
-      const el = fileRefs.current[path];
-      if (el) observerRef.current.observe(el);
+    for (const path of Object.keys(fileReferences.current)) {
+      const element = fileReferences.current[path];
+      if (element) observerReference.current.observe(element);
     }
 
     return () => {
-      observerRef.current?.disconnect();
+      observerReference.current?.disconnect();
     };
   }, [parsedFiles]);
 
   // Register a file ref and observe it
-  const setFileRef = useCallback((path: string, el: HTMLDivElement | null) => {
-    const prev = fileRefs.current[path];
-    fileRefs.current[path] = el;
-    if (el && el !== prev && observerRef.current) {
-      observerRef.current.observe(el);
+  const setFileReference = useCallback((path: string, element: HTMLDivElement | null) => {
+    const previous = fileReferences.current[path];
+    fileReferences.current[path] = element;
+    if (element && element !== previous && observerReference.current) {
+      observerReference.current.observe(element);
     }
   }, []);
 
@@ -684,24 +684,24 @@ export function DiffViewer({
   // Pin the target file so it renders before scrolling
   useEffect(() => {
     if (!scrollToFile) return;
-    pinnedRef.current = scrollToFile;
+    pinnedReference.current = scrollToFile;
     isScrolling.current = true;
-    setVisible((prev) => {
-      if (prev.has(scrollToFile)) return prev;
-      const next = new Set(prev);
+    setVisible((previous) => {
+      if (previous.has(scrollToFile)) return previous;
+      const next = new Set(previous);
       next.add(scrollToFile);
       return next;
     });
     // Initial scroll after React renders the pinned file
     requestAnimationFrame(() => {
-      fileRefs.current[scrollToFile]?.scrollIntoView({ block: 'start' });
+      fileReferences.current[scrollToFile]?.scrollIntoView({ block: 'start' });
       // Re-scroll after nearby placeholders expand into real content
       // (their height changes shift the target's position)
       setTimeout(() => {
-        fileRefs.current[scrollToFile]?.scrollIntoView({ block: 'start' });
+        fileReferences.current[scrollToFile]?.scrollIntoView({ block: 'start' });
         requestAnimationFrame(() => {
           isScrolling.current = false;
-          pinnedRef.current = null;
+          pinnedReference.current = null;
         });
       }, 150);
     });
@@ -709,7 +709,7 @@ export function DiffViewer({
 
   // Track which file is visible via scroll position and sync sidebar
   useEffect(() => {
-    const container = containerRef.current;
+    const container = containerReference.current;
     if (!onVisibleFileChange || !container) return;
 
     let rafId: number;
@@ -719,19 +719,19 @@ export function DiffViewer({
       rafId = requestAnimationFrame(() => {
         const containerTop = container.getBoundingClientRect().top;
         let closest: string | null = null;
-        let closestDist = Infinity;
+        let closestDistribution = Infinity;
         for (const file of parsedFiles) {
-          const el = fileRefs.current[file.path];
-          if (!el) continue;
-          const rect = el.getBoundingClientRect();
+          const element = fileReferences.current[file.path];
+          if (!element) continue;
+          const rect = element.getBoundingClientRect();
           // File is visible if its top is above container bottom and bottom is below container top
           if (
             rect.bottom > containerTop &&
             rect.top < containerTop + container.clientHeight
           ) {
-            const dist = Math.abs(rect.top - containerTop);
-            if (dist < closestDist) {
-              closestDist = dist;
+            const distribution = Math.abs(rect.top - containerTop);
+            if (distribution < closestDistribution) {
+              closestDistribution = distribution;
               closest = file.path;
             }
           }
@@ -780,10 +780,10 @@ export function DiffViewer({
         const existing = byParent.get(comment.parentCommentId) || [];
         existing.push(comment);
         byParent.set(comment.parentCommentId, existing);
-      } else if (comment.filePath == null) {
+      } else if (comment.filePath == undefined) {
         // Global/PR-level comment
         globals.push(comment);
-      } else if (comment.startLine == null) {
+      } else if (comment.startLine == undefined) {
         // File-level comment
         if (diffFilePaths.has(comment.filePath)) {
           const key = `file:${comment.filePath}`;
@@ -792,9 +792,9 @@ export function DiffViewer({
           byFilePath.set(key, existing);
         } else {
           // File not in current diff — treat as orphaned
-          const arr = orphaned.get(comment.filePath) || [];
-          arr.push(comment);
-          orphaned.set(comment.filePath, arr);
+          const array = orphaned.get(comment.filePath) || [];
+          array.push(comment);
+          orphaned.set(comment.filePath, array);
         }
       } else {
         // Line-level comment — check if its line exists in the diff
@@ -805,9 +805,9 @@ export function DiffViewer({
           byFileLine.set(key, existing);
         } else {
           // Orphaned: line no longer in this diff
-          const arr = orphaned.get(comment.filePath) || [];
-          arr.push(comment);
-          orphaned.set(comment.filePath, arr);
+          const array = orphaned.get(comment.filePath) || [];
+          array.push(comment);
+          orphaned.set(comment.filePath, array);
         }
       }
     }
@@ -816,9 +816,9 @@ export function DiffViewer({
     for (const comment of comments) {
       if (
         !comment.parentCommentId &&
-        comment.filePath != null &&
-        comment.startLine != null &&
-        comment.endLine != null &&
+        comment.filePath != undefined &&
+        comment.startLine != undefined &&
+        comment.endLine != undefined &&
         comment.startLine !== comment.endLine
       ) {
         for (let l = comment.startLine; l <= comment.endLine; l++) {
@@ -841,7 +841,7 @@ export function DiffViewer({
     (filePath: string, lineNo: number, shiftKey: boolean) => {
       // Skip if a real drag just occurred (mousedown + move to different line)
       if (isDragging.current) return;
-      if (shiftKey && rangeAnchor && rangeAnchor.file === filePath) {
+      if (shiftKey && rangeAnchor?.file === filePath) {
         const startLine = Math.min(rangeAnchor.line, lineNo);
         const endLine = Math.max(rangeAnchor.line, lineNo);
         setCommentFormLine({ file: filePath, startLine, endLine });
@@ -914,7 +914,7 @@ export function DiffViewer({
   }, []);
 
   const handleDragOver = useCallback((filePath: string, lineNo: number) => {
-    if (!dragAnchor.current || dragAnchor.current.file !== filePath) return;
+    if (dragAnchor.current?.file !== filePath) return;
     // Only activate drag when mouse moves to a different line than the anchor
     if (dragAnchor.current.line === lineNo && !isDragging.current) return;
     isDragging.current = true;
@@ -946,8 +946,8 @@ export function DiffViewer({
     const onMouseUp = () => {
       if (dragAnchor.current) finalizeDrag();
     };
-    window.addEventListener('mouseup', onMouseUp);
-    return () => window.removeEventListener('mouseup', onMouseUp);
+    globalThis.addEventListener('mouseup', onMouseUp);
+    return () => { globalThis.removeEventListener('mouseup', onMouseUp); };
   }, [finalizeDrag]);
 
   if (parsedFiles.length === 0) {
@@ -960,9 +960,9 @@ export function DiffViewer({
 
   return (
     <div
-      ref={containerRef}
+      ref={containerReference}
       className="flex-1 overflow-y-auto p-4"
-      onMouseMove={buttonsHidden ? () => setButtonsHidden(false) : undefined}
+      onMouseMove={buttonsHidden ? () => { setButtonsHidden(false); } : undefined}
     >
       {/* Global/PR-level comments */}
       {(globalComments.length > 0 || globalCommentForm) && (
@@ -1014,18 +1014,18 @@ export function DiffViewer({
         </div>
       )}
 
-      {parsedFiles.map((file, idx) => (
+      {parsedFiles.map((file, index) => (
         <div key={file.path}>
           {(() => {
             if (!fileToGroup) return null;
             const group = fileToGroup.get(file.path);
-            const prevFile = idx > 0 ? parsedFiles[idx - 1] : null;
-            const prevGroup = prevFile ? fileToGroup.get(prevFile.path) : null;
+            const previousFile = index > 0 ? parsedFiles[index - 1] : null;
+            const previousGroup = previousFile ? fileToGroup.get(previousFile.path) : null;
             const isNewGroup =
-              group && (!prevGroup || prevGroup.name !== group.name);
+              group && (previousGroup?.name !== group.name);
             const isUngrouped =
               !group &&
-              (idx === 0 || (prevFile && fileToGroup.has(prevFile.path)));
+              (index === 0 || (previousFile && fileToGroup.has(previousFile.path)));
             if (isNewGroup) {
               return (
                 <div
@@ -1069,8 +1069,8 @@ export function DiffViewer({
             return null;
           })()}
           <div
-            ref={(el) => {
-              setFileRef(file.path, el);
+            ref={(element) => {
+              setFileReference(file.path, element);
             }}
             data-file-path={file.path}
             className="mb-6 border rounded overflow-hidden"
@@ -1088,9 +1088,9 @@ export function DiffViewer({
                 {onAddComment && (
                   <button
                     onClick={() =>
-                      setFileCommentFormPath(
+                      { setFileCommentFormPath(
                         fileCommentFormPath === file.path ? null : file.path,
-                      )
+                      ); }
                     }
                     className="px-2 py-0.5 rounded border hover:opacity-80"
                     style={{
@@ -1139,11 +1139,11 @@ export function DiffViewer({
                 fileComments={fileCommentsByPath.get(`file:${file.path}`) || []}
                 fileCommentFormOpen={fileCommentFormPath === file.path}
                 onToggleFileCommentForm={() =>
-                  setFileCommentFormPath(
+                  { setFileCommentFormPath(
                     fileCommentFormPath === file.path ? null : file.path,
-                  )
+                  ); }
                 }
-                onCancelFileComment={() => setFileCommentFormPath(null)}
+                onCancelFileComment={() => { setFileCommentFormPath(null); }}
                 handleFileComment={handleFileComment}
                 threadStatusMap={threadStatusMap}
                 orphanedComments={orphanedByFile.get(file.path) || []}
@@ -1168,7 +1168,7 @@ export function DiffViewer({
       ))}
 
       {/* Orphaned comments on files no longer in the diff */}
-      {Array.from(orphanedByFile.entries())
+      {[...orphanedByFile.entries()]
         .filter(([filePath]) => !parsedFiles.some((f) => f.path === filePath))
         .map(([filePath, orphanedComments]) => (
           <div
@@ -1203,11 +1203,11 @@ export function DiffViewer({
               </div>
               {orphanedComments.map((comment) => (
                 <div key={comment.id} className="px-4 py-1">
-                  {comment.startLine != null && (
+                  {comment.startLine != undefined && (
                     <div className="text-xs mb-1" style={{ opacity: 0.5 }}>
                       Line
                       {comment.startLine !== comment.endLine &&
-                      comment.endLine != null
+                      comment.endLine != undefined
                         ? `s ${comment.startLine}–${comment.endLine}`
                         : ` ${comment.startLine}`}
                     </div>

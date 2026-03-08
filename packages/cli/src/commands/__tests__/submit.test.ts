@@ -10,8 +10,8 @@ vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
 
-import { readFile } from 'fs/promises';
-import { execSync } from 'child_process';
+import { readFile } from 'node:fs/promises';
+import { execSync } from 'node:child_process';
 
 describe('submitCommand', () => {
   let program: Command;

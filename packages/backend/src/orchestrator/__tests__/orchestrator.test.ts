@@ -33,7 +33,7 @@ describe('Orchestrator cross-cycle comment query', () => {
   });
 
   it('includes comment summary in the prompt', async () => {
-    const db = (server as any).db;
+    const database = (server as any).db;
 
     // Add comments on cycle 1
     await inject({
@@ -62,13 +62,13 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
 
     // Build summary the way the orchestrator would
-    const allCycles = db
+    const allCycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
       .all();
     const cycleIds = allCycles.map((c: any) => c.id);
-    const allComments = db
+    const allComments = database
       .select()
       .from(schema.comments)
       .where(inArray(schema.comments.reviewCycleId, cycleIds))
@@ -85,13 +85,13 @@ describe('Orchestrator cross-cycle comment query', () => {
     let generalCount = 0;
     for (const c of topLevel) {
       bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
-      if (!c.filePath) {
-        generalCount++;
-      } else {
+      if (c.filePath) {
         const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
         entry.count++;
         entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
         fileMap.set(c.filePath, entry);
+      } else {
+        generalCount++;
       }
     }
 
@@ -119,7 +119,7 @@ describe('Orchestrator cross-cycle comment query', () => {
   });
 
   it('excludes resolved comments from the summary', async () => {
-    const db = (server as any).db;
+    const database = (server as any).db;
 
     // Add two comments
     const c1Resp = await inject({
@@ -157,14 +157,14 @@ describe('Orchestrator cross-cycle comment query', () => {
     });
 
     // Build summary (same logic as orchestrator)
-    const allCycles = db
+    const allCycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
       .all();
     const cycleIds = allCycles.map((c: any) => c.id);
 
-    const allComments = db
+    const allComments = database
       .select()
       .from(schema.comments)
       .where(inArray(schema.comments.reviewCycleId, cycleIds))
@@ -182,13 +182,13 @@ describe('Orchestrator cross-cycle comment query', () => {
     let generalCount = 0;
     for (const c of topLevel) {
       bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
-      if (!c.filePath) {
-        generalCount++;
-      } else {
+      if (c.filePath) {
         const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
         entry.count++;
         entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
         fileMap.set(c.filePath, entry);
+      } else {
+        generalCount++;
       }
     }
 
@@ -231,8 +231,8 @@ describe('Orchestrator cross-cycle comment query', () => {
     expect(pr.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
 
     // Verify that both project.path and pr.workingDirectory are available
-    const db = (server as any).db;
-    const project = db
+    const database = (server as any).db;
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))

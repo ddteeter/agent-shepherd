@@ -11,8 +11,8 @@ globalThis.IntersectionObserver = class IntersectionObserver {
   readonly rootMargin = '';
   readonly thresholds = [0];
   private cb: IntersectionObserverCallback;
-  constructor(cb: IntersectionObserverCallback) {
-    this.cb = cb;
+  constructor(callback: IntersectionObserverCallback) {
+    this.cb = callback;
   }
   observe(target: Element) {
     this.cb(

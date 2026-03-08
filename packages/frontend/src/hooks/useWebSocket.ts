@@ -6,46 +6,46 @@ interface WSMessage {
   data: any;
 }
 
-export function useWebSocket(onMessage?: (msg: WSMessage) => void) {
-  const wsRef = useRef<WebSocket | null>(null);
+export function useWebSocket(onMessage?: (message: WSMessage) => void) {
+  const wsReference = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
-  const onMessageRef = useRef(onMessage);
-  onMessageRef.current = onMessage;
+  const onMessageReference = useRef(onMessage);
+  onMessageReference.current = onMessage;
 
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = encodeURIComponent(getSessionToken());
     const ws = new WebSocket(
-      `${protocol}//${window.location.host}/ws?token=${token}`,
+      `${protocol}//${globalThis.location.host}/ws?token=${token}`,
     );
 
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => {
+    ws.addEventListener('open', () => { setConnected(true); });
+    ws.addEventListener('close', () => {
       setConnected(false);
       // Only reconnect if this WebSocket is still the active one
-      if (wsRef.current === ws) {
+      if (wsReference.current === ws) {
         reconnectTimer.current = setTimeout(connect, 3000);
       }
-    };
+    });
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data) as WSMessage;
-        onMessageRef.current?.(msg);
+        const message = JSON.parse(event.data) as WSMessage;
+        onMessageReference.current?.(message);
       } catch {
         // ignore malformed messages
       }
     };
 
-    wsRef.current = ws;
+    wsReference.current = ws;
   }, []);
 
   useEffect(() => {
     connect();
     return () => {
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
+      wsReference.current?.close();
     };
   }, [connect]);
 

@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import type {
   AgentAdapter,
   AgentSession,
@@ -10,24 +10,31 @@ function summarizeToolUse(
   input: Record<string, unknown>,
 ): string {
   switch (name) {
-    case 'Read':
+    case 'Read': {
       return `Reading ${input.file_path || 'file'}`;
-    case 'Edit':
+    }
+    case 'Edit': {
       return `Editing ${input.file_path || 'file'}`;
-    case 'Write':
+    }
+    case 'Write': {
       return `Writing ${input.file_path || 'file'}`;
+    }
     case 'Bash': {
       const cmd = String(input.command || '');
       return `Running ${cmd.length > 60 ? cmd.slice(0, 60) + '...' : cmd}`;
     }
-    case 'Grep':
+    case 'Grep': {
       return `Searching for ${input.pattern || 'pattern'}`;
-    case 'Glob':
+    }
+    case 'Glob': {
       return `Finding files matching ${input.pattern || 'pattern'}`;
-    case 'Task':
+    }
+    case 'Task': {
       return `Dispatching sub-agent`;
-    default:
+    }
+    default: {
       return `Using ${name}`;
+    }
   }
 }
 
@@ -35,16 +42,16 @@ export class ClaudeCodeAdapter implements AgentAdapter {
   name = 'claude-code';
   private devMode: boolean;
 
-  constructor(opts?: { devMode?: boolean }) {
-    this.devMode = opts?.devMode ?? false;
+  constructor(options?: { devMode?: boolean }) {
+    this.devMode = options?.devMode ?? false;
   }
 
-  async startSession(opts: {
+  async startSession(options: {
     projectPath: string;
     prompt: string;
     additionalDirs?: string[];
   }): Promise<AgentSession> {
-    const args = [
+    const arguments_ = [
       '--output-format',
       'stream-json',
       '--verbose',
@@ -54,21 +61,21 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       'Bash(agent-shepherd:*)',
       'Bash(git:*)',
     ];
-    if (opts.additionalDirs) {
-      for (const dir of opts.additionalDirs) {
-        args.push('--add-dir', dir);
+    if (options.additionalDirs) {
+      for (const dir of options.additionalDirs) {
+        arguments_.push('--add-dir', dir);
       }
     }
-    args.push('-p');
-    const proc = spawn('claude', args, {
-      cwd: opts.projectPath,
+    arguments_.push('-p');
+    const proc = spawn('claude', arguments_, {
+      cwd: options.projectPath,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
-    proc.stdin?.end(opts.prompt);
+    proc.stdin?.end(options.prompt);
     return this.wrapProcess(proc, this.devMode);
   }
 
-  private wrapProcess(proc: ChildProcess, devMode: boolean): AgentSession {
+  private wrapProcess(proc: ChildProcess, developmentMode: boolean): AgentSession {
     let completeCallback: (() => void) | null = null;
     let errorCallback: ((error: Error) => void) | null = null;
     let outputCallback: ((entry: AgentActivityEntry) => void) | null = null;
@@ -87,25 +94,25 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
-          const msg = JSON.parse(line);
+          const message = JSON.parse(line);
 
           // Extract session ID from init message
           if (
-            msg.type === 'system' &&
-            msg.subtype === 'init' &&
-            msg.session_id
+            message.type === 'system' &&
+            message.subtype === 'init' &&
+            message.session_id
           ) {
-            sessionId = msg.session_id;
+            sessionId = message.session_id;
           }
 
           // Track stop reason for end_turn detection
-          if (msg.type === 'assistant' && msg.message?.stop_reason) {
-            lastStopReason = msg.message.stop_reason;
+          if (message.type === 'assistant' && message.message?.stop_reason) {
+            lastStopReason = message.message.stop_reason;
           }
 
           // Extract tool uses, text, and result messages from assistant messages
-          if (msg.type === 'assistant' && msg.message?.content) {
-            for (const block of msg.message.content) {
+          if (message.type === 'assistant' && message.message?.content) {
+            for (const block of message.message.content) {
               if (block.type === 'text' && block.text) {
                 lastAssistantText = String(block.text);
               }
@@ -114,12 +121,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
                   timestamp: new Date().toISOString(),
                   type: block.name,
                   summary: summarizeToolUse(block.name, block.input || {}),
-                  ...(devMode && block.input
+                  ...(developmentMode && block.input
                     ? { detail: JSON.stringify(block.input, null, 2) }
                     : {}),
                 };
                 outputCallback?.(entry);
-              } else if (devMode && block.type === 'text' && block.text) {
+              } else if (developmentMode && block.type === 'text' && block.text) {
                 const text = String(block.text);
                 const entry: AgentActivityEntry = {
                   timestamp: new Date().toISOString(),
@@ -134,11 +141,11 @@ export class ClaudeCodeAdapter implements AgentAdapter {
           }
 
           // Emit tool results in dev mode
-          if (devMode && msg.type === 'result') {
+          if (developmentMode && message.type === 'result') {
             const content =
-              typeof msg.result === 'string'
-                ? msg.result
-                : JSON.stringify(msg.result, null, 2);
+              typeof message.result === 'string'
+                ? message.result
+                : JSON.stringify(message.result, null, 2);
             const entry: AgentActivityEntry = {
               timestamp: new Date().toISOString(),
               type: 'tool_result',
@@ -161,12 +168,12 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     proc.on('exit', (code) => {
       if (code === 0) {
         if (lastStopReason === 'end_turn') {
-          const lastMsg = lastAssistantText
+          const lastMessage = lastAssistantText
             ? `. Last message: ${lastAssistantText.slice(0, 200)}`
             : '';
           errorCallback?.(
             new Error(
-              `Agent stopped waiting for input (end_turn) — it may not have had the information or permissions needed to complete the task${lastMsg}`,
+              `Agent stopped waiting for input (end_turn) — it may not have had the information or permissions needed to complete the task${lastMessage}`,
             ),
           );
         } else {
@@ -180,22 +187,22 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       }
     });
 
-    proc.on('error', (err) => {
-      errorCallback?.(err);
+    proc.on('error', (error) => {
+      errorCallback?.(error);
     });
 
     return {
       get id() {
         return sessionId;
       },
-      onComplete(cb) {
-        completeCallback = cb;
+      onComplete(callback) {
+        completeCallback = callback;
       },
-      onError(cb) {
-        errorCallback = cb;
+      onError(callback) {
+        errorCallback = callback;
       },
-      onOutput(cb) {
-        outputCallback = cb;
+      onOutput(callback) {
+        outputCallback = callback;
       },
       async kill() {
         proc.kill('SIGTERM');

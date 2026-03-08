@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, and } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 
 export async function diffRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
+  const database = (fastify as any).db;
 
   // GET /api/prs/:id/diff — Get diff for a PR
   // Query params:
@@ -20,7 +20,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       to?: string;
     };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -32,40 +32,40 @@ export async function diffRoutes(fastify: FastifyInstance) {
 
     // Inter-cycle diff: from=N&to=M
     if (from !== undefined && to !== undefined) {
-      const fromNum = parseInt(from, 10);
-      const toNum = parseInt(to, 10);
-      if (isNaN(fromNum) || isNaN(toNum) || fromNum < 1 || toNum < 1) {
+      const fromNumber = Number.parseInt(from, 10);
+      const toNumber = Number.parseInt(to, 10);
+      if (isNaN(fromNumber) || isNaN(toNumber) || fromNumber < 1 || toNumber < 1) {
         reply.code(400).send({ error: 'Invalid from/to cycle numbers' });
         return;
       }
 
-      const fromCycle = db
+      const fromCycle = database
         .select()
         .from(schema.reviewCycles)
         .where(
           and(
             eq(schema.reviewCycles.prId, id),
-            eq(schema.reviewCycles.cycleNumber, fromNum),
+            eq(schema.reviewCycles.cycleNumber, fromNumber),
           ),
         )
         .get();
-      const toCycle = db
+      const toCycle = database
         .select()
         .from(schema.reviewCycles)
         .where(
           and(
             eq(schema.reviewCycles.prId, id),
-            eq(schema.reviewCycles.cycleNumber, toNum),
+            eq(schema.reviewCycles.cycleNumber, toNumber),
           ),
         )
         .get();
 
       if (!fromCycle) {
-        reply.code(404).send({ error: `Review cycle ${fromNum} not found` });
+        reply.code(404).send({ error: `Review cycle ${fromNumber} not found` });
         return;
       }
       if (!toCycle) {
-        reply.code(404).send({ error: `Review cycle ${toNum} not found` });
+        reply.code(404).send({ error: `Review cycle ${toNumber} not found` });
         return;
       }
 
@@ -76,7 +76,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
         return;
       }
 
-      const project = db
+      const project = database
         .select()
         .from(schema.projects)
         .where(eq(schema.projects.id, pr.projectId))
@@ -95,8 +95,8 @@ export async function diffRoutes(fastify: FastifyInstance) {
       return {
         diff,
         files,
-        fromCycle: fromNum,
-        toCycle: toNum,
+        fromCycle: fromNumber,
+        toCycle: toNumber,
         isInterCycleDiff: true,
         fileGroups: null,
       };
@@ -104,14 +104,14 @@ export async function diffRoutes(fastify: FastifyInstance) {
 
     // If cycle param is provided, return stored snapshot
     if (cycle !== undefined) {
-      const cycleNumber = parseInt(cycle, 10);
+      const cycleNumber = Number.parseInt(cycle, 10);
       if (isNaN(cycleNumber) || cycleNumber < 1) {
         reply.code(400).send({ error: 'Invalid cycle number' });
         return;
       }
 
       // Find the review cycle
-      const reviewCycle = db
+      const reviewCycle = database
         .select()
         .from(schema.reviewCycles)
         .where(
@@ -130,7 +130,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       }
 
       // Find the diff snapshot for this cycle
-      const snapshot = db
+      const snapshot = database
         .select()
         .from(schema.diffSnapshots)
         .where(eq(schema.diffSnapshots.reviewCycleId, reviewCycle.id))
@@ -158,7 +158,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
     }
 
     // Default: live diff
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))
@@ -176,10 +176,10 @@ export async function diffRoutes(fastify: FastifyInstance) {
     );
 
     // Look up file groups from the latest cycle's snapshot
-    const latestCycle = getLatestCycle(db, id);
+    const latestCycle = getLatestCycle(database, id);
     let fileGroups = null;
     if (latestCycle) {
-      const snapshot = db
+      const snapshot = database
         .select()
         .from(schema.diffSnapshots)
         .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
@@ -197,7 +197,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { cycle } = request.query as { cycle?: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -208,13 +208,15 @@ export async function diffRoutes(fastify: FastifyInstance) {
     }
 
     let reviewCycle;
-    if (cycle !== undefined) {
-      const cycleNumber = parseInt(cycle, 10);
+    if (cycle === undefined) {
+      reviewCycle = getLatestCycle(database, id);
+    } else {
+      const cycleNumber = Number.parseInt(cycle, 10);
       if (isNaN(cycleNumber) || cycleNumber < 1) {
         reply.code(400).send({ error: 'Invalid cycle number' });
         return;
       }
-      reviewCycle = db
+      reviewCycle = database
         .select()
         .from(schema.reviewCycles)
         .where(
@@ -224,8 +226,6 @@ export async function diffRoutes(fastify: FastifyInstance) {
           ),
         )
         .get();
-    } else {
-      reviewCycle = getLatestCycle(db, id);
     }
 
     if (!reviewCycle) {
@@ -233,7 +233,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const snapshot = db
+    const snapshot = database
       .select()
       .from(schema.diffSnapshots)
       .where(eq(schema.diffSnapshots.reviewCycleId, reviewCycle.id))
@@ -249,7 +249,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/diff/snapshot', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -259,7 +259,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, pr.projectId))
@@ -269,7 +269,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const latestCycle = getLatestCycle(db, id);
+    const latestCycle = getLatestCycle(database, id);
 
     if (!latestCycle) {
       reply.code(404).send({ error: 'No review cycle found' });
@@ -277,7 +277,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
     }
 
     // Check if snapshot already exists for this cycle
-    const existing = db
+    const existing = database
       .select()
       .from(schema.diffSnapshots)
       .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
@@ -296,7 +296,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
     const diff = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
 
     const snapshotId = randomUUID();
-    db.insert(schema.diffSnapshots)
+    database.insert(schema.diffSnapshots)
       .values({
         id: snapshotId,
         reviewCycleId: latestCycle.id,
@@ -314,7 +314,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
   fastify.get('/api/prs/:id/cycles/details', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db
+    const pr = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.id, id))
@@ -324,7 +324,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, id))
@@ -332,7 +332,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
 
     // For each cycle, check if a diff snapshot exists
     const cyclesWithSnapshots = cycles.map((cycle: any) => {
-      const snapshot = db
+      const snapshot = database
         .select()
         .from(schema.diffSnapshots)
         .where(eq(schema.diffSnapshots.reviewCycleId, cycle.id))
@@ -355,7 +355,7 @@ export function extractFilesFromDiff(diff: string): string[] {
   const lines = diff.split('\n');
   for (const line of lines) {
     // Match "diff --git a/path b/path" or "+++ b/path"
-    const match = line.match(/^\+\+\+ b\/(.+)$/);
+    const match = /^\+\+\+ b\/(.+)$/.exec(line);
     if (match && match[1]) {
       files.push(match[1]);
     }

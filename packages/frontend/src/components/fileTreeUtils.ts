@@ -17,13 +17,13 @@ function buildTrie(files: string[]): TrieNode {
   for (const file of files) {
     const segments = file.split('/');
     let current = root;
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
+    for (let index = 0; index < segments.length; index++) {
+      const seg = segments[index];
       if (!current.children.has(seg)) {
         current.children.set(seg, {
           children: new Map(),
           isFile: false,
-          fullPath: segments.slice(0, i + 1).join('/'),
+          fullPath: segments.slice(0, index + 1).join('/'),
         });
       }
       current = current.children.get(seg)!;
@@ -36,7 +36,7 @@ function buildTrie(files: string[]): TrieNode {
 }
 
 function trieToTreeNodes(node: TrieNode): TreeNode[] {
-  const dirs: TreeNode[] = [];
+  const directories: TreeNode[] = [];
   const fileNodes: TreeNode[] = [];
 
   for (const [name, child] of node.children) {
@@ -46,27 +46,26 @@ function trieToTreeNodes(node: TrieNode): TreeNode[] {
       // File that is also a prefix of other paths (unlikely but handle it)
       fileNodes.push({ name, path: child.fullPath, type: 'file' });
       // Children become their own nodes
-      dirs.push(...trieToTreeNodes(child));
+      directories.push(...trieToTreeNodes(child));
     } else {
       const children = trieToTreeNodes(child);
-      dirs.push({ name, path: child.fullPath, type: 'directory', children });
+      directories.push({ name, path: child.fullPath, type: 'directory', children });
     }
   }
 
-  dirs.sort((a, b) => a.name.localeCompare(b.name));
+  directories.sort((a, b) => a.name.localeCompare(b.name));
   fileNodes.sort((a, b) => a.name.localeCompare(b.name));
 
-  return [...dirs, ...fileNodes];
+  return [...directories, ...fileNodes];
 }
 
-function collapseSingleChildDirs(nodes: TreeNode[]): TreeNode[] {
+function collapseSingleChildDirectories(nodes: TreeNode[]): TreeNode[] {
   return nodes.map((node) => {
     if (node.type === 'directory' && node.children) {
       let current = node;
       while (
         current.type === 'directory' &&
-        current.children &&
-        current.children.length === 1 &&
+        current.children?.length === 1 &&
         current.children[0].type === 'directory'
       ) {
         const child = current.children[0];
@@ -80,7 +79,7 @@ function collapseSingleChildDirs(nodes: TreeNode[]): TreeNode[] {
       return {
         ...current,
         children: current.children
-          ? collapseSingleChildDirs(current.children)
+          ? collapseSingleChildDirectories(current.children)
           : undefined,
       };
     }
@@ -93,7 +92,7 @@ export function buildFileTree(files: string[]): TreeNode[] {
 
   const trie = buildTrie(files);
   const tree = trieToTreeNodes(trie);
-  return collapseSingleChildDirs(tree);
+  return collapseSingleChildDirectories(tree);
 }
 
 /** Flatten tree into file paths in display order (depth-first, dirs first) */
@@ -123,7 +122,7 @@ export interface GroupTreeNode {
 }
 
 export function buildGroupedFileTree(
-  groups: Array<{ name: string; description?: string; files: string[] }>,
+  groups: { name: string; description?: string; files: string[] }[],
   allFiles: string[],
 ): GroupTreeNode[] {
   const groupedFiles = new Set(groups.flatMap((g) => g.files));
@@ -164,7 +163,7 @@ export function buildGroupedFileTree(
 }
 
 export function getGroupedFileOrder(
-  groups: Array<{ name: string; files: string[] }>,
+  groups: { name: string; files: string[] }[],
   allFiles: string[],
 ): string[] {
   const allFileSet = new Set(allFiles);

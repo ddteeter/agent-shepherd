@@ -15,14 +15,14 @@ describe('paths', () => {
   });
 
   it('isDevMode returns true when .git exists', async () => {
-    const { existsSync } = await import('fs');
+    const { existsSync } = await import('node:fs');
     vi.mocked(existsSync).mockReturnValue(true);
     const { isDevMode } = await import('../paths.js');
     expect(isDevMode()).toBe(true);
   });
 
   it('isDevMode returns false when .git does not exist', async () => {
-    const { existsSync } = await import('fs');
+    const { existsSync } = await import('node:fs');
     vi.mocked(existsSync).mockReturnValue(false);
     const { isDevMode } = await import('../paths.js');
     expect(isDevMode()).toBe(false);

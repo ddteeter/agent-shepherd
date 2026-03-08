@@ -1,14 +1,14 @@
 import type { FastifyInstance } from 'fastify';
-import { join } from 'path';
-import { homedir } from 'os';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 import { eq } from 'drizzle-orm';
 import { schema } from '../db/index.js';
 import { ConfigService } from '../services/config.js';
 
 export async function configRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
+  const database = (fastify as any).db;
   const globalConfigPath = join(homedir(), '.agent-shepherd', 'config.yml');
-  const configService = new ConfigService(db, globalConfigPath);
+  const configService = new ConfigService(database, globalConfigPath);
 
   // GET /api/config - Get merged global config (file + DB)
   fastify.get('/api/config', async () => {
@@ -32,7 +32,7 @@ export async function configRoutes(fastify: FastifyInstance) {
   fastify.get('/api/projects/:id/config', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, id))
@@ -51,7 +51,7 @@ export async function configRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { key, value } = request.body as { key: string; value: string };
 
-    const project = db
+    const project = database
       .select()
       .from(schema.projects)
       .where(eq(schema.projects.id, id))

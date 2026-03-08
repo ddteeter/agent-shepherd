@@ -28,8 +28,8 @@ export class GitService {
     return result.trim().split('\n').filter(Boolean);
   }
 
-  async getFileContent(ref: string, filePath: string): Promise<string> {
-    const result = await this.git.show([`${ref}:${filePath}`]);
+  async getFileContent(reference: string, filePath: string): Promise<string> {
+    const result = await this.git.show([`${reference}:${filePath}`]);
     return result;
   }
 

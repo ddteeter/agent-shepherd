@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-interface CommentFormProps {
+interface CommentFormProperties {
   onSubmit: (data: { body: string; severity?: string }) => void;
   onCancel: () => void;
   isReply?: boolean;
@@ -16,7 +16,7 @@ export function CommentForm({
   isEditing = false,
   initialBody = '',
   defaultSeverity = 'suggestion',
-}: CommentFormProps) {
+}: CommentFormProperties) {
   const [body, setBody] = useState(initialBody);
   const [severity, setSeverity] = useState(defaultSeverity);
 
@@ -38,7 +38,7 @@ export function CommentForm({
     >
       <textarea
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={(e) => { setBody(e.target.value); }}
         placeholder={isReply ? 'Write a reply...' : 'Write a comment...'}
         className="w-full p-2 border rounded text-sm resize-y min-h-[60px]"
         style={{
@@ -52,7 +52,7 @@ export function CommentForm({
           <label className="text-xs font-medium mr-2">Severity:</label>
           <select
             value={severity}
-            onChange={(e) => setSeverity(e.target.value)}
+            onChange={(e) => { setSeverity(e.target.value); }}
             className="text-sm border rounded px-2 py-1"
             style={{
               borderColor: 'var(--color-border)',

@@ -7,7 +7,7 @@ export interface AgentActivityEntry {
 
 export interface AgentAdapter {
   name: string;
-  startSession(opts: {
+  startSession(options: {
     projectPath: string;
     prompt: string;
     additionalDirs?: string[];

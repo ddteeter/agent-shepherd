@@ -17,7 +17,7 @@ function createMockAdapter(session?: Partial<AgentSession>): AgentAdapter {
   };
 }
 
-function createMockDb() {
+function createMockDatabase() {
   const pr = {
     id: 'pr-1',
     projectId: 'proj-1',
@@ -68,18 +68,18 @@ const mockSchema = {
 
 describe('Orchestrator (thin coordinator)', () => {
   let adapter: AgentAdapter;
-  let db: ReturnType<typeof createMockDb>;
+  let database: ReturnType<typeof createMockDatabase>;
   let broadcast: ReturnType<typeof vi.fn<(event: string, data: any) => void>>;
 
   beforeEach(() => {
     adapter = createMockAdapter();
-    db = createMockDb();
+    database = createMockDatabase();
     broadcast = vi.fn<(event: string, data: any) => void>();
   });
 
   it('runInsights delegates to InsightsAnalyzer', async () => {
     const orchestrator = new Orchestrator({
-      db,
+      db: database,
       schema: mockSchema,
       broadcast,
       adapter,
@@ -92,7 +92,7 @@ describe('Orchestrator (thin coordinator)', () => {
 
   it('cancelAgent with source cancels only that source', async () => {
     const orchestrator = new Orchestrator({
-      db,
+      db: database,
       schema: mockSchema,
       broadcast,
       adapter,
@@ -115,7 +115,7 @@ describe('Orchestrator (thin coordinator)', () => {
 
   it('cancelAgent without source cancels both sources', async () => {
     const orchestrator = new Orchestrator({
-      db,
+      db: database,
       schema: mockSchema,
       broadcast,
       adapter,
@@ -142,7 +142,7 @@ describe('Orchestrator (thin coordinator)', () => {
     };
 
     const orchestrator = new Orchestrator({
-      db,
+      db: database,
       schema: mockSchema,
       broadcast,
       adapter,

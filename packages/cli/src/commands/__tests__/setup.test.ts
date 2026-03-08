@@ -11,8 +11,8 @@ vi.mock('../../paths.js', () => ({
   isDevMode: vi.fn(),
 }));
 
-import { execSync } from 'child_process';
-import { isDevMode } from '../../paths.js';
+import { execSync } from 'node:child_process';
+import { isDevMode as isDevelopmentMode } from '../../paths.js';
 
 describe('setupCommand', () => {
   let program: Command;
@@ -28,7 +28,7 @@ describe('setupCommand', () => {
 
   it('succeeds when all steps pass (non-dev mode)', async () => {
     vi.mocked(execSync).mockReturnValue('1.0.0');
-    vi.mocked(isDevMode).mockReturnValue(false);
+    vi.mocked(isDevelopmentMode).mockReturnValue(false);
 
     await program.parseAsync(['node', 'test', 'setup']);
 
@@ -50,7 +50,7 @@ describe('setupCommand', () => {
         throw new Error('not found');
       return '';
     });
-    vi.mocked(isDevMode).mockReturnValue(false);
+    vi.mocked(isDevelopmentMode).mockReturnValue(false);
 
     await expect(program.parseAsync(['node', 'test', 'setup'])).rejects.toThrow(
       'exit',
@@ -64,7 +64,7 @@ describe('setupCommand', () => {
 
   it('runs npm link in dev mode', async () => {
     vi.mocked(execSync).mockReturnValue('1.0.0');
-    vi.mocked(isDevMode).mockReturnValue(true);
+    vi.mocked(isDevelopmentMode).mockReturnValue(true);
 
     await program.parseAsync(['node', 'test', 'setup']);
 
@@ -86,7 +86,7 @@ describe('setupCommand', () => {
         throw new Error('permission denied');
       return '1.0.0';
     });
-    vi.mocked(isDevMode).mockReturnValue(true);
+    vi.mocked(isDevelopmentMode).mockReturnValue(true);
 
     await expect(program.parseAsync(['node', 'test', 'setup'])).rejects.toThrow(
       'exit',
@@ -107,7 +107,7 @@ describe('setupCommand', () => {
         throw new Error('failed');
       return '1.0.0';
     });
-    vi.mocked(isDevMode).mockReturnValue(false);
+    vi.mocked(isDevelopmentMode).mockReturnValue(false);
 
     await expect(program.parseAsync(['node', 'test', 'setup'])).rejects.toThrow(
       'exit',

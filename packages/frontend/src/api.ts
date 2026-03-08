@@ -2,14 +2,14 @@ import { getSessionToken } from './session-token.js';
 
 const BASE = '/api';
 
-async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'X-Session-Token': getSessionToken(),
   };
-  if (opts?.body) headers['Content-Type'] = 'application/json';
+  if (options?.body) headers['Content-Type'] = 'application/json';
   const res = await fetch(`${BASE}${path}`, {
     headers,
-    ...opts,
+    ...options,
   });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   if (res.status === 204) return undefined as T;
@@ -28,20 +28,20 @@ export const api = {
     get: (id: string) => request<any>(`/prs/${id}`),
     diff: (
       id: string,
-      opts?: { cycle?: number; from?: number; to?: number },
+      options?: { cycle?: number; from?: number; to?: number },
     ) => {
-      const params = new URLSearchParams();
-      if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
-      if (opts?.from !== undefined) params.set('from', String(opts.from));
-      if (opts?.to !== undefined) params.set('to', String(opts.to));
-      const qs = params.toString();
+      const parameters = new URLSearchParams();
+      if (options?.cycle !== undefined) parameters.set('cycle', String(options.cycle));
+      if (options?.from !== undefined) parameters.set('from', String(options.from));
+      if (options?.to !== undefined) parameters.set('to', String(options.to));
+      const qs = parameters.toString();
       return request<any>(`/prs/${id}/diff${qs ? `?${qs}` : ''}`);
     },
     cycles: (id: string) => request<any[]>(`/prs/${id}/cycles/details`),
-    fileGroups: (id: string, opts?: { cycle?: number }) => {
-      const params = new URLSearchParams();
-      if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
-      const qs = params.toString();
+    fileGroups: (id: string, options?: { cycle?: number }) => {
+      const parameters = new URLSearchParams();
+      if (options?.cycle !== undefined) parameters.set('cycle', String(options.cycle));
+      const qs = parameters.toString();
       return request<{ fileGroups: any[] | null; cycleNumber: number }>(
         `/prs/${id}/file-groups${qs ? `?${qs}` : ''}`,
       );
@@ -54,8 +54,8 @@ export const api = {
         body: JSON.stringify({ action }),
       }),
     cancelAgent: (id: string, source?: string) => {
-      const params = source ? `?source=${source}` : '';
-      return request<any>(`/prs/${id}/cancel-agent${params}`, {
+      const parameters = source ? `?source=${source}` : '';
+      return request<any>(`/prs/${id}/cancel-agent${parameters}`, {
         method: 'POST',
       });
     },

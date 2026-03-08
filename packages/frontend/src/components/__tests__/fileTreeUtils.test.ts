@@ -97,10 +97,10 @@ describe('buildFileTree', () => {
     });
 
     // Inside src: directory (utils) first, then file (index.ts)
-    const srcChildren = result[0].children!;
-    expect(srcChildren[0].type).toBe('directory');
-    expect(srcChildren[0].name).toBe('utils');
-    expect(srcChildren[1]).toEqual({
+    const sourceChildren = result[0].children!;
+    expect(sourceChildren[0].type).toBe('directory');
+    expect(sourceChildren[0].name).toBe('utils');
+    expect(sourceChildren[1]).toEqual({
       name: 'index.ts',
       path: 'src/index.ts',
       type: 'file',
@@ -132,14 +132,14 @@ describe('buildFileTree', () => {
       'src/alpha/y.ts',
     ]);
 
-    const srcChildren = result[0].children!;
+    const sourceChildren = result[0].children!;
     // Directories first, alphabetically
-    expect(srcChildren[0].name).toBe('alpha');
-    expect(srcChildren[1].name).toBe('beta');
+    expect(sourceChildren[0].name).toBe('alpha');
+    expect(sourceChildren[1].name).toBe('beta');
     // Files next, alphabetically
-    expect(srcChildren[2].name).toBe('a.ts');
-    expect(srcChildren[3].name).toBe('m.ts');
-    expect(srcChildren[4].name).toBe('z.ts');
+    expect(sourceChildren[2].name).toBe('a.ts');
+    expect(sourceChildren[3].name).toBe('m.ts');
+    expect(sourceChildren[4].name).toBe('z.ts');
   });
 
   it('getFileTreeOrder returns files in tree display order (dirs first)', () => {

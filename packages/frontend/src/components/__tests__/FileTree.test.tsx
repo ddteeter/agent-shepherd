@@ -44,8 +44,8 @@ describe('FileTree', () => {
         onSelectFile={vi.fn()}
       />,
     );
-    const btn = screen.getByText('index.ts').closest('button');
-    expect(btn?.style.backgroundColor).toBeTruthy();
+    const button = screen.getByText('index.ts').closest('button');
+    expect(button?.style.backgroundColor).toBeTruthy();
   });
 
   it('renders directory nodes that can be collapsed', async () => {
@@ -212,8 +212,8 @@ describe('FileTree', () => {
         onViewModeChange={vi.fn()}
       />,
     );
-    const btn = screen.getByText('src/index.ts').closest('button');
-    expect(btn?.style.backgroundColor).toBeTruthy();
+    const button = screen.getByText('src/index.ts').closest('button');
+    expect(button?.style.backgroundColor).toBeTruthy();
   });
 
   it('renders ungrouped files in logical view', () => {

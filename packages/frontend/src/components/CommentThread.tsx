@@ -16,7 +16,7 @@ interface Comment {
   createdAt: string;
 }
 
-interface CommentThreadProps {
+interface CommentThreadProperties {
   comment: Comment;
   replies: Comment[];
   onReply: (commentId: string, body: string) => void;
@@ -44,7 +44,7 @@ export function CommentThread({
   onDelete,
   canEdit = false,
   threadStatus,
-}: CommentThreadProps) {
+}: CommentThreadProperties) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [userToggled, setUserToggled] = useState(false);
@@ -69,7 +69,7 @@ export function CommentThread({
         style={{ cursor: threadStatus === 'resolved' ? 'pointer' : undefined }}
         onClick={
           threadStatus === 'resolved'
-            ? () => setUserToggled((t) => !t)
+            ? () => { setUserToggled((t) => !t); }
             : undefined
         }
       >
@@ -101,7 +101,7 @@ export function CommentThread({
           >
             {comment.severity}
           </span>
-          {comment.filePath == null ? (
+          {comment.filePath == undefined ? (
             <span
               className="text-xs px-1.5 py-0.5 rounded font-mono"
               style={{
@@ -111,7 +111,7 @@ export function CommentThread({
             >
               PR
             </span>
-          ) : comment.startLine == null ? (
+          ) : comment.startLine == undefined ? (
             <span
               className="text-xs px-1.5 py-0.5 rounded font-mono"
               style={{
@@ -121,11 +121,11 @@ export function CommentThread({
             >
               File
             </span>
-          ) : comment.startLine !== comment.endLine ? (
+          ) : comment.startLine === comment.endLine ? null : (
             <span className="text-xs opacity-50 font-mono">
               L{comment.startLine}–L{comment.endLine}
             </span>
-          ) : null}
+          )}
           {comment.resolved && (
             <span className="text-xs opacity-50">Resolved</span>
           )}
@@ -153,7 +153,7 @@ export function CommentThread({
           )}
           {isEditable(comment) && editingId !== comment.id && (
             <button
-              onClick={() => setEditingId(comment.id)}
+              onClick={() => { setEditingId(comment.id); }}
               className="text-xs opacity-50 hover:opacity-100"
             >
               Edit
@@ -161,7 +161,7 @@ export function CommentThread({
           )}
           {isDeletable(comment) && (
             <button
-              onClick={() => onDelete!(comment.id)}
+              onClick={() => { onDelete!(comment.id); }}
               className="text-xs opacity-50 hover:opacity-100"
               style={{ color: 'var(--color-danger)' }}
             >
@@ -177,7 +177,7 @@ export function CommentThread({
               onEdit!(comment.id, body);
               setEditingId(null);
             }}
-            onCancel={() => setEditingId(null)}
+            onCancel={() => { setEditingId(null); }}
           />
         ) : (
           <p className="whitespace-pre-wrap">{comment.body}</p>
@@ -210,7 +210,7 @@ export function CommentThread({
               </span>
               {isEditable(reply) && editingId !== reply.id && (
                 <button
-                  onClick={() => setEditingId(reply.id)}
+                  onClick={() => { setEditingId(reply.id); }}
                   className="text-xs opacity-50 hover:opacity-100"
                 >
                   Edit
@@ -218,7 +218,7 @@ export function CommentThread({
               )}
               {isDeletable(reply) && (
                 <button
-                  onClick={() => onDelete!(reply.id)}
+                  onClick={() => { onDelete!(reply.id); }}
                   className="text-xs opacity-50 hover:opacity-100"
                   style={{ color: 'var(--color-danger)' }}
                 >
@@ -234,7 +234,7 @@ export function CommentThread({
                   onEdit!(reply.id, body);
                   setEditingId(null);
                 }}
-                onCancel={() => setEditingId(null)}
+                onCancel={() => { setEditingId(null); }}
               />
             ) : (
               <p className="whitespace-pre-wrap">{reply.body}</p>
@@ -249,7 +249,7 @@ export function CommentThread({
           style={{ borderColor: 'var(--color-border)' }}
         >
           <button
-            onClick={() => setShowReplyForm(!showReplyForm)}
+            onClick={() => { setShowReplyForm(!showReplyForm); }}
             className="text-xs px-2 py-1 rounded border"
             style={{ borderColor: 'var(--color-border)' }}
           >
@@ -257,7 +257,7 @@ export function CommentThread({
           </button>
           {!comment.resolved && (
             <button
-              onClick={() => onResolve(comment.id)}
+              onClick={() => { onResolve(comment.id); }}
               className="text-xs px-2 py-1 rounded border"
               style={{ borderColor: 'var(--color-border)' }}
             >
@@ -275,7 +275,7 @@ export function CommentThread({
               onReply(comment.id, body);
               setShowReplyForm(false);
             }}
-            onCancel={() => setShowReplyForm(false)}
+            onCancel={() => { setShowReplyForm(false); }}
           />
         </div>
       )}

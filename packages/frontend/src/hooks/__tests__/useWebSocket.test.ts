@@ -116,17 +116,17 @@ describe('useWebSocket', () => {
   });
 
   it('uses wss: protocol for https: pages', () => {
-    const originalProtocol = window.location.protocol;
-    Object.defineProperty(window, 'location', {
-      value: { ...window.location, protocol: 'https:', host: 'example.com' },
+    const originalProtocol = globalThis.location.protocol;
+    Object.defineProperty(globalThis, 'location', {
+      value: { ...globalThis.location, protocol: 'https:', host: 'example.com' },
       writable: true,
     });
 
     renderHook(() => useWebSocket());
     expect(mockWsInstances[0].url).toMatch(/^wss:/);
 
-    Object.defineProperty(window, 'location', {
-      value: { ...window.location, protocol: originalProtocol },
+    Object.defineProperty(globalThis, 'location', {
+      value: { ...globalThis.location, protocol: originalProtocol },
       writable: true,
     });
   });

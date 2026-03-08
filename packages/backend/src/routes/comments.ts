@@ -4,15 +4,15 @@ import type {
   BatchCommentPayload,
 } from '@agent-shepherd/shared';
 import { eq, inArray } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 import { extractFilesFromDiff } from './diff.js';
 
 /**
  * Find the latest (current) review cycle for a given PR.
  */
-function getCurrentCycleId(db: any, prId: string): string | null {
-  const cycles = db
+function getCurrentCycleId(database: any, prId: string): string | null {
+  const cycles = database
     .select()
     .from(schema.reviewCycles)
     .where(eq(schema.reviewCycles.prId, prId))
@@ -28,13 +28,13 @@ function getCurrentCycleId(db: any, prId: string): string | null {
 }
 
 export async function commentRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
+  const database = (fastify as any).db;
 
   // GET /api/projects/:projectId/comments/history — All comments across all PRs for a project
   fastify.get('/api/projects/:projectId/comments/history', async (request) => {
     const { projectId } = request.params as { projectId: string };
 
-    const prs = db
+    const prs = database
       .select()
       .from(schema.pullRequests)
       .where(eq(schema.pullRequests.projectId, projectId))
@@ -42,7 +42,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
     const prIds = prs.map((p: any) => p.id);
     if (prIds.length === 0) return [];
 
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(inArray(schema.reviewCycles.prId, prIds))
@@ -50,7 +50,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
     const cycleIds = cycles.map((c: any) => c.id);
     if (cycleIds.length === 0) return [];
 
-    const comments = db
+    const comments = database
       .select()
       .from(schema.comments)
       .where(inArray(schema.comments.reviewCycleId, cycleIds))
@@ -76,14 +76,14 @@ export async function commentRoutes(fastify: FastifyInstance) {
       parentCommentId,
     } = request.body as CreateCommentInput;
 
-    const reviewCycleId = getCurrentCycleId(db, prId);
+    const reviewCycleId = getCurrentCycleId(database, prId);
     if (!reviewCycleId) {
       reply.code(404).send({ error: 'No review cycle found for this PR' });
       return;
     }
 
     const id = randomUUID();
-    db.insert(schema.comments)
+    database.insert(schema.comments)
       .values({
         id,
         reviewCycleId,
@@ -97,7 +97,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       })
       .run();
 
-    const comment = db
+    const comment = database
       .select()
       .from(schema.comments)
       .where(eq(schema.comments.id, id))
@@ -108,17 +108,17 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
     // Auto-unresolve parent if it was resolved
     if (parentCommentId) {
-      const parent = db
+      const parent = database
         .select()
         .from(schema.comments)
         .where(eq(schema.comments.id, parentCommentId))
         .get();
-      if (parent && parent.resolved) {
-        db.update(schema.comments)
+      if (parent?.resolved) {
+        database.update(schema.comments)
           .set({ resolved: false })
           .where(eq(schema.comments.id, parentCommentId))
           .run();
-        const updatedParent = db
+        const updatedParent = database
           .select()
           .from(schema.comments)
           .where(eq(schema.comments.id, parentCommentId))
@@ -141,7 +141,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
     };
 
     // Get all review cycle IDs for this PR
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
@@ -156,7 +156,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return [];
     }
 
-    const allComments = db
+    const allComments = database
       .select()
       .from(schema.comments)
       .where(inArray(schema.comments.reviewCycleId, cycleIds))
@@ -201,7 +201,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
         null,
       );
       if (latestCycle) {
-        const snapshot = db
+        const snapshot = database
           .select()
           .from(schema.diffSnapshots)
           .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
@@ -214,7 +214,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       // Sort files by diff order (or alphabetical fallback)
       const filePaths = Object.keys(fileMap);
       if (diffFileOrder) {
-        const orderMap = new Map(diffFileOrder.map((f, i) => [f, i]));
+        const orderMap = new Map(diffFileOrder.map((f, index) => [f, index]));
         filePaths.sort((a, b) => {
           const ai = orderMap.get(a) ?? Infinity;
           const bi = orderMap.get(b) ?? Infinity;
@@ -260,7 +260,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       resolved: boolean;
     }>;
 
-    const existing = db
+    const existing = database
       .select()
       .from(schema.comments)
       .where(eq(schema.comments.id, id))
@@ -271,12 +271,12 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    db.update(schema.comments)
+    database.update(schema.comments)
       .set(updates)
       .where(eq(schema.comments.id, id))
       .run();
 
-    return db
+    return database
       .select()
       .from(schema.comments)
       .where(eq(schema.comments.id, id))
@@ -287,7 +287,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
   fastify.delete('/api/comments/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const existing = db
+    const existing = database
       .select()
       .from(schema.comments)
       .where(eq(schema.comments.id, id))
@@ -298,7 +298,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    db.delete(schema.comments).where(eq(schema.comments.id, id)).run();
+    database.delete(schema.comments).where(eq(schema.comments.id, id)).run();
 
     reply.code(204).send();
   });
@@ -308,7 +308,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
     const { prId } = request.params as { prId: string };
     const { comments, replies } = request.body as BatchCommentPayload;
 
-    const reviewCycleId = getCurrentCycleId(db, prId);
+    const reviewCycleId = getCurrentCycleId(database, prId);
     if (!reviewCycleId) {
       reply.code(404).send({ error: 'No review cycle found for this PR' });
       return;
@@ -321,7 +321,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
     // Create new comments (default author = 'agent')
     for (const c of comments) {
       const id = randomUUID();
-      db.insert(schema.comments)
+      database.insert(schema.comments)
         .values({
           id,
           reviewCycleId,
@@ -335,7 +335,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
         .run();
 
       if (broadcast) {
-        const comment = db
+        const comment = database
           .select()
           .from(schema.comments)
           .where(eq(schema.comments.id, id))
@@ -348,7 +348,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
     // Create replies (inherit filePath/startLine/endLine from parent)
     if (replies) {
       for (const r of replies) {
-        const parent = db
+        const parent = database
           .select()
           .from(schema.comments)
           .where(eq(schema.comments.id, r.parentCommentId))
@@ -356,7 +356,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
         if (parent) {
           const id = randomUUID();
-          db.insert(schema.comments)
+          database.insert(schema.comments)
             .values({
               id,
               reviewCycleId,
@@ -371,7 +371,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
             .run();
 
           if (broadcast) {
-            const reply = db
+            const reply = database
               .select()
               .from(schema.comments)
               .where(eq(schema.comments.id, id))
@@ -382,7 +382,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
 
           // Auto-unresolve parent if resolved
           if (parent.resolved) {
-            db.update(schema.comments)
+            database.update(schema.comments)
               .set({ resolved: false })
               .where(eq(schema.comments.id, r.parentCommentId))
               .run();

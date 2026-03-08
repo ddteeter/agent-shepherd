@@ -1,4 +1,4 @@
-interface ReviewBarProps {
+interface ReviewBarProperties {
   prId: string;
   prStatus: string;
   commentCount: number;
@@ -12,7 +12,7 @@ export function ReviewBar({
   commentCount,
   agentWorking,
   onReview,
-}: ReviewBarProps) {
+}: ReviewBarProperties) {
   if (prStatus !== 'open') {
     return (
       <div
@@ -36,11 +36,11 @@ export function ReviewBar({
       }}
     >
       <span className="text-sm opacity-70">
-        {commentCount} comment{commentCount !== 1 ? 's' : ''}
+        {commentCount} comment{commentCount === 1 ? '' : 's'}
       </span>
       <div className="flex items-center gap-3">
         <button
-          onClick={() => onReview('approve')}
+          onClick={() => { onReview('approve'); }}
           disabled={agentWorking}
           className="btn-approve px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
@@ -51,7 +51,7 @@ export function ReviewBar({
           Approve
         </button>
         <button
-          onClick={() => onReview('request-changes')}
+          onClick={() => { onReview('request-changes'); }}
           disabled={agentWorking}
           className="btn-danger px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           style={{

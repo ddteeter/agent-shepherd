@@ -130,16 +130,16 @@ describe('Pull Requests API - additional coverage', () => {
     const { id } = create.json();
 
     // Manually set cycle status to agent_working
-    const db = (server as any).db;
+    const database = (server as any).db;
     const { schema } = await import('../../db/index.js');
     const { eq } = await import('drizzle-orm');
-    const cycles = db
+    const cycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, id))
       .all();
     if (cycles.length > 0) {
-      db.update(schema.reviewCycles)
+      database.update(schema.reviewCycles)
         .set({ status: 'agent_working' })
         .where(eq(schema.reviewCycles.id, cycles[0].id))
         .run();

@@ -10,7 +10,7 @@ export function Dashboard() {
     api.projects
       .list()
       .then(setProjects)
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); });
   }, []);
 
   if (loading) return <div className="p-6">Loading...</div>;

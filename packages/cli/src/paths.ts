@@ -1,6 +1,6 @@
-import { dirname, resolve } from 'path';
-import { existsSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

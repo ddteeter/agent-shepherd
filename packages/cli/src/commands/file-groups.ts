@@ -6,12 +6,12 @@ export function fileGroupsCommand(program: Command, client: ApiClient) {
     .command('file-groups <pr-id>')
     .description('Fetch file groups for a PR (from latest cycle)')
     .option('--cycle <number>', 'Specific cycle number')
-    .action(async (prId: string, opts: { cycle?: string }) => {
-      const params = opts.cycle ? `?cycle=${opts.cycle}` : '';
+    .action(async (prId: string, options: { cycle?: string }) => {
+      const parameters = options.cycle ? `?cycle=${options.cycle}` : '';
       const result = await client.get<{
         fileGroups: any[] | null;
         cycleNumber: number;
-      }>(`/api/prs/${prId}/file-groups${params}`);
+      }>(`/api/prs/${prId}/file-groups${parameters}`);
 
       if (!result.fileGroups) {
         console.log('No file groups defined for this PR.');

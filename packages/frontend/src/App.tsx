@@ -19,7 +19,7 @@ export function App() {
     setSyntaxThemeState(value);
     try {
       localStorage.setItem('shepherd-syntax-theme', value);
-      window.dispatchEvent(
+      globalThis.dispatchEvent(
         new StorageEvent('storage', {
           key: 'shepherd-syntax-theme',
           newValue: value,
@@ -48,7 +48,7 @@ export function App() {
         <div className="flex items-center gap-3">
           <select
             value={syntaxTheme}
-            onChange={(e) => setSyntaxTheme(e.target.value)}
+            onChange={(e) => { setSyntaxTheme(e.target.value); }}
             className="text-sm px-2 py-1 rounded border cursor-pointer"
             style={{
               borderColor: 'var(--color-border)',

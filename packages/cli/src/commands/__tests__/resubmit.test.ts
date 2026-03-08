@@ -6,7 +6,7 @@ vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
 }));
 
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 
 describe('resubmitCommand', () => {
   let program: Command;

@@ -1,5 +1,5 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import yaml from 'js-yaml';
 import { eq } from 'drizzle-orm';
 import { schema } from '../db/index.js';
@@ -8,7 +8,7 @@ export type ConfigRecord = Record<string, unknown>;
 
 export class ConfigService {
   constructor(
-    private db: any,
+    private database: any,
     private globalConfigPath: string,
   ) {}
 
@@ -109,8 +109,8 @@ export class ConfigService {
    */
   getMergedGlobalConfig(): ConfigRecord {
     const fileConfig = this.readGlobalFileConfig();
-    const dbConfig = this.getGlobalDbConfig();
-    return { ...fileConfig, ...dbConfig };
+    const databaseConfig = this.getGlobalDbConfig();
+    return { ...fileConfig, ...databaseConfig };
   }
 
   /**
@@ -120,7 +120,7 @@ export class ConfigService {
   getMergedProjectConfig(projectId: string, projectPath: string): ConfigRecord {
     const globalFileConfig = this.readGlobalFileConfig();
     const projectFileConfig = this.readProjectFileConfig(projectPath);
-    const projectDbConfig = this.getProjectDbConfig(projectId);
-    return { ...globalFileConfig, ...projectFileConfig, ...projectDbConfig };
+    const projectDatabaseConfig = this.getProjectDbConfig(projectId);
+    return { ...globalFileConfig, ...projectFileConfig, ...projectDatabaseConfig };
   }
 }

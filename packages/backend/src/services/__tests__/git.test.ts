@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { GitService } from '../git.js';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 
 describe('GitService', () => {
   let repoPath: string;

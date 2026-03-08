@@ -1,6 +1,6 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { homedir } from 'node:os';
 
 export class ApiClient {
   private cachedToken: string | null = null;
@@ -49,7 +49,7 @@ export class ApiClient {
     const res = await fetch(this.url(path), {
       method: 'POST',
       headers,
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     if (!res.ok)
       throw new Error(`POST ${path}: ${res.status} ${await res.text()}`);

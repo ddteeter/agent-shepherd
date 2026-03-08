@@ -5,8 +5,8 @@ import { schema } from './index.js';
  * Find the latest review cycle for a PR by comparing cycle numbers.
  * Returns null if no cycles exist.
  */
-export function getLatestCycle(db: any, prId: string) {
-  const cycles = db
+export function getLatestCycle(database: any, prId: string) {
+  const cycles = database
     .select()
     .from(schema.reviewCycles)
     .where(eq(schema.reviewCycles.prId, prId))

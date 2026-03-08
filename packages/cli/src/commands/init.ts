@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { resolve, basename } from 'path';
+import { resolve, basename } from 'node:path';
 import { ApiClient } from '../api-client.js';
 
 export function initCommand(program: Command, client: ApiClient) {
@@ -11,15 +11,15 @@ export function initCommand(program: Command, client: ApiClient) {
     .action(
       async (
         path: string | undefined,
-        opts: { name?: string; baseBranch: string },
+        options: { name?: string; baseBranch: string },
       ) => {
         const projectPath = resolve(path || '.');
-        const name = opts.name || basename(projectPath);
+        const name = options.name || basename(projectPath);
 
         const project = await client.post('/api/projects', {
           name,
           path: projectPath,
-          baseBranch: opts.baseBranch,
+          baseBranch: options.baseBranch,
         });
         console.log(
           `Project registered: ${(project as any).name} (${(project as any).id})`,

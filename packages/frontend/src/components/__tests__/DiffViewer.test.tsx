@@ -40,16 +40,16 @@ const MULTI_LINE_DIFF = `diff --git a/src/app.ts b/src/app.ts
 
 /** Get all diff-line elements that are clickable (have the cursor-pointer class) */
 function getDiffLines(container: HTMLElement) {
-  return Array.from(container.querySelectorAll<HTMLElement>('.diff-line'));
+  return [...container.querySelectorAll<HTMLElement>('.diff-line')];
 }
 
-type AddCommentData = {
+interface AddCommentData {
   filePath: string | null;
   startLine: number | null;
   endLine: number | null;
   body: string;
   severity: string;
-};
+}
 
 describe('DiffViewer — multi-line comment support', () => {
   let onAddComment: ReturnType<typeof vi.fn<(data: AddCommentData) => void>>;
@@ -245,7 +245,7 @@ describe('FileTree and DiffViewer sort order', () => {
     const diffFiles = container.querySelectorAll<HTMLElement>(
       'div[data-file-path]',
     );
-    const diffOrder = Array.from(diffFiles).map((el) => el.dataset.filePath);
+    const diffOrder = [...diffFiles].map((element) => element.dataset.filePath);
 
     // FileTree shows: src/ dir first (with utils/helper.ts then index.ts inside),
     // then root files .gitignore and package.json
@@ -450,7 +450,7 @@ describe('DiffViewer — grouped file order', () => {
     const fileHeaders = container.querySelectorAll<HTMLElement>(
       'div[data-file-path]',
     );
-    const order = Array.from(fileHeaders).map((el) => el.dataset.filePath);
+    const order = [...fileHeaders].map((element) => element.dataset.filePath);
     expect(order).toEqual(['package.json', 'src/app.ts']);
   });
 });
@@ -505,8 +505,8 @@ describe('DiffViewer — large file collapse', () => {
   it('collapses large files by default', () => {
     // Build a diff with > 200 lines
     let diff = `diff --git a/big.ts b/big.ts\n--- /dev/null\n+++ b/big.ts\n@@ -0,0 +1,250 @@\n`;
-    for (let i = 1; i <= 250; i++) {
-      diff += `+line ${i}\n`;
+    for (let index = 1; index <= 250; index++) {
+      diff += `+line ${index}\n`;
     }
 
     render(
@@ -523,8 +523,8 @@ describe('DiffViewer — large file collapse', () => {
   it('expands collapsed file on click', async () => {
     const user = userEvent.setup();
     let diff = `diff --git a/big.ts b/big.ts\n--- /dev/null\n+++ b/big.ts\n@@ -0,0 +1,250 @@\n`;
-    for (let i = 1; i <= 250; i++) {
-      diff += `+line ${i}\n`;
+    for (let index = 1; index <= 250; index++) {
+      diff += `+line ${index}\n`;
     }
 
     render(

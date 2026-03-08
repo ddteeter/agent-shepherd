@@ -15,7 +15,7 @@ vi.mock('shiki', () => {
     codeToTokens: vi
       .fn()
       .mockReturnValue({ tokens: [[{ content: 'test', color: '#fff' }]] }),
-    loadTheme: vi.fn().mockResolvedValue(undefined),
+    loadTheme: vi.fn().mockResolvedValue(),
   };
   return {
     createHighlighter: vi.fn().mockResolvedValue(mockHighlighter),
@@ -216,7 +216,7 @@ describe('useHighlighter', () => {
     });
 
     act(() => {
-      window.dispatchEvent(
+      globalThis.dispatchEvent(
         new StorageEvent('storage', {
           key: 'shepherd-syntax-theme',
           newValue: 'github-light',

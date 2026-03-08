@@ -1,21 +1,21 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir, homedir } from 'os';
-import { createDb } from '../../db/index.js';
+import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir, homedir } from 'node:os';
+import { createDb as createDatabase } from '../../db/index.js';
 import { schema } from '../../db/index.js';
 import { ConfigService } from '../config.js';
 
 describe('ConfigService', () => {
   let tmpDir: string;
-  let db: ReturnType<typeof createDb>['db'];
-  let sqlite: ReturnType<typeof createDb>['sqlite'];
+  let database: ReturnType<typeof createDatabase>['db'];
+  let sqlite: ReturnType<typeof createDatabase>['sqlite'];
   let configService: ConfigService;
 
   beforeEach(async () => {
     tmpDir = await mkdtemp(join(tmpdir(), 'shepherd-config-test-'));
-    const result = createDb(':memory:');
-    db = result.db;
+    const result = createDatabase(':memory:');
+    database = result.db;
     sqlite = result.sqlite;
   });
 
@@ -27,7 +27,7 @@ describe('ConfigService', () => {
   describe('readGlobalFileConfig', () => {
     it('returns empty object when global config file does not exist', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.readGlobalFileConfig();
@@ -42,7 +42,7 @@ describe('ConfigService', () => {
         'reviewModel: claude-3\nmaxRetries: 3\n',
       );
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
       const config = configService.readGlobalFileConfig();
       expect(config).toEqual({ reviewModel: 'claude-3', maxRetries: 3 });
     });
@@ -55,7 +55,7 @@ describe('ConfigService', () => {
         ': : invalid:\nyaml\n  bad',
       );
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
       const config = configService.readGlobalFileConfig();
       expect(config).toEqual({});
     });
@@ -64,7 +64,7 @@ describe('ConfigService', () => {
   describe('readProjectFileConfig', () => {
     it('returns empty object when project config file does not exist', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.readProjectFileConfig('/nonexistent/path');
@@ -80,7 +80,7 @@ describe('ConfigService', () => {
       );
 
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.readProjectFileConfig(projectDir);
@@ -91,7 +91,7 @@ describe('ConfigService', () => {
   describe('getGlobalDbConfig', () => {
     it('returns empty object when no DB config entries exist', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.getGlobalDbConfig();
@@ -100,14 +100,14 @@ describe('ConfigService', () => {
 
     it('returns DB config entries as key-value object', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
-      db.insert(schema.globalConfig)
+      database.insert(schema.globalConfig)
         .values({ key: 'reviewModel', value: 'gpt-4' })
         .run();
-      db.insert(schema.globalConfig)
+      database.insert(schema.globalConfig)
         .values({ key: 'maxRetries', value: '5' })
         .run();
 
@@ -119,12 +119,12 @@ describe('ConfigService', () => {
   describe('getProjectDbConfig', () => {
     it('returns empty object when no project DB config entries exist', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
       // Create a project first
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -138,11 +138,11 @@ describe('ConfigService', () => {
 
     it('returns project-specific DB config entries', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -150,10 +150,10 @@ describe('ConfigService', () => {
         })
         .run();
 
-      db.insert(schema.projectConfig)
+      database.insert(schema.projectConfig)
         .values({ projectId: 'proj-1', key: 'baseBranch', value: 'staging' })
         .run();
-      db.insert(schema.projectConfig)
+      database.insert(schema.projectConfig)
         .values({ projectId: 'proj-1', key: 'autoReview', value: 'false' })
         .run();
 
@@ -165,7 +165,7 @@ describe('ConfigService', () => {
   describe('setGlobalDbConfig', () => {
     it('inserts a new global config key', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
@@ -176,7 +176,7 @@ describe('ConfigService', () => {
 
     it('updates an existing global config key', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
@@ -191,11 +191,11 @@ describe('ConfigService', () => {
   describe('setProjectDbConfig', () => {
     it('inserts a new project config key', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -210,11 +210,11 @@ describe('ConfigService', () => {
 
     it('updates an existing project config key', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
 
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -239,7 +239,7 @@ describe('ConfigService', () => {
         'reviewModel: claude-3\nmaxRetries: 3\nlogLevel: info\n',
       );
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
 
       // DB override for reviewModel
       configService.setGlobalDbConfig('reviewModel', 'gpt-4');
@@ -259,14 +259,14 @@ describe('ConfigService', () => {
       await mkdir(configDir, { recursive: true });
       await writeFile(join(configDir, 'config.yml'), 'reviewModel: claude-3\n');
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
       const config = configService.getMergedGlobalConfig();
       expect(config).toEqual({ reviewModel: 'claude-3' });
     });
 
     it('returns only DB config when no file exists', () => {
       configService = new ConfigService(
-        db,
+        database,
         join(tmpDir, '.agent-shepherd', 'config.yml'),
       );
       configService.setGlobalDbConfig('reviewModel', 'gpt-4');
@@ -294,10 +294,10 @@ describe('ConfigService', () => {
         'reviewModel: project-model\nbaseBranch: develop\nprojectOnly: fromProject\n',
       );
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
 
       // Create project in DB
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'my-project',
@@ -332,9 +332,9 @@ describe('ConfigService', () => {
         'baseBranch: develop\n',
       );
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
 
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'my-project',
@@ -364,9 +364,9 @@ describe('ConfigService', () => {
         'reviewModel: project-model\n',
       );
 
-      configService = new ConfigService(db, join(configDir, 'config.yml'));
+      configService = new ConfigService(database, join(configDir, 'config.yml'));
 
-      db.insert(schema.projects)
+      database.insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'my-project',

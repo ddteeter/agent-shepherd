@@ -5,20 +5,20 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ClaudeCodeSessionLogProvider } from '../claude-code-provider.js';
 
 describe('ClaudeCodeSessionLogProvider', () => {
-  let tempHome: string;
+  let temporaryHome: string;
   let provider: ClaudeCodeSessionLogProvider;
 
   beforeEach(() => {
-    tempHome = join(
+    temporaryHome = join(
       tmpdir(),
       `claude-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     );
-    mkdirSync(tempHome, { recursive: true });
-    provider = new ClaudeCodeSessionLogProvider({ homeDir: tempHome });
+    mkdirSync(temporaryHome, { recursive: true });
+    provider = new ClaudeCodeSessionLogProvider({ homeDir: temporaryHome });
   });
 
   afterEach(() => {
-    rmSync(tempHome, { recursive: true, force: true });
+    rmSync(temporaryHome, { recursive: true, force: true });
   });
 
   function createSessionFile(
@@ -26,8 +26,8 @@ describe('ClaudeCodeSessionLogProvider', () => {
     fileName: string,
     lines: Record<string, unknown>[],
   ): void {
-    const projectDirKey = projectPath.replace(/\//g, '-');
-    const dir = join(tempHome, '.claude', 'projects', projectDirKey);
+    const projectDirKey = projectPath.replaceAll('/', '-');
+    const dir = join(temporaryHome, '.claude', 'projects', projectDirKey);
     mkdirSync(dir, { recursive: true });
     const content = lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
     writeFileSync(join(dir, fileName), content);

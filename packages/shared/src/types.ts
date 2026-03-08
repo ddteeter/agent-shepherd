@@ -74,18 +74,18 @@ export interface FileGroup {
 }
 
 export interface BatchCommentPayload {
-  comments: Array<{
+  comments: {
     filePath?: string | null;
     startLine?: number | null;
     endLine?: number | null;
     body: string;
     severity?: CommentSeverity;
-  }>;
-  replies?: Array<{
+  }[];
+  replies?: {
     parentCommentId: string;
     body: string;
     severity?: CommentSeverity;
-  }>;
+  }[];
 }
 
 export interface CreateProjectInput {

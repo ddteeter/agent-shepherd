@@ -394,7 +394,7 @@ describe('CommentThread — replies', () => {
     await user.type(textarea, 'My reply');
     // Now the form has its own Reply submit button
     const submitButtons = screen.getAllByText('Reply');
-    await user.click(submitButtons[submitButtons.length - 1]);
+    await user.click(submitButtons.at(-1));
     expect(onReply).toHaveBeenCalledWith('c1', 'My reply');
   });
 

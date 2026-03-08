@@ -32,7 +32,7 @@ describe('api', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 204,
-      json: () => Promise.resolve(undefined),
+      json: () => Promise.resolve(),
       text: () => Promise.resolve(''),
     });
   }

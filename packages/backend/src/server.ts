@@ -1,13 +1,13 @@
-import { existsSync, mkdirSync, readFileSync } from 'fs';
-import { dirname, join, resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { homedir } from 'os';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { eq } from 'drizzle-orm';
-import { createDb } from './db/index.js';
+import { createDb as createDatabase } from './db/index.js';
 import { schema } from './db/index.js';
 import { projectRoutes } from './routes/projects.js';
 import { pullRequestRoutes } from './routes/pull-requests.js';
@@ -38,25 +38,25 @@ export interface ServerOptions {
   frontendPort?: number;
 }
 
-export async function buildServer(opts: ServerOptions = {}) {
+export async function buildServer(options: ServerOptions = {}) {
   const defaultDbDir = join(homedir(), '.agent-shepherd');
-  const defaultDbPath = join(defaultDbDir, 'agent-shepherd.db');
+  const defaultDatabasePath = join(defaultDbDir, 'agent-shepherd.db');
   const {
-    dbPath = defaultDbPath,
+    dbPath: databasePath = defaultDatabasePath,
     port = 3847,
     host = '127.0.0.1',
     frontendPort = 3848,
-  } = opts;
+  } = options;
 
-  const dataDir = dbPath !== ':memory:' ? dirname(dbPath) : null;
+  const dataDir = databasePath === ':memory:' ? null : dirname(databasePath);
 
   if (dataDir) {
     mkdirSync(dataDir, { recursive: true });
   }
 
   // Session token setup
-  const sessionToken = opts.sessionToken ?? generateSessionToken();
-  if (dataDir && !opts.sessionToken) {
+  const sessionToken = options.sessionToken ?? generateSessionToken();
+  if (dataDir && !options.sessionToken) {
     writeSessionToken(dataDir, sessionToken);
   }
 
@@ -74,12 +74,12 @@ export async function buildServer(opts: ServerOptions = {}) {
   ]);
 
   await fastify.register(cors, {
-    origin: (origin, cb) => {
+    origin: (origin, callback) => {
       // Allow requests with no Origin header (CLI, same-origin, curl)
       if (!origin || allowedOrigins.has(origin)) {
-        cb(null, true);
+        callback(null, true);
       } else {
-        cb(new Error('Not allowed by CORS'), false);
+        callback(new Error('Not allowed by CORS'), false);
       }
     },
   });
@@ -89,7 +89,7 @@ export async function buildServer(opts: ServerOptions = {}) {
 
   fastify.decorate('broadcast', broadcast);
 
-  const { db, sqlite } = createDb(dbPath);
+  const { db, sqlite } = createDatabase(databasePath);
 
   fastify.decorate('db', db);
   fastify.decorate('sqlite', sqlite);
@@ -103,13 +103,13 @@ export async function buildServer(opts: ServerOptions = {}) {
   const notificationService = new NotificationService();
   fastify.decorate('notificationService', notificationService);
 
-  if (!opts.disableOrchestrator) {
+  if (!options.disableOrchestrator) {
     const orchestrator = new Orchestrator({
       db,
       schema,
       broadcast,
       notificationService,
-      devMode: opts.devMode,
+      devMode: options.devMode,
     });
     fastify.decorate('orchestrator', orchestrator);
   }
@@ -142,7 +142,7 @@ export async function buildServer(opts: ServerOptions = {}) {
 
   fastify.addHook('onClose', () => {
     sqlite.close();
-    if (dataDir && !opts.sessionToken) {
+    if (dataDir && !options.sessionToken) {
       deleteSessionToken(dataDir);
     }
   });
@@ -160,17 +160,17 @@ export async function buildServer(opts: ServerOptions = {}) {
 
   // Serve bundled frontend static files (production mode)
   const __dirname = dirname(fileURLToPath(import.meta.url));
-  const frontendDist = resolve(__dirname, '../../frontend/dist');
-  if (existsSync(frontendDist)) {
+  const frontendDistribution = resolve(__dirname, '../../frontend/dist');
+  if (existsSync(frontendDistribution)) {
     // Read index.html and inject session token
-    const rawHtml = readFileSync(join(frontendDist, 'index.html'), 'utf-8');
+    const rawHtml = readFileSync(join(frontendDistribution, 'index.html'), 'utf-8');
     const injectedHtml = rawHtml.replace(
       '</head>',
       `<script>window.__SHEPHERD_TOKEN__="${sessionToken}"</script></head>`,
     );
 
     await fastify.register(fastifyStatic, {
-      root: frontendDist,
+      root: frontendDistribution,
       prefix: '/',
     });
 

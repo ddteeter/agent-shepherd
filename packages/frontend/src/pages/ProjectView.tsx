@@ -10,18 +10,16 @@ export function ProjectView() {
   const [tab, setTab] = useState<'open' | 'approved' | 'closed'>('open');
   const [loading, setLoading] = useState(true);
 
-  useWebSocket((msg) => {
-    if (
-      msg.event === 'pr:created' ||
-      msg.event === 'pr:updated' ||
-      msg.event === 'review:submitted' ||
-      msg.event === 'agent:completed' ||
-      msg.event === 'agent:error'
-    ) {
-      if (projectId) {
+  useWebSocket((message) => {
+    if ((
+      message.event === 'pr:created' ||
+      message.event === 'pr:updated' ||
+      message.event === 'review:submitted' ||
+      message.event === 'agent:completed' ||
+      message.event === 'agent:error'
+    ) && projectId) {
         api.prs.list(projectId).then(setPrs);
       }
-    }
   });
 
   useEffect(() => {
@@ -31,16 +29,16 @@ export function ProjectView() {
         setProject(proj);
         setPrs(prList);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); });
   }, [projectId]);
 
   const handleClosePr = async (e: React.MouseEvent, prId: string) => {
     e.preventDefault();
     try {
       const updated = await api.prs.close(prId);
-      setPrs((prev) => prev.map((p) => (p.id === prId ? updated : p)));
-    } catch (err) {
-      console.error('Failed to close PR:', err);
+      setPrs((previous) => previous.map((p) => (p.id === prId ? updated : p)));
+    } catch (error) {
+      console.error('Failed to close PR:', error);
     }
   };
 
@@ -48,9 +46,9 @@ export function ProjectView() {
     e.preventDefault();
     try {
       const updated = await api.prs.reopen(prId);
-      setPrs((prev) => prev.map((p) => (p.id === prId ? updated : p)));
-    } catch (err) {
-      console.error('Failed to reopen PR:', err);
+      setPrs((previous) => previous.map((p) => (p.id === prId ? updated : p)));
+    } catch (error) {
+      console.error('Failed to reopen PR:', error);
     }
   };
 
@@ -77,7 +75,7 @@ export function ProjectView() {
         {tabs.map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => { setTab(t); }}
             className={`pb-2 px-1 text-sm capitalize ${tab === t ? 'border-b-2 font-medium' : 'opacity-70'}`}
             style={tab === t ? { borderColor: 'var(--color-accent)' } : {}}
           >

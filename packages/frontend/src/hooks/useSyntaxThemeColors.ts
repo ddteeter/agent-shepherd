@@ -60,25 +60,24 @@ export function useSyntaxThemeColors(themeId: string) {
     const loader = bundledThemes[themeId as keyof typeof bundledThemes];
     if (!loader) return;
 
-    loader().then((mod) => {
+    loader().then((module_) => {
       if (cancelled) return;
 
-      const theme = 'default' in mod ? mod.default : mod;
+      const theme = 'default' in module_ ? module_.default : module_;
       const colors: Record<string, string> = (theme as any).colors ?? {};
       const type: string = (theme as any).type ?? 'dark';
 
-      document.documentElement.setAttribute('data-theme', type);
+      document.documentElement.dataset.theme = type;
 
       const style = document.documentElement.style;
-      for (const [cssVar, keys] of COLOR_MAP) {
+      for (const [cssVariable, keys] of COLOR_MAP) {
         const value = keys.reduce<string | undefined>(
           (found, key) => found ?? colors[key],
-          undefined,
         );
         if (value) {
-          style.setProperty(cssVar, value);
+          style.setProperty(cssVariable, value);
         } else {
-          style.removeProperty(cssVar);
+          style.removeProperty(cssVariable);
         }
       }
     });

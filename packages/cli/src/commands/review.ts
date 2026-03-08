@@ -4,11 +4,11 @@ import { ApiClient } from '../api-client.js';
 interface CommentSummary {
   total: number;
   bySeverity: Record<string, number>;
-  files: Array<{
+  files: {
     path: string;
     count: number;
     bySeverity: Record<string, number>;
-  }>;
+  }[];
   generalCount: number;
 }
 
@@ -25,27 +25,24 @@ interface Comment {
 }
 
 function formatSummary(summary: CommentSummary, prTitle: string): string {
-  const lines: string[] = [];
-  lines.push(`# Review Comments for: ${prTitle} (${summary.total} comments)\n`);
-  lines.push(`## Summary`);
+  const lines: string[] = [ `# Review Comments for: ${prTitle} (${summary.total} comments)\n`, `## Summary`];
   for (const [sev, count] of Object.entries(summary.bySeverity)) {
     lines.push(`- ${count} ${sev}`);
   }
   lines.push('');
 
   if (summary.generalCount > 0) {
-    lines.push(`General comments: ${summary.generalCount}`);
-    lines.push('');
+    lines.push(`General comments: ${summary.generalCount}`, '');
   }
 
   if (summary.files.length > 0) {
     lines.push(`## Files (in diff order)`);
-    for (let i = 0; i < summary.files.length; i++) {
-      const f = summary.files[i];
+    for (let index = 0; index < summary.files.length; index++) {
+      const f = summary.files[index];
       const sevParts = Object.entries(f.bySeverity)
         .map(([s, c]) => `${c} ${s}`)
         .join(', ');
-      lines.push(`${i + 1}. ${f.path} (${f.count} comments: ${sevParts})`);
+      lines.push(`${index + 1}. ${f.path} (${f.count} comments: ${sevParts})`);
     }
   }
 
@@ -63,21 +60,19 @@ function formatComments(comments: Comment[], heading: string): string {
   withFile.sort((a, b) => (a.startLine ?? 0) - (b.startLine ?? 0));
 
   const ordered = [...general, ...withFile];
-  const lines: string[] = [];
-  lines.push(`# ${heading}\n`);
+  const lines: string[] = [ `# ${heading}\n`];
 
   for (const c of ordered) {
     const sevLabel =
       c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
     let location = '';
-    if (c.startLine != null) {
+    if (c.startLine != undefined) {
       location =
-        c.startLine === c.endLine || c.endLine == null
+        c.startLine === c.endLine || c.endLine == undefined
           ? ` Line ${c.startLine}`
           : ` Lines ${c.startLine}-${c.endLine}`;
     }
-    lines.push(`[${sevLabel}]${location} (comment ID: ${c.id})`);
-    lines.push(`> ${c.body}`);
+    lines.push(`[${sevLabel}]${location} (comment ID: ${c.id})`, `> ${c.body}`);
 
     // Find thread replies for this comment
     const thread = replies.filter((r) => r.parentCommentId === c.id);
@@ -111,7 +106,7 @@ export function reviewCommand(program: Command, client: ApiClient) {
     .action(
       async (
         prId: string,
-        opts: {
+        options: {
           summary?: boolean;
           file?: string;
           severity?: string;
@@ -120,7 +115,7 @@ export function reviewCommand(program: Command, client: ApiClient) {
       ) => {
         const pr = await client.get<{ title: string }>(`/api/prs/${prId}`);
 
-        if (opts.summary) {
+        if (options.summary) {
           const summary = await client.get<CommentSummary>(
             `/api/prs/${prId}/comments?summary=true`,
           );
@@ -129,17 +124,17 @@ export function reviewCommand(program: Command, client: ApiClient) {
         }
 
         // Build query params
-        const params = new URLSearchParams();
-        if (opts.file) params.set('filePath', opts.file);
-        if (opts.severity) params.set('severity', opts.severity);
-        const qs = params.toString();
+        const parameters = new URLSearchParams();
+        if (options.file) parameters.set('filePath', options.file);
+        if (options.severity) parameters.set('severity', options.severity);
+        const qs = parameters.toString();
         const url = `/api/prs/${prId}/comments${qs ? `?${qs}` : ''}`;
 
         const comments = await client.get<Comment[]>(url);
-        const heading = opts.file
-          ? `Comments for: ${opts.file}`
-          : opts.severity
-            ? `${opts.severity} comments`
+        const heading = options.file
+          ? `Comments for: ${options.file}`
+          : options.severity
+            ? `${options.severity} comments`
             : `All comments`;
 
         console.log(formatComments(comments, heading));

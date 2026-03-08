@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
 export function readyCommand(program: Command, client: ApiClient) {
@@ -15,9 +15,9 @@ export function readyCommand(program: Command, client: ApiClient) {
       'Path to JSON file with logical file groupings',
     )
     .action(
-      async (prId: string, opts: { file?: string; fileGroups?: string }) => {
-        if (opts.file) {
-          const payload = await readFile(opts.file, 'utf-8');
+      async (prId: string, options: { file?: string; fileGroups?: string }) => {
+        if (options.file) {
+          const payload = await readFile(options.file, 'utf-8');
           const result = await client.post(
             `/api/prs/${prId}/comments/batch`,
             JSON.parse(payload),
@@ -28,8 +28,8 @@ export function readyCommand(program: Command, client: ApiClient) {
         }
 
         let fileGroups: any[] | undefined;
-        if (opts.fileGroups) {
-          const raw = await readFile(opts.fileGroups, 'utf-8');
+        if (options.fileGroups) {
+          const raw = await readFile(options.fileGroups, 'utf-8');
           fileGroups = JSON.parse(raw);
         }
 

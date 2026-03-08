@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
 export function batchCommand(program: Command, client: ApiClient) {
@@ -8,12 +8,12 @@ export function batchCommand(program: Command, client: ApiClient) {
     .description('Batch submit comments and replies')
     .option('-f, --file <path>', 'Path to JSON file with batch payload')
     .option('--stdin', 'Read batch payload from stdin')
-    .action(async (prId: string, opts: { file?: string; stdin?: boolean }) => {
+    .action(async (prId: string, options: { file?: string; stdin?: boolean }) => {
       let payload: string;
 
-      if (opts.file) {
-        payload = await readFile(opts.file, 'utf-8');
-      } else if (opts.stdin) {
+      if (options.file) {
+        payload = await readFile(options.file, 'utf-8');
+      } else if (options.stdin) {
         const chunks: Buffer[] = [];
         for await (const chunk of process.stdin) {
           chunks.push(chunk);
