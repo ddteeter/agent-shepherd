@@ -622,7 +622,13 @@ export function PRReview() {
             </div>
           ) : typeof diffData.diff !== 'string' ? (
             <div className="flex-1 flex items-center justify-center p-6">
-              <p className="text-sm opacity-70">Diff snapshot is unavailable for this cycle.</p>
+              <div className="text-center">
+                <p className="text-sm opacity-70">Diff snapshot is unavailable for this cycle.</p>
+                <p className="text-xs opacity-50 mt-1">
+                  This cycle was superseded before a diff snapshot could be captured,
+                  or the snapshot data was lost. Try viewing a more recent cycle instead.
+                </p>
+              </div>
             </div>
           ) : (
           <>
