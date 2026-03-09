@@ -6,7 +6,7 @@ interface AgentStatusSectionProperties {
   activity: ActivityEntry[];
   onCancel: () => void;
   label?: string;
-  error?: string | undefined;
+  error?: string;
 }
 
 export function AgentStatusSection({
@@ -15,7 +15,7 @@ export function AgentStatusSection({
   onCancel,
   label = 'Agent working...',
   error,
-}: AgentStatusSectionProperties) {
+}: Readonly<AgentStatusSectionProperties>) {
   const showActivity = active || activity.length > 0;
 
   if (!active && !error && !showActivity) return;

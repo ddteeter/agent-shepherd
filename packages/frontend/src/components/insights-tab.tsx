@@ -44,11 +44,11 @@ function CategorySection<T>({
   title,
   items,
   renderItem,
-}: {
+}: Readonly<{
   title: string;
   items: T[];
   renderItem: (item: T, index: number) => React.ReactNode;
-}) {
+}>) {
   const [collapsed, setCollapsed] = useState(false);
 
   if (items.length === 0) return;
@@ -96,7 +96,7 @@ const confidenceColors: Record<
   },
 };
 
-function InsightCard({ item }: { item: InsightItem }) {
+function InsightCard({ item }: Readonly<{ item: InsightItem }>) {
   const config = confidenceColors[item.confidence];
   return (
     <div
@@ -137,7 +137,7 @@ export function InsightsTab({
   analyzerRunning,
   analyzerActivity,
   onCancelAnalyzer,
-}: InsightsTabProperties) {
+}: Readonly<InsightsTabProperties>) {
   if (!hasComments && !insights && !analyzerRunning) {
     return (
       <div className="p-6 text-center">

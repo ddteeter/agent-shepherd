@@ -1,6 +1,7 @@
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import unicorn from 'eslint-plugin-unicorn';
+import sonarjs from 'eslint-plugin-sonarjs';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import eslintConfigPrettier from 'eslint-config-prettier';
@@ -25,6 +26,7 @@ export default tseslint.config(
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   unicorn.configs['flat/recommended'],
+  sonarjs.configs.recommended,
 
   // TypeScript parser options — point at each package's tsconfig
   {
@@ -36,6 +38,13 @@ export default tseslint.config(
     },
     rules: {
       'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
+      'sonarjs/no-unused-vars': 'off',
+      'sonarjs/unused-import': 'off',
+      'sonarjs/no-dead-store': 'off',
+      'sonarjs/publicly-writable-directories': 'off',
+      'sonarjs/no-os-command-from-path': 'off',
+      'sonarjs/pseudo-random': 'off',
+      'sonarjs/os-command': 'off',
     },
   },
 
@@ -52,6 +61,7 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      'sonarjs/no-nested-functions': ['error', { threshold: 5 }],
     },
   },
 

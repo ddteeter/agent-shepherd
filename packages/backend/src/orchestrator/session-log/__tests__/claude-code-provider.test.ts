@@ -103,7 +103,7 @@ describe('ClaudeCodeSessionLogProvider', () => {
 
       expect(sessions).toHaveLength(2);
       const sessionIds = sessions.map((s) => s.sessionId);
-      sessionIds.sort();
+      sessionIds.sort((a, b) => a.localeCompare(b));
       expect(sessionIds).toEqual(['sess-1', 'sess-3']);
       expect(sessions.every((s) => s.branch === 'feat/x')).toBe(true);
       for (const s of sessions) {

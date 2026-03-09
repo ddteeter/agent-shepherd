@@ -74,37 +74,45 @@ export async function formatTranscript(
 
     if (parsed.type === 'assistant') {
       lines.push(`## Assistant [line ${String(lineNumber)}]`, '');
-      for (const block of content) {
-        if (block.type === 'text' && block.text) {
-          lines.push(block.text, '');
-        } else if (block.type === 'tool_use' && block.name) {
-          lines.push(
-            `**Tool:** \`${block.name}\`${formatToolParameters(block.input)}`,
-            '',
-          );
-        }
-      }
+      formatAssistantBlocks(content, lines);
     } else if (parsed.type === 'user') {
       lines.push(`## User [line ${String(lineNumber)}]`, '');
-      for (const block of content) {
-        if (block.type === 'text' && block.text) {
-          lines.push(block.text, '');
-        } else if (block.type === 'tool_result') {
-          const resultText = extractToolResultText(block);
-          const size = resultText.length;
-          const preview = resultText.slice(0, TOOL_RESULT_PREVIEW_LENGTH);
-          const truncated = size > TOOL_RESULT_PREVIEW_LENGTH ? '...' : '';
-          lines.push(
-            `**Tool Result** (${String(size)} chars): \`${preview}${truncated}\``,
-            '',
-          );
-        }
-      }
+      formatUserBlocks(content, lines);
     }
   }
 
   await writeFile(outputPath, lines.join('\n'), 'utf8');
   return outputPath;
+}
+
+function formatAssistantBlocks(content: ContentBlock[], lines: string[]): void {
+  for (const block of content) {
+    if (block.type === 'text' && block.text) {
+      lines.push(block.text, '');
+    } else if (block.type === 'tool_use' && block.name) {
+      lines.push(
+        `**Tool:** \`${block.name}\`${formatToolParameters(block.input)}`,
+        '',
+      );
+    }
+  }
+}
+
+function formatUserBlocks(content: ContentBlock[], lines: string[]): void {
+  for (const block of content) {
+    if (block.type === 'text' && block.text) {
+      lines.push(block.text, '');
+    } else if (block.type === 'tool_result') {
+      const resultText = extractToolResultText(block);
+      const size = resultText.length;
+      const preview = resultText.slice(0, TOOL_RESULT_PREVIEW_LENGTH);
+      const truncated = size > TOOL_RESULT_PREVIEW_LENGTH ? '...' : '';
+      lines.push(
+        `**Tool Result** (${String(size)} chars): \`${preview}${truncated}\``,
+        '',
+      );
+    }
+  }
 }
 
 function formatToolParameters(input?: Record<string, unknown>): string {

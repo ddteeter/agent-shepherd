@@ -180,7 +180,7 @@ describe('E2E: Full PR Review Workflow', () => {
     const allComments = jsonArrayBody(commentsResponse);
     expect(allComments).toHaveLength(3);
     const severities = allComments.map((c) => String(c.severity));
-    severities.sort();
+    severities.sort((a, b) => a.localeCompare(b));
     expect(severities).toEqual(['must-fix', 'request', 'suggestion']);
 
     const reviewResponse = await inject({
@@ -666,7 +666,7 @@ describe('E2E: Multiple Review Cycles', () => {
     expect(allComments).toHaveLength(3);
 
     const bodies = allComments.map((c) => String(c.body));
-    bodies.sort();
+    bodies.sort((a, b) => a.localeCompare(b));
     expect(bodies).toEqual([
       'Cycle 1 comment A',
       'Cycle 1 comment B',
@@ -980,7 +980,7 @@ describe('E2E: Multiple Review Cycles', () => {
       url: `/api/prs/${prId2}/file-groups`,
     });
     expect(fileGroupsResponse3.statusCode).toBe(200);
-    expect(jsonBody(fileGroupsResponse3).fileGroups).toBeNull();
+    expect(jsonBody(fileGroupsResponse3).fileGroups).toBeUndefined();
   });
 
   it('returns inter-cycle diff showing only changes between cycles', async () => {

@@ -42,20 +42,18 @@ function createMockDatabase() {
     status: 'changes_requested',
   };
 
+  const whereResult = { get: vi.fn(() => pr), all: vi.fn(() => [cycle]) };
+  const updateWhereResult = { run: vi.fn() };
+
   return {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn(() => pr),
-          all: vi.fn(() => [cycle]),
-        })),
+        where: vi.fn(() => whereResult),
       })),
     })),
     update: vi.fn(() => ({
       set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          run: vi.fn(),
-        })),
+        where: vi.fn(() => updateWhereResult),
       })),
     })),
     _pr: pr,

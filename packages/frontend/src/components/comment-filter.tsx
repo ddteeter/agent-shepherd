@@ -28,7 +28,7 @@ export function CommentFilter({
   activeFilter,
   onFilterChange,
   counts,
-}: CommentFilterProperties) {
+}: Readonly<CommentFilterProperties>) {
   return (
     <div className="flex gap-1 p-2" role="group" aria-label="Comment filter">
       {filters.map(({ value, label, countKey }) => {

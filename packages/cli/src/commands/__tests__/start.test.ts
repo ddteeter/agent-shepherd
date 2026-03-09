@@ -42,10 +42,8 @@ describe('startCommand', () => {
   });
 
   it('warns when frontend not built', () => {
-    vi.mocked(existsSync).mockImplementation(((filePath: string | URL) => {
-      if (String(filePath).includes('server.js')) return true;
-      return false;
-    }) as typeof existsSync);
+    vi.mocked(existsSync).mockImplementation(((filePath: string | URL) =>
+      String(filePath).includes('server.js')) as typeof existsSync);
 
     expect(existsSync('/mock/packages/backend/dist/server.js')).toBe(true);
     expect(existsSync('/mock/packages/frontend/dist')).toBe(false);

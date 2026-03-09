@@ -10,7 +10,7 @@ export function ReviewBar({
   commentCount,
   agentWorking,
   onReview,
-}: ReviewBarProperties) {
+}: Readonly<ReviewBarProperties>) {
   if (prStatus !== 'open') {
     return (
       <div

@@ -129,14 +129,16 @@ export function reviewCommand(program: Command, client: ApiClient) {
         if (options.file) parameters.set('filePath', options.file);
         if (options.severity) parameters.set('severity', options.severity);
         const qs = parameters.toString();
-        const url = `/api/prs/${prId}/comments${qs ? `?${qs}` : ''}`;
+        const queryString = qs ? `?${qs}` : '';
+        const url = `/api/prs/${prId}/comments${queryString}`;
 
         const comments = await client.get<Comment[]>(url);
-        const heading = options.file
-          ? `Comments for: ${options.file}`
-          : options.severity
-            ? `${options.severity} comments`
-            : `All comments`;
+        let heading = 'All comments';
+        if (options.file) {
+          heading = `Comments for: ${options.file}`;
+        } else if (options.severity) {
+          heading = `${options.severity} comments`;
+        }
 
         console.log(formatComments(comments, heading));
       },

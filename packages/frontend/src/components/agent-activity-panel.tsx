@@ -12,7 +12,7 @@ interface AgentActivityPanelProperties {
   active?: boolean;
 }
 
-function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
+function ActivityEntryRow({ entry }: Readonly<{ entry: ActivityEntry }>) {
   const [expanded, setExpanded] = useState(false);
   const time = new Date(entry.timestamp).toLocaleTimeString();
   const hasDetail = !!entry.detail;
@@ -61,7 +61,7 @@ function ActivityEntryRow({ entry }: { entry: ActivityEntry }) {
 export function AgentActivityPanel({
   entries,
   active,
-}: AgentActivityPanelProperties) {
+}: Readonly<AgentActivityPanelProperties>) {
   const [expanded, setExpanded] = useState(active !== false);
   const [previousActive, setPreviousActive] = useState(active);
   const scrollReference = useRef<HTMLDivElement>(undefined);

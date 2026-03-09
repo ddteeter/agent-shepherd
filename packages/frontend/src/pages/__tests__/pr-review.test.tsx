@@ -819,6 +819,8 @@ describe('PRReview', () => {
     act(() => {
       wsCallback?.({ event: 'agent:working', data: { source: 'insights' } });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket agent:completed event', async () => {
@@ -864,6 +866,8 @@ describe('PRReview', () => {
         },
       });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket agent:output event for insights source', async () => {
@@ -884,6 +888,8 @@ describe('PRReview', () => {
         },
       });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket agent:error event', async () => {
@@ -896,6 +902,8 @@ describe('PRReview', () => {
         data: { error: 'Something went wrong' },
       });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket agent:error event for insights', async () => {
@@ -908,6 +916,8 @@ describe('PRReview', () => {
         data: { source: 'insights', error: 'Analyzer failed' },
       });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket agent:cancelled event', async () => {
@@ -917,6 +927,8 @@ describe('PRReview', () => {
     act(() => {
       wsCallback?.({ event: 'agent:cancelled', data: {} });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket pr:updated event', async () => {
@@ -926,6 +938,8 @@ describe('PRReview', () => {
     act(() => {
       wsCallback?.({ event: 'pr:updated', data: {} });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles WebSocket pr:ready-for-review event', async () => {
@@ -935,6 +949,8 @@ describe('PRReview', () => {
     act(() => {
       wsCallback?.({ event: 'pr:ready-for-review', data: {} });
     });
+
+    expect(screen.getByText('Test PR')).toBeInTheDocument();
   });
 
   it('handles request-changes review', async () => {

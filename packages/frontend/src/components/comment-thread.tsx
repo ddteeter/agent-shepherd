@@ -35,6 +35,42 @@ const severityColors: Record<string, string> = {
 
 export type { Comment };
 
+function CommentScopeBadge({ comment }: Readonly<{ comment: Comment }>) {
+  if (comment.filePath === undefined) {
+    return (
+      <span
+        className="text-xs px-1.5 py-0.5 rounded font-mono"
+        style={{
+          backgroundColor: 'rgba(130, 80, 223, 0.15)',
+          color: '#8250df',
+        }}
+      >
+        PR
+      </span>
+    );
+  }
+  if (comment.startLine === undefined) {
+    return (
+      <span
+        className="text-xs px-1.5 py-0.5 rounded font-mono"
+        style={{
+          backgroundColor: 'rgba(9, 105, 218, 0.15)',
+          color: 'var(--color-accent)',
+        }}
+      >
+        File
+      </span>
+    );
+  }
+  if (comment.startLine !== comment.endLine) {
+    return (
+      <span className="text-xs opacity-50 font-mono">
+        L{comment.startLine}–L{comment.endLine}
+      </span>
+    );
+  }
+}
+
 export function CommentThread({
   comment,
   replies,
@@ -44,7 +80,7 @@ export function CommentThread({
   onDelete,
   canEdit = false,
   threadStatus,
-}: CommentThreadProperties) {
+}: Readonly<CommentThreadProperties>) {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [editingId, setEditingId] = useState<string | undefined>();
   const [userToggled, setUserToggled] = useState(false);
@@ -103,31 +139,7 @@ export function CommentThread({
           >
             {comment.severity}
           </span>
-          {comment.filePath === undefined ? (
-            <span
-              className="text-xs px-1.5 py-0.5 rounded font-mono"
-              style={{
-                backgroundColor: 'rgba(130, 80, 223, 0.15)',
-                color: '#8250df',
-              }}
-            >
-              PR
-            </span>
-          ) : comment.startLine === undefined ? (
-            <span
-              className="text-xs px-1.5 py-0.5 rounded font-mono"
-              style={{
-                backgroundColor: 'rgba(9, 105, 218, 0.15)',
-                color: 'var(--color-accent)',
-              }}
-            >
-              File
-            </span>
-          ) : comment.startLine === comment.endLine ? undefined : (
-            <span className="text-xs opacity-50 font-mono">
-              L{comment.startLine}–L{comment.endLine}
-            </span>
-          )}
+          <CommentScopeBadge comment={comment} />
           {comment.resolved && (
             <span className="text-xs opacity-50">Resolved</span>
           )}

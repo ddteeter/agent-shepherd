@@ -159,13 +159,13 @@ describe('Insights API', () => {
     expect(comments).toHaveLength(2);
 
     const bodies = comments.map((c) => String(c.body));
-    bodies.sort();
+    bodies.sort((a, b) => a.localeCompare(b));
     expect(bodies).toEqual(['Fix in PR1', 'Fix in PR2']);
 
     const prIds = comments.map((c) => String(c.prId));
-    prIds.sort();
+    prIds.sort((a, b) => a.localeCompare(b));
     const expectedPrIds = [prId, prId2];
-    expectedPrIds.sort();
+    expectedPrIds.sort((a, b) => a.localeCompare(b));
     expect(prIds).toEqual(expectedPrIds);
   });
 

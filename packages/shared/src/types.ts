@@ -64,7 +64,7 @@ export interface DiffSnapshot {
   id: string;
   reviewCycleId: string;
   diffData: string;
-  fileGroups: FileGroup[] | null;
+  fileGroups?: FileGroup[];
 }
 
 export interface FileGroup {

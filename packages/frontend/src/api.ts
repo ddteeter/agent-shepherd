@@ -96,7 +96,8 @@ export const api = {
         parameters.set('from', String(options.from));
       if (options?.to !== undefined) parameters.set('to', String(options.to));
       const qs = parameters.toString();
-      return request<DiffResponse>(`/prs/${id}/diff${qs ? `?${qs}` : ''}`);
+      const queryString = qs ? `?${qs}` : '';
+      return request<DiffResponse>(`/prs/${id}/diff${queryString}`);
     },
     cycles: (id: string) =>
       request<ReviewCycleDetail[]>(`/prs/${id}/cycles/details`),
@@ -105,10 +106,11 @@ export const api = {
       if (options?.cycle !== undefined)
         parameters.set('cycle', String(options.cycle));
       const qs = parameters.toString();
+      const queryString = qs ? `?${qs}` : '';
       return request<{
         fileGroups: { name: string; files: string[] }[] | undefined;
         cycleNumber: number;
-      }>(`/prs/${id}/file-groups${qs ? `?${qs}` : ''}`);
+      }>(`/prs/${id}/file-groups${queryString}`);
     },
     snapshotDiff: (id: string) =>
       request<Record<string, unknown>>(`/prs/${id}/diff/snapshot`, {

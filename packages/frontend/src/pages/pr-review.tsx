@@ -53,6 +53,11 @@ interface WsMessageData {
   error?: string;
 }
 
+function formatAgentError(detail: string | undefined): string {
+  if (detail) return `Agent error: ${detail}`;
+  return 'Agent error';
+}
+
 function sortedByCycleNumber(input: ReviewCycle[]): ReviewCycle[] {
   const copy = [...input];
   copy.sort((a, b) => a.cycleNumber - b.cycleNumber);
@@ -95,76 +100,6 @@ export function PRReview() {
     'directory',
   );
 
-  useWebSocket((message) => {
-    const data = message.data as WsMessageData | undefined;
-    if (
-      message.event === 'comment:added' ||
-      message.event === 'comment:updated'
-    ) {
-      void fetchComments();
-    }
-    if (
-      (message.event === 'review:submitted' ||
-        message.event === 'pr:ready-for-review' ||
-        message.event === 'pr:updated') &&
-      prId
-    ) {
-      void api.prs.get(prId).then((result) => {
-        setPr(result as PrData);
-      });
-      void fetchCycles();
-    }
-    if (
-      message.event === 'agent:working' ||
-      message.event === 'agent:completed' ||
-      message.event === 'agent:cancelled'
-    ) {
-      setAgentError(undefined);
-      if (message.event === 'agent:working') {
-        if (data?.source === 'insights') {
-          setInsightsActivity([]);
-          setAnalyzerRunning(true);
-        } else {
-          setAgentActivity([]);
-        }
-      }
-      if (
-        (message.event === 'agent:completed' ||
-          message.event === 'agent:cancelled') &&
-        data?.source === 'insights'
-      ) {
-        setAnalyzerRunning(false);
-        void fetchInsights();
-      }
-      if (
-        message.event === 'agent:completed' ||
-        message.event === 'agent:cancelled'
-      ) {
-        void fetchComments();
-      }
-      void fetchCycles();
-    }
-    if (
-      message.event === 'agent:output' &&
-      data?.prId === prId &&
-      data?.entry
-    ) {
-      const entry = data.entry;
-      if (data.source === 'insights') {
-        setInsightsActivity((previous) => [...previous.slice(-49), entry]);
-      } else {
-        setAgentActivity((previous) => [...previous.slice(-49), entry]);
-      }
-    }
-    if (message.event === 'agent:error') {
-      if (data?.source === 'insights') {
-        setAnalyzerRunning(false);
-      }
-      setAgentError(data?.error ?? 'Unknown error');
-      void fetchCycles();
-    }
-  });
-
   const fetchComments = useCallback(async () => {
     if (!prId) return;
     try {
@@ -194,6 +129,79 @@ export function PRReview() {
       // Insights may not exist yet
     }
   }, [prId]);
+
+  const handleWsAgentLifecycle = useCallback(
+    (event: string, data: WsMessageData | undefined) => {
+      setAgentError(undefined);
+      if (event === 'agent:working') {
+        if (data?.source === 'insights') {
+          setInsightsActivity([]);
+          setAnalyzerRunning(true);
+        } else {
+          setAgentActivity([]);
+        }
+      }
+      if (
+        (event === 'agent:completed' || event === 'agent:cancelled') &&
+        data?.source === 'insights'
+      ) {
+        setAnalyzerRunning(false);
+        void fetchInsights();
+      }
+      if (event === 'agent:completed' || event === 'agent:cancelled') {
+        void fetchComments();
+      }
+      void fetchCycles();
+    },
+    [fetchComments, fetchCycles, fetchInsights],
+  );
+
+  useWebSocket((message) => {
+    const data = message.data as WsMessageData | undefined;
+    if (
+      message.event === 'comment:added' ||
+      message.event === 'comment:updated'
+    ) {
+      void fetchComments();
+    }
+    if (
+      (message.event === 'review:submitted' ||
+        message.event === 'pr:ready-for-review' ||
+        message.event === 'pr:updated') &&
+      prId
+    ) {
+      void api.prs.get(prId).then((result) => {
+        setPr(result as PrData);
+      });
+      void fetchCycles();
+    }
+    if (
+      message.event === 'agent:working' ||
+      message.event === 'agent:completed' ||
+      message.event === 'agent:cancelled'
+    ) {
+      handleWsAgentLifecycle(message.event, data);
+    }
+    if (
+      message.event === 'agent:output' &&
+      data?.prId === prId &&
+      data?.entry
+    ) {
+      const entry = data.entry;
+      if (data.source === 'insights') {
+        setInsightsActivity((previous) => [...previous.slice(-49), entry]);
+      } else {
+        setAgentActivity((previous) => [...previous.slice(-49), entry]);
+      }
+    }
+    if (message.event === 'agent:error') {
+      if (data?.source === 'insights') {
+        setAnalyzerRunning(false);
+      }
+      setAgentError(data?.error ?? 'Unknown error');
+      void fetchCycles();
+    }
+  });
 
   const fetchDiff = useCallback(
     async (cycleValue: string) => {
@@ -781,11 +789,7 @@ export function PRReview() {
             onCancel={() => {
               void handleCancelAgent();
             }}
-            error={
-              agentErrored
-                ? `Agent error${agentError ? `: ${agentError}` : ''}`
-                : undefined
-            }
+            error={agentErrored ? formatAgentError(agentError) : undefined}
           />
           {cycles.length > 1 && (
             <div className="px-4 shrink-0">
@@ -797,7 +801,7 @@ export function PRReview() {
             </div>
           )}
           <div className="flex flex-1 overflow-hidden">
-            {diffError ? (
+            {diffError && (
               <div className="flex-1 flex items-center justify-center p-6">
                 <div className="text-center">
                   <p className="text-sm opacity-70">
@@ -806,7 +810,8 @@ export function PRReview() {
                   <p className="text-xs opacity-50 mt-1">{diffError}</p>
                 </div>
               </div>
-            ) : typeof diffData.diff === 'string' ? (
+            )}
+            {!diffError && typeof diffData.diff === 'string' && (
               <>
                 <FileTree
                   files={diffData.files}
@@ -850,7 +855,8 @@ export function PRReview() {
                   viewMode={viewMode}
                 />
               </>
-            ) : (
+            )}
+            {!diffError && typeof diffData.diff !== 'string' && (
               <div className="flex-1 flex items-center justify-center p-6">
                 <div className="text-center">
                   <p className="text-sm opacity-70">

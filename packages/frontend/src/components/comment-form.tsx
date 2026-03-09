@@ -16,9 +16,11 @@ export function CommentForm({
   isEditing = false,
   initialBody = '',
   defaultSeverity = 'suggestion',
-}: CommentFormProperties) {
+}: Readonly<CommentFormProperties>) {
   const [body, setBody] = useState(initialBody);
   const [severity, setSeverity] = useState(defaultSeverity);
+
+  const defaultButtonLabel = isReply ? 'Reply' : 'Add Comment';
 
   const handleSubmit = (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -75,7 +77,7 @@ export function CommentForm({
           className="px-3 py-1 text-sm rounded text-white"
           style={{ backgroundColor: 'var(--color-accent)' }}
         >
-          {isEditing ? 'Save' : isReply ? 'Reply' : 'Add Comment'}
+          {isEditing ? 'Save' : defaultButtonLabel}
         </button>
         <button
           type="button"

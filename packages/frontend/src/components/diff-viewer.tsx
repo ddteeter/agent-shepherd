@@ -47,13 +47,11 @@ interface DiffViewerProperties {
   canEditComments?: boolean;
   globalCommentForm?: boolean;
   onToggleGlobalCommentForm?: () => void;
-  fileGroups?:
-    | {
-        name: string;
-        description?: string;
-        files: string[];
-      }[]
-    | undefined;
+  fileGroups?: {
+    name: string;
+    description?: string;
+    files: string[];
+  }[];
   viewMode?: 'directory' | 'logical';
 }
 
@@ -80,99 +78,136 @@ interface FileDiffData {
   status: FileStatus;
 }
 
+interface DiffParserState {
+  currentFile: FileDiffData | undefined;
+  currentHunk: DiffHunk | undefined;
+  oldLine: number;
+  newLine: number;
+  fromNull: boolean;
+  minusPath: string;
+}
+
+function createNewFile(line: string): FileDiffData {
+  const gitPathMatch = /^diff --git a\/.+ b\/(.+)$/.exec(line);
+  return {
+    path: gitPathMatch?.[1] ?? '',
+    hunks: [],
+    lineCount: 0,
+    additions: 0,
+    deletions: 0,
+    status: 'modified',
+  };
+}
+
+function parseDiffHeaderLine(
+  line: string,
+  state: DiffParserState,
+  files: FileDiffData[],
+): boolean {
+  if (line.startsWith('diff --git')) {
+    if (state.currentFile) files.push(state.currentFile);
+    state.currentFile = createNewFile(line);
+    state.currentHunk = undefined;
+    state.fromNull = false;
+    state.minusPath = '';
+    return true;
+  }
+  if (line.startsWith('--- /dev/null')) {
+    state.fromNull = true;
+    return true;
+  }
+  if (line.startsWith('--- a/')) {
+    state.fromNull = false;
+    state.minusPath = line.slice(6);
+    return true;
+  }
+  if (line.startsWith('+++ /dev/null') && state.currentFile) {
+    state.currentFile.status = 'removed';
+    state.currentFile.path = state.minusPath;
+    return true;
+  }
+  if (line.startsWith('+++ b/') && state.currentFile) {
+    state.currentFile.path = line.slice(6);
+    state.currentFile.status = state.fromNull ? 'added' : 'modified';
+    return true;
+  }
+  return false;
+}
+
+function parseDiffContentLine(line: string, state: DiffParserState): void {
+  if (!state.currentHunk || !state.currentFile) return;
+
+  if (line.startsWith('+')) {
+    state.currentHunk.lines.push({
+      type: 'add',
+      content: line.slice(1),
+      newLineNo: state.newLine,
+    });
+    state.newLine++;
+    state.currentFile.lineCount++;
+    state.currentFile.additions++;
+  } else if (line.startsWith('-')) {
+    state.currentHunk.lines.push({
+      type: 'remove',
+      content: line.slice(1),
+      oldLineNo: state.oldLine,
+    });
+    state.oldLine++;
+    state.currentFile.lineCount++;
+    state.currentFile.deletions++;
+  } else if (line.startsWith(' ')) {
+    state.currentHunk.lines.push({
+      type: 'context',
+      content: line.slice(1),
+      oldLineNo: state.oldLine,
+      newLineNo: state.newLine,
+    });
+    state.oldLine++;
+    state.newLine++;
+    state.currentFile.lineCount++;
+  }
+}
+
 function parseDiff(rawDiff: string): FileDiffData[] {
   if (typeof rawDiff !== 'string') return [];
   const files: FileDiffData[] = [];
   const lines = rawDiff.split('\n');
-  let currentFile: FileDiffData | undefined;
-  let currentHunk: DiffHunk | undefined;
-  let oldLine = 0;
-  let newLine = 0;
-  let fromNull = false;
-  let minusPath = '';
+  const state: DiffParserState = {
+    currentFile: undefined,
+    currentHunk: undefined,
+    oldLine: 0,
+    newLine: 0,
+    fromNull: false,
+    minusPath: '',
+  };
 
   for (const line of lines) {
-    if (line.startsWith('diff --git')) {
-      if (currentFile) files.push(currentFile);
-      const gitPathMatch = /^diff --git a\/.+ b\/(.+)$/.exec(line);
-      currentFile = {
-        path: gitPathMatch?.[1] ?? '',
-        hunks: [],
-        lineCount: 0,
-        additions: 0,
-        deletions: 0,
-        status: 'modified',
-      };
-      currentHunk = undefined;
-      fromNull = false;
-      minusPath = '';
-    } else if (line.startsWith('--- /dev/null')) {
-      fromNull = true;
-    } else if (line.startsWith('--- a/')) {
-      fromNull = false;
-      minusPath = line.slice(6);
-    } else if (line.startsWith('+++ /dev/null')) {
-      if (currentFile) {
-        currentFile.status = 'removed';
-        currentFile.path = minusPath;
-      }
-    } else if (line.startsWith('+++ b/')) {
-      if (currentFile) {
-        currentFile.path = line.slice(6);
-        currentFile.status = fromNull ? 'added' : 'modified';
-      }
-    } else if (line.startsWith('@@')) {
+    if (parseDiffHeaderLine(line, state, files)) continue;
+
+    if (line.startsWith('@@')) {
       const match = /^@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(line);
       if (match) {
-        oldLine = Number.parseInt(match[1], 10);
-        newLine = Number.parseInt(match[2], 10);
+        state.oldLine = Number.parseInt(match[1], 10);
+        state.newLine = Number.parseInt(match[2], 10);
       }
-      currentHunk = { header: line, lines: [] };
-      if (currentFile) currentFile.hunks.push(currentHunk);
-    } else if (currentHunk && currentFile) {
-      if (line.startsWith('+')) {
-        currentHunk.lines.push({
-          type: 'add',
-          content: line.slice(1),
-          newLineNo: newLine,
-        });
-        newLine++;
-        currentFile.lineCount++;
-        currentFile.additions++;
-      } else if (line.startsWith('-')) {
-        currentHunk.lines.push({
-          type: 'remove',
-          content: line.slice(1),
-          oldLineNo: oldLine,
-        });
-        oldLine++;
-        currentFile.lineCount++;
-        currentFile.deletions++;
-      } else if (line.startsWith(' ')) {
-        currentHunk.lines.push({
-          type: 'context',
-          content: line.slice(1),
-          oldLineNo: oldLine,
-          newLineNo: newLine,
-        });
-        oldLine++;
-        newLine++;
-        currentFile.lineCount++;
-      }
+      state.currentHunk = { header: line, lines: [] };
+      if (state.currentFile) state.currentFile.hunks.push(state.currentHunk);
+    } else {
+      parseDiffContentLine(line, state);
     }
   }
 
-  if (currentFile) files.push(currentFile);
+  if (state.currentFile) files.push(state.currentFile);
   return files;
 }
 
 function HighlightedContent({
   content,
   tokens,
-}: {
+}: Readonly<{
   content: string;
   tokens: TokenizedLine | undefined;
-}) {
+}>) {
   if (!tokens || tokens.length === 0) {
     return <span className="whitespace-pre">{content}</span>;
   }
@@ -188,6 +223,35 @@ function HighlightedContent({
 }
 
 const COLLAPSE_THRESHOLD = 200;
+
+function borderLeftForLineType(type: string): string {
+  if (type === 'add') return '3px solid var(--color-diff-add-line)';
+  if (type === 'remove') return '3px solid var(--color-diff-remove-line)';
+  return '3px solid transparent';
+}
+
+function colorForLineType(type: string): string {
+  if (type === 'add') return 'var(--color-diff-add-line)';
+  if (type === 'remove') return 'var(--color-diff-remove-line)';
+  return 'transparent';
+}
+
+function symbolForLineType(type: string): string {
+  if (type === 'add') return '+';
+  if (type === 'remove') return '-';
+  return ' ';
+}
+
+function backgroundForSelection(
+  isSelected: boolean,
+  isInRange: boolean,
+): string | undefined {
+  if (isSelected)
+    return 'color-mix(in srgb, var(--color-accent) 15%, transparent)';
+  if (isInRange)
+    return 'color-mix(in srgb, var(--color-accent) 6%, transparent)';
+  return undefined;
+}
 
 function noopCallback() {
   // intentional no-op: used as default callback for optional handlers
@@ -220,7 +284,7 @@ function FileDiffComponent({
   handleFileComment,
   threadStatusMap,
   orphanedComments,
-}: {
+}: Readonly<{
   file: FileDiffData;
   commentsByFileLine: Map<string, Comment[]>;
   repliesByParent: Map<string, Comment[]>;
@@ -258,7 +322,7 @@ function FileDiffComponent({
   handleFileComment: (filePath: string, body: string, severity: string) => void;
   threadStatusMap?: Map<string, ThreadStatus>;
   orphanedComments: Comment[];
-}) {
+}>) {
   const lang = getLangFromPath(file.path);
   const isLarge = file.lineCount > COLLAPSE_THRESHOLD;
   const [expanded, setExpanded] = useState(!isLarge);
@@ -382,17 +446,11 @@ function FileDiffComponent({
                     <div
                       className="diff-line px-4 py-0 flex relative cursor-pointer"
                       style={{
-                        borderLeft:
-                          line.type === 'add'
-                            ? '3px solid var(--color-diff-add-line)'
-                            : line.type === 'remove'
-                              ? '3px solid var(--color-diff-remove-line)'
-                              : '3px solid transparent',
-                        backgroundColor: isInSelectedRange
-                          ? 'color-mix(in srgb, var(--color-accent) 15%, transparent)'
-                          : isInCommentRange
-                            ? 'color-mix(in srgb, var(--color-accent) 6%, transparent)'
-                            : undefined,
+                        borderLeft: borderLeftForLineType(line.type),
+                        backgroundColor: backgroundForSelection(
+                          isInSelectedRange,
+                          isInCommentRange,
+                        ),
                       }}
                       onClick={
                         onAddComment
@@ -459,19 +517,10 @@ function FileDiffComponent({
                       <span
                         className="w-4 select-none shrink-0"
                         style={{
-                          color:
-                            line.type === 'add'
-                              ? 'var(--color-diff-add-line)'
-                              : line.type === 'remove'
-                                ? 'var(--color-diff-remove-line)'
-                                : 'transparent',
+                          color: colorForLineType(line.type),
                         }}
                       >
-                        {line.type === 'add'
-                          ? '+'
-                          : line.type === 'remove'
-                            ? '-'
-                            : ' '}
+                        {symbolForLineType(line.type)}
                       </span>
                       <HighlightedContent
                         content={line.content}
@@ -566,6 +615,177 @@ function FileDiffComponent({
   );
 }
 
+function buildValidLineKeys(parsedFiles: FileDiffData[]): {
+  validLineKeys: Set<string>;
+  diffFilePaths: Set<string>;
+} {
+  const validLineKeys = new Set<string>();
+  const diffFilePaths = new Set<string>();
+  for (const file of parsedFiles) {
+    diffFilePaths.add(file.path);
+    for (const hunk of file.hunks) {
+      for (const line of hunk.lines) {
+        const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
+        validLineKeys.add(`${file.path}:${String(lineNo)}`);
+      }
+    }
+  }
+  return { validLineKeys, diffFilePaths };
+}
+
+function appendToMap(
+  map: Map<string, Comment[]>,
+  key: string,
+  comment: Comment,
+): void {
+  const existing = map.get(key) ?? [];
+  existing.push(comment);
+  map.set(key, existing);
+}
+
+function categorizeComment(
+  comment: Comment,
+  byFileLine: Map<string, Comment[]>,
+  byFilePath: Map<string, Comment[]>,
+  globals: Comment[],
+  byParent: Map<string, Comment[]>,
+  orphaned: Map<string, Comment[]>,
+  validLineKeys: Set<string>,
+  diffFilePaths: Set<string>,
+): void {
+  if (comment.parentCommentId) {
+    appendToMap(byParent, comment.parentCommentId, comment);
+    return;
+  }
+  if (comment.filePath === undefined) {
+    globals.push(comment);
+    return;
+  }
+  if (comment.startLine === undefined) {
+    if (diffFilePaths.has(comment.filePath)) {
+      appendToMap(byFilePath, `file:${comment.filePath}`, comment);
+    } else {
+      appendToMap(orphaned, comment.filePath, comment);
+    }
+    return;
+  }
+  const key = `${comment.filePath}:${String(comment.endLine ?? comment.startLine)}`;
+  if (validLineKeys.has(key)) {
+    appendToMap(byFileLine, key, comment);
+  } else {
+    appendToMap(orphaned, comment.filePath, comment);
+  }
+}
+
+function buildCommentRangeLines(comments: Comment[]): Set<string> {
+  const rangeLines = new Set<string>();
+  for (const comment of comments) {
+    if (
+      !comment.parentCommentId &&
+      comment.filePath !== undefined &&
+      comment.startLine !== undefined &&
+      comment.endLine !== undefined &&
+      comment.startLine !== comment.endLine
+    ) {
+      for (let l = comment.startLine; l <= comment.endLine; l++) {
+        rangeLines.add(`${comment.filePath}:${String(l)}`);
+      }
+    }
+  }
+  return rangeLines;
+}
+
+function categorizeComments(comments: Comment[], parsedFiles: FileDiffData[]) {
+  const byFileLine = new Map<string, Comment[]>();
+  const byFilePath = new Map<string, Comment[]>();
+  const globals: Comment[] = [];
+  const byParent = new Map<string, Comment[]>();
+  const orphaned = new Map<string, Comment[]>();
+  const { validLineKeys, diffFilePaths } = buildValidLineKeys(parsedFiles);
+
+  for (const comment of comments) {
+    categorizeComment(
+      comment,
+      byFileLine,
+      byFilePath,
+      globals,
+      byParent,
+      orphaned,
+      validLineKeys,
+      diffFilePaths,
+    );
+  }
+
+  return {
+    commentsByFileLine: byFileLine,
+    fileCommentsByPath: byFilePath,
+    globalComments: globals,
+    repliesByParent: byParent,
+    commentRangeLines: buildCommentRangeLines(comments),
+    orphanedByFile: orphaned,
+  };
+}
+
+function handleIntersectingEntry(
+  path: string,
+  visibleSet: Set<string>,
+): boolean {
+  if (visibleSet.has(path)) return false;
+  visibleSet.add(path);
+  return true;
+}
+
+function handleNonIntersectingEntry(
+  path: string,
+  visibleSet: Set<string>,
+  fileReferences: React.RefObject<Record<string, HTMLDivElement | undefined>>,
+  pinnedReference: React.RefObject<string | undefined>,
+  setMeasuredHeights: React.Dispatch<
+    React.SetStateAction<Record<string, number>>
+  >,
+): boolean {
+  const element = fileReferences.current[path];
+  if (element) {
+    const height = element.getBoundingClientRect().height;
+    setMeasuredHeights((previous_) => ({
+      ...previous_,
+      [path]: height,
+    }));
+  }
+  if (visibleSet.has(path) && path !== pinnedReference.current) {
+    visibleSet.delete(path);
+    return true;
+  }
+  return false;
+}
+
+function updateVisibleFiles(
+  previous: Set<string>,
+  entries: IntersectionObserverEntry[],
+  fileReferences: React.RefObject<Record<string, HTMLDivElement | undefined>>,
+  pinnedReference: React.RefObject<string | undefined>,
+  setMeasuredHeights: React.Dispatch<
+    React.SetStateAction<Record<string, number>>
+  >,
+): Set<string> {
+  const next = new Set(previous);
+  let changed = false;
+  for (const entry of entries) {
+    const path = (entry.target as HTMLElement).dataset.filePath;
+    if (!path) continue;
+    changed = entry.isIntersecting
+      ? handleIntersectingEntry(path, next) || changed
+      : handleNonIntersectingEntry(
+          path,
+          next,
+          fileReferences,
+          pinnedReference,
+          setMeasuredHeights,
+        ) || changed;
+  }
+  return changed ? next : previous;
+}
+
 export function DiffViewer({
   diff,
   files,
@@ -584,7 +804,7 @@ export function DiffViewer({
   onToggleGlobalCommentForm,
   fileGroups,
   viewMode,
-}: DiffViewerProperties) {
+}: Readonly<DiffViewerProperties>) {
   const containerReference = useRef<HTMLDivElement>(undefined);
   const fileReferences = useRef<Record<string, HTMLDivElement | undefined>>({});
   const [commentFormLine, setCommentFormLine] = useState<
@@ -680,34 +900,15 @@ export function DiffViewer({
 
     observerReference.current = new IntersectionObserver(
       (entries) => {
-        setVisible((previous) => {
-          const next = new Set(previous);
-          let changed = false;
-          for (const entry of entries) {
-            const path = (entry.target as HTMLElement).dataset.filePath;
-            if (!path) continue;
-            if (entry.isIntersecting) {
-              if (!next.has(path)) {
-                next.add(path);
-                changed = true;
-              }
-            } else {
-              const element = fileReferences.current[path];
-              if (element) {
-                const height = element.getBoundingClientRect().height;
-                setMeasuredHeights((previous) => ({
-                  ...previous,
-                  [path]: height,
-                }));
-              }
-              if (next.has(path) && path !== pinnedReference.current) {
-                next.delete(path);
-                changed = true;
-              }
-            }
-          }
-          return changed ? next : previous;
-        });
+        setVisible((previous) =>
+          updateVisibleFiles(
+            previous,
+            entries,
+            fileReferences,
+            pinnedReference,
+            setMeasuredHeights,
+          ),
+        );
       },
       { root: container, rootMargin: '800px 0px' },
     );
@@ -805,81 +1006,10 @@ export function DiffViewer({
     repliesByParent,
     commentRangeLines,
     orphanedByFile,
-  } = useMemo(() => {
-    const byFileLine = new Map<string, Comment[]>();
-    const byFilePath = new Map<string, Comment[]>();
-    const globals: Comment[] = [];
-    const byParent = new Map<string, Comment[]>();
-    const orphaned = new Map<string, Comment[]>();
-
-    const validLineKeys = new Set<string>();
-    const diffFilePaths = new Set<string>();
-    for (const file of parsedFiles) {
-      diffFilePaths.add(file.path);
-      for (const hunk of file.hunks) {
-        for (const line of hunk.lines) {
-          const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
-          validLineKeys.add(`${file.path}:${String(lineNo)}`);
-        }
-      }
-    }
-
-    for (const comment of comments) {
-      if (comment.parentCommentId) {
-        const existing = byParent.get(comment.parentCommentId) ?? [];
-        existing.push(comment);
-        byParent.set(comment.parentCommentId, existing);
-      } else if (comment.filePath === undefined) {
-        globals.push(comment);
-      } else if (comment.startLine === undefined) {
-        if (diffFilePaths.has(comment.filePath)) {
-          const key = `file:${comment.filePath}`;
-          const existing = byFilePath.get(key) ?? [];
-          existing.push(comment);
-          byFilePath.set(key, existing);
-        } else {
-          const array = orphaned.get(comment.filePath) ?? [];
-          array.push(comment);
-          orphaned.set(comment.filePath, array);
-        }
-      } else {
-        const key = `${comment.filePath}:${String(comment.endLine ?? comment.startLine)}`;
-        if (validLineKeys.has(key)) {
-          const existing = byFileLine.get(key) ?? [];
-          existing.push(comment);
-          byFileLine.set(key, existing);
-        } else {
-          const array = orphaned.get(comment.filePath) ?? [];
-          array.push(comment);
-          orphaned.set(comment.filePath, array);
-        }
-      }
-    }
-
-    const rangeLines = new Set<string>();
-    for (const comment of comments) {
-      if (
-        !comment.parentCommentId &&
-        comment.filePath !== undefined &&
-        comment.startLine !== undefined &&
-        comment.endLine !== undefined &&
-        comment.startLine !== comment.endLine
-      ) {
-        for (let l = comment.startLine; l <= comment.endLine; l++) {
-          rangeLines.add(`${comment.filePath}:${String(l)}`);
-        }
-      }
-    }
-
-    return {
-      commentsByFileLine: byFileLine,
-      fileCommentsByPath: byFilePath,
-      globalComments: globals,
-      repliesByParent: byParent,
-      commentRangeLines: rangeLines,
-      orphanedByFile: orphaned,
-    };
-  }, [comments, parsedFiles]);
+  } = useMemo(
+    () => categorizeComments(comments, parsedFiles),
+    [comments, parsedFiles],
+  );
 
   const handleLineClick = useCallback(
     (filePath: string, lineNo: number, shiftKey: boolean) => {
@@ -1115,7 +1245,6 @@ export function DiffViewer({
                 </div>
               );
             }
-            return;
           })()}
           <div
             ref={createFileReferenceCallback(file.path)}

@@ -43,17 +43,15 @@ function createMockSessionLogProvider(sessions: SessionLog[] = []) {
 }
 
 interface MockDatabaseOptions {
-  pr?:
-    | {
-        id: string;
-        projectId: string;
-        title: string;
-        sourceBranch: string;
-        workingDirectory?: string | undefined;
-      }
-    | undefined;
-  project?: { id: string; path: string; name: string } | undefined;
-  insights?: { id: string; prId: string; updatedAt: string } | undefined;
+  pr?: {
+    id: string;
+    projectId: string;
+    title: string;
+    sourceBranch: string;
+    workingDirectory?: string;
+  };
+  project?: { id: string; path: string; name: string };
+  insights?: { id: string; prId: string; updatedAt: string };
 }
 
 function createMockDatabase(options?: MockDatabaseOptions) {
@@ -77,17 +75,17 @@ function createMockDatabase(options?: MockDatabaseOptions) {
       : undefined;
 
   let callCount = 0;
+  const getHandler = vi.fn(() => {
+    callCount++;
+    if (callCount === 1) return pr;
+    if (callCount === 2) return project;
+    return insightsRow;
+  });
+
   return {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn(() => {
-            callCount++;
-            if (callCount === 1) return pr;
-            if (callCount === 2) return project;
-            return insightsRow;
-          }),
-        })),
+        where: vi.fn(() => ({ get: getHandler })),
       })),
     })),
     _pr: pr,

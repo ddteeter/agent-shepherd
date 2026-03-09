@@ -72,7 +72,6 @@ export function setupCommand(program: Command) {
           `\n${String(failed.length)} step(s) failed. Fix the issues above and re-run: agent-shepherd setup`,
         );
         process.exitCode = 1;
-        return;
       } else {
         console.log('\nSetup complete!');
       }

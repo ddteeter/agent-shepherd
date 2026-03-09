@@ -14,13 +14,11 @@ interface FileTreeProperties {
   onSelectFile: (file: string) => void;
   fileStatuses?: Record<string, FileStatus>;
   commentCounts?: Record<string, number>;
-  fileGroups?:
-    | {
-        name: string;
-        description?: string;
-        files: string[];
-      }[]
-    | undefined;
+  fileGroups?: {
+    name: string;
+    description?: string;
+    files: string[];
+  }[];
   viewMode?: 'directory' | 'logical';
   onViewModeChange?: (mode: 'directory' | 'logical') => void;
 }
@@ -40,7 +38,7 @@ function TreeNodeList({
   onSelectFile,
   fileStatuses,
   commentCounts,
-}: {
+}: Readonly<{
   nodes: TreeNode[];
   depth: number;
   collapsed: Set<string>;
@@ -49,7 +47,7 @@ function TreeNodeList({
   onSelectFile: (file: string) => void;
   fileStatuses?: Record<string, FileStatus>;
   commentCounts?: Record<string, number>;
-}) {
+}>) {
   return (
     <>
       {nodes.map((node) => {
@@ -166,7 +164,7 @@ function GroupedTreeNodeList({
   onSelectFile,
   fileStatuses,
   commentCounts,
-}: {
+}: Readonly<{
   nodes: GroupTreeNode[];
   depth: number;
   collapsed: Set<string>;
@@ -175,7 +173,7 @@ function GroupedTreeNodeList({
   onSelectFile: (file: string) => void;
   fileStatuses?: Record<string, FileStatus>;
   commentCounts?: Record<string, number>;
-}) {
+}>) {
   return (
     <>
       {nodes.map((node) => {
@@ -342,7 +340,7 @@ export function FileTree({
   fileGroups,
   viewMode,
   onViewModeChange,
-}: FileTreeProperties) {
+}: Readonly<FileTreeProperties>) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [width, setWidth] = useState(256);
   const containerReference = useRef<HTMLDivElement>(undefined);

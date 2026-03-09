@@ -224,6 +224,8 @@ describe('ProjectView', () => {
     act(() => {
       pvWsCallback?.({ event: 'agent:completed', data: {} });
     });
+
+    expect(screen.getByText('Test Project')).toBeInTheDocument();
   });
 
   it('refreshes PR list on WebSocket agent:error event', async () => {
@@ -233,6 +235,8 @@ describe('ProjectView', () => {
     act(() => {
       pvWsCallback?.({ event: 'agent:error', data: {} });
     });
+
+    expect(screen.getByText('Test Project')).toBeInTheDocument();
   });
 
   it('shows empty state when no PRs match tab', async () => {

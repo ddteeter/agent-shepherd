@@ -12,6 +12,93 @@ import { extractFilesFromDiff } from './diff.js';
 type ReviewCycleRow = InferSelectModel<typeof schema.reviewCycles>;
 type CommentRow = InferSelectModel<typeof schema.comments>;
 
+interface CommentSummary {
+  total: number;
+  bySeverity: Record<string, number>;
+  files: { path: string; count: number; bySeverity: Record<string, number> }[];
+  generalCount: number;
+}
+
+function buildCommentSummary(
+  allComments: CommentRow[],
+  cycles: ReviewCycleRow[],
+  database: AppDatabase,
+): CommentSummary {
+  const topLevel = allComments.filter(
+    (comment: CommentRow) => !comment.parentCommentId && !comment.resolved,
+  );
+
+  const bySeverity: Record<string, number> = {};
+  const fileMap = new Map<
+    string,
+    { count: number; bySeverity: Record<string, number> }
+  >();
+  let generalCount = 0;
+
+  for (const comment of topLevel) {
+    bySeverity[comment.severity] = (bySeverity[comment.severity] ?? 0) + 1;
+
+    if (comment.filePath) {
+      const existing = fileMap.get(comment.filePath) ?? {
+        count: 0,
+        bySeverity: {},
+      };
+      existing.count++;
+      existing.bySeverity[comment.severity] =
+        (existing.bySeverity[comment.severity] ?? 0) + 1;
+      fileMap.set(comment.filePath, existing);
+    } else {
+      generalCount++;
+    }
+  }
+
+  const filePaths = [...fileMap.keys()];
+  const diffFileOrder = getDiffFileOrder(cycles, database);
+  if (diffFileOrder) {
+    const orderMap = new Map(diffFileOrder.map((f, index) => [f, index]));
+    filePaths.sort((a, b) => {
+      const ai = orderMap.get(a) ?? Number.POSITIVE_INFINITY;
+      const bi = orderMap.get(b) ?? Number.POSITIVE_INFINITY;
+      if (ai !== bi) return ai - bi;
+      return a.localeCompare(b);
+    });
+  } else {
+    filePaths.sort((a, b) => a.localeCompare(b));
+  }
+
+  const files = filePaths.map((filePath_) => {
+    const entry = fileMap.get(filePath_);
+    return {
+      path: filePath_,
+      count: entry?.count ?? 0,
+      bySeverity: entry?.bySeverity ?? {},
+    };
+  });
+
+  return { total: topLevel.length, bySeverity, files, generalCount };
+}
+
+function getDiffFileOrder(
+  cycles: ReviewCycleRow[],
+  database: AppDatabase,
+): string[] | undefined {
+  let latestCycle = cycles[0];
+  for (const cycle of cycles) {
+    if (cycle.cycleNumber > latestCycle.cycleNumber) {
+      latestCycle = cycle;
+    }
+  }
+  const snapshot = database
+    .select()
+    .from(schema.diffSnapshots)
+    .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
+    .get();
+  if (snapshot) {
+    return extractFilesFromDiff(snapshot.diffData);
+  }
+  return undefined;
+}
+
 function getCurrentCycleId(
   database: AppDatabase,
   prId: string,
@@ -32,6 +119,52 @@ function getCurrentCycleId(
   }
 
   return latest.id;
+}
+
+function getCommentSummary(
+  database: AppDatabase,
+  cycleIds: string[],
+  cycles: ReviewCycleRow[],
+): CommentSummary {
+  if (cycleIds.length === 0) {
+    return { total: 0, bySeverity: {}, files: [], generalCount: 0 };
+  }
+  const allComments = database
+    .select()
+    .from(schema.comments)
+    .where(inArray(schema.comments.reviewCycleId, cycleIds))
+    .all();
+  return buildCommentSummary(allComments, cycles, database);
+}
+
+function getFilteredComments(
+  database: AppDatabase,
+  cycleIds: string[],
+  filePath?: string,
+  severity?: string,
+): CommentRow[] {
+  if (cycleIds.length === 0) {
+    return [];
+  }
+
+  let comments = database
+    .select()
+    .from(schema.comments)
+    .where(inArray(schema.comments.reviewCycleId, cycleIds))
+    .all();
+
+  if (filePath) {
+    comments = comments.filter(
+      (comment: CommentRow) => comment.filePath === filePath,
+    );
+  }
+  if (severity) {
+    comments = comments.filter(
+      (comment: CommentRow) => comment.severity === severity,
+    );
+  }
+
+  return comments;
 }
 
 export function commentRoutes(fastify: FastifyInstance) {
@@ -137,7 +270,7 @@ export function commentRoutes(fastify: FastifyInstance) {
     await reply.code(201).send(comment);
   });
 
-  fastify.get('/api/prs/:prId/comments', (request) => {
+  fastify.get('/api/prs/:prId/comments', async (request, reply) => {
     const { prId } = request.params as { prId: string };
     const { filePath, severity, summary } = request.query as {
       filePath?: string;
@@ -153,108 +286,14 @@ export function commentRoutes(fastify: FastifyInstance) {
 
     const cycleIds = cycles.map((cycle: ReviewCycleRow) => cycle.id);
 
-    if (cycleIds.length === 0) {
-      if (summary === 'true') {
-        return { total: 0, bySeverity: {}, files: [], generalCount: 0 };
-      }
-      return [];
-    }
-
-    const allComments = database
-      .select()
-      .from(schema.comments)
-      .where(inArray(schema.comments.reviewCycleId, cycleIds))
-      .all();
-
     if (summary === 'true') {
-      const topLevel = allComments.filter(
-        (comment: CommentRow) => !comment.parentCommentId && !comment.resolved,
-      );
-
-      const bySeverity: Record<string, number> = {};
-      const fileMap = new Map<
-        string,
-        { count: number; bySeverity: Record<string, number> }
-      >();
-      let generalCount = 0;
-
-      for (const comment of topLevel) {
-        bySeverity[comment.severity] = (bySeverity[comment.severity] ?? 0) + 1;
-
-        if (comment.filePath) {
-          const existing = fileMap.get(comment.filePath) ?? {
-            count: 0,
-            bySeverity: {},
-          };
-          existing.count++;
-          existing.bySeverity[comment.severity] =
-            (existing.bySeverity[comment.severity] ?? 0) + 1;
-          fileMap.set(comment.filePath, existing);
-        } else {
-          generalCount++;
-        }
-      }
-
-      let diffFileOrder: string[] | undefined;
-      let latestCycle = cycles[0];
-      for (const cycle of cycles) {
-        if (cycle.cycleNumber > latestCycle.cycleNumber) {
-          latestCycle = cycle;
-        }
-      }
-      const snapshot = database
-        .select()
-        .from(schema.diffSnapshots)
-        .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
-        .get();
-      if (snapshot) {
-        diffFileOrder = extractFilesFromDiff(snapshot.diffData);
-      }
-
-      const filePaths = [...fileMap.keys()];
-      if (diffFileOrder) {
-        const orderMap = new Map(diffFileOrder.map((f, index) => [f, index]));
-        filePaths.sort((a, b) => {
-          const ai = orderMap.get(a) ?? Number.POSITIVE_INFINITY;
-          const bi = orderMap.get(b) ?? Number.POSITIVE_INFINITY;
-          if (ai !== bi) return ai - bi;
-          return a.localeCompare(b);
-        });
-      } else {
-        filePaths.sort((a, b) => a.localeCompare(b));
-      }
-
-      const files = filePaths.map((filePath_) => {
-        const entry = fileMap.get(filePath_);
-        return {
-          path: filePath_,
-          count: entry?.count ?? 0,
-          bySeverity: entry?.bySeverity ?? {},
-        };
-      });
-
-      return {
-        total: topLevel.length,
-        bySeverity,
-        files,
-        generalCount,
-      };
+      await reply.send(getCommentSummary(database, cycleIds, cycles));
+      return;
     }
 
-    let comments: CommentRow[] = allComments;
-
-    if (filePath) {
-      comments = comments.filter(
-        (comment: CommentRow) => comment.filePath === filePath,
-      );
-    }
-    if (severity) {
-      comments = comments.filter(
-        (comment: CommentRow) => comment.severity === severity,
-      );
-    }
-
-    return comments;
+    await reply.send(
+      getFilteredComments(database, cycleIds, filePath, severity),
+    );
   });
 
   fastify.put('/api/comments/:id', async (request, reply) => {
