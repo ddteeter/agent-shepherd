@@ -24,11 +24,19 @@ ESLINT_OUTPUT=$(npx eslint --fix "$FILE_PATH" 2>&1) || {
   exit 2
 }
 
-# Step 2: Run tsc --noEmit on the containing package (only if eslint passed)
-# Derive the package directory from the file path (monorepo: packages/<name>/)
-PACKAGE_DIR=$(echo "$FILE_PATH" | sed -n 's|\(.*packages/[^/]*\)/.*|\1|p')
-if [[ -n "$PACKAGE_DIR" ]] && [[ -f "$PACKAGE_DIR/tsconfig.json" ]]; then
-  TSC_OUTPUT=$(npx tsc --noEmit -p "$PACKAGE_DIR/tsconfig.json" 2>&1) || {
+# Step 2: Run tsc --noEmit using the nearest tsconfig.json (only if eslint passed)
+TSCONFIG=""
+DIR=$(dirname "$FILE_PATH")
+while [[ "$DIR" != "/" ]]; do
+  if [[ -f "$DIR/tsconfig.json" ]]; then
+    TSCONFIG="$DIR/tsconfig.json"
+    break
+  fi
+  DIR=$(dirname "$DIR")
+done
+
+if [[ -n "$TSCONFIG" ]]; then
+  TSC_OUTPUT=$(npx tsc --noEmit -p "$TSCONFIG" 2>&1) || {
     echo "TypeScript errors:" >&2
     echo "$TSC_OUTPUT" >&2
     exit 2
