@@ -3,6 +3,7 @@ import type { CreateProjectInput } from '@agent-shepherd/shared';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
+import { findProjectOrFail } from './route-helpers.js';
 
 export function projectRoutes(fastify: FastifyInstance) {
   const database = fastify.db;
@@ -17,7 +18,12 @@ export function projectRoutes(fastify: FastifyInstance) {
     const id = randomUUID();
     database
       .insert(schema.projects)
-      .values({ id, name, path: projectPath, baseBranch: baseBranch ?? 'main' })
+      .values({
+        id,
+        name,
+        path: projectPath,
+        baseBranch: baseBranch ?? 'main',
+      })
       .run();
 
     const project = database
@@ -35,16 +41,8 @@ export function projectRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/projects/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
-
-    if (!project) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const project = await findProjectOrFail(database, id, reply);
+    if (!project) return;
     return project;
   });
 
@@ -56,16 +54,8 @@ export function projectRoutes(fastify: FastifyInstance) {
       baseBranch: string;
     }>;
 
-    const existing = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
-
-    if (!existing) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const existing = await findProjectOrFail(database, id, reply);
+    if (!existing) return;
 
     database
       .update(schema.projects)
@@ -83,16 +73,8 @@ export function projectRoutes(fastify: FastifyInstance) {
   fastify.delete('/api/projects/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const existing = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
-
-    if (!existing) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const existing = await findProjectOrFail(database, id, reply);
+    if (!existing) return;
 
     database.delete(schema.projects).where(eq(schema.projects.id, id)).run();
     await reply.code(204).send();

@@ -1,11 +1,91 @@
 import type { FastifyInstance } from 'fastify';
-import type { CreatePRInput } from '@agent-shepherd/shared';
+import type { CreatePRInput, FileGroup } from '@agent-shepherd/shared';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
+import type { AppDatabase } from '../db/index.js';
 import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 import type { AgentSource } from '../orchestrator/types.js';
+import { findPrOrFail } from './route-helpers.js';
+
+interface NewCycleInput {
+  database: AppDatabase;
+  prId: string;
+  pr: { projectId: string; sourceBranch: string; baseBranch: string };
+  latestCycle: ReturnType<typeof getLatestCycle>;
+  fileGroups?: FileGroup[];
+  context?: string;
+  fastify: FastifyInstance;
+}
+
+async function createCycleAndSnapshot(input: NewCycleInput) {
+  const { database, prId, pr, latestCycle, fileGroups, context, fastify } =
+    input;
+
+  const project = database
+    .select()
+    .from(schema.projects)
+    .where(eq(schema.projects.id, pr.projectId))
+    .get();
+
+  let commitSha: string | undefined;
+  if (project) {
+    try {
+      const gitService = new GitService(project.path);
+      commitSha = await gitService.getHeadSha(pr.sourceBranch);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
+  const newCycleId = randomUUID();
+  database
+    .insert(schema.reviewCycles)
+    .values({
+      id: newCycleId,
+      prId,
+      cycleNumber: newCycleNumber,
+      status: 'pending_review',
+      commitSha,
+      context,
+    })
+    .run();
+
+  const newCycle = database
+    .select()
+    .from(schema.reviewCycles)
+    .where(eq(schema.reviewCycles.id, newCycleId))
+    .get();
+
+  if (project) {
+    try {
+      const gitService = new GitService(project.path);
+      const diffData = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
+      database
+        .insert(schema.diffSnapshots)
+        .values({
+          id: randomUUID(),
+          reviewCycleId: newCycleId,
+          diffData,
+          fileGroups: fileGroups ? JSON.stringify(fileGroups) : undefined,
+        })
+        .run();
+    } catch {
+      fastify.log.warn({ prId }, 'Failed to store diff snapshot for new cycle');
+    }
+  }
+
+  if (newCycle) {
+    fastify.broadcast('pr:ready-for-review', {
+      prId,
+      cycleNumber: newCycle.cycleNumber,
+    });
+  }
+
+  return { newCycle, project };
+}
 
 export function pullRequestRoutes(fastify: FastifyInstance) {
   const database = fastify.db;
@@ -27,7 +107,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       }[];
     };
 
-    // Verify project exists
     const project = database
       .select()
       .from(schema.projects)
@@ -54,7 +133,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       })
       .run();
 
-    // Try to capture commit SHA for the initial cycle
     let commitSha: string | undefined;
     try {
       const gitService = new GitService(project.path);
@@ -63,7 +141,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       // Non-fatal: SHA capture may fail if branch doesn't exist locally
     }
 
-    // Create first review cycle
     const cycleId = randomUUID();
     database
       .insert(schema.reviewCycles)
@@ -76,7 +153,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       })
       .run();
 
-    // Store diff snapshot for cycle 1
     try {
       const gitService = new GitService(project.path);
       const diffData = await gitService.getDiff(
@@ -118,16 +194,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/prs/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const orchestrator = fastify.orchestrator;
     const agents = orchestrator
@@ -148,16 +216,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       status: string;
     }>;
 
-    const existing = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!existing) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const existing = await findPrOrFail(database, id, reply);
+    if (!existing) return;
 
     database
       .update(schema.pullRequests)
@@ -181,29 +241,19 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const latestCycle = getLatestCycle(database, id);
     const now = new Date().toISOString();
 
     if (action === 'approve') {
-      // Set PR status to approved
       database
         .update(schema.pullRequests)
         .set({ status: 'approved', updatedAt: now })
         .where(eq(schema.pullRequests.id, id))
         .run();
 
-      // Set cycle status to approved
       if (latestCycle) {
         database
           .update(schema.reviewCycles)
@@ -216,7 +266,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
 
       return { status: 'approved' };
     } else {
-      // Set cycle status to changes_requested
       if (latestCycle) {
         database
           .update(schema.reviewCycles)
@@ -227,7 +276,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
 
       fastify.broadcast('review:submitted', { prId: id, action });
 
-      // Fire and forget: kick off the agent orchestrator
       const orchestrator = fastify.orchestrator;
       if (orchestrator) {
         orchestrator.handleRequestChanges(id).catch((error: unknown) => {
@@ -245,29 +293,16 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = (request.body ?? {}) as {
-      fileGroups?: {
-        name: string;
-        description?: string;
-        files: string[];
-      }[];
+      fileGroups?: FileGroup[];
     };
     const { fileGroups } = body;
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const latestCycle = getLatestCycle(database, id);
     const now = new Date().toISOString();
 
-    // Check if previous cycle's snapshot had file groups
     if (latestCycle) {
       const previousSnapshot = database
         .select()
@@ -286,7 +321,6 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       }
     }
 
-    // Mark current cycle's agentCompletedAt
     if (latestCycle) {
       database
         .update(schema.reviewCycles)
@@ -295,77 +329,15 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
         .run();
     }
 
-    // Look up project for git operations (SHA capture + diff snapshot)
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId))
-      .get();
+    const { newCycle, project } = await createCycleAndSnapshot({
+      database,
+      prId: id,
+      pr,
+      latestCycle,
+      fileGroups,
+      fastify,
+    });
 
-    // Capture commit SHA for the new cycle
-    let commitSha: string | undefined;
-    if (project) {
-      try {
-        const gitService = new GitService(project.path);
-        commitSha = await gitService.getHeadSha(pr.sourceBranch);
-      } catch {
-        // Non-fatal
-      }
-    }
-
-    // Create new review cycle with incremented cycleNumber
-    const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
-    const newCycleId = randomUUID();
-    database
-      .insert(schema.reviewCycles)
-      .values({
-        id: newCycleId,
-        prId: id,
-        cycleNumber: newCycleNumber,
-        status: 'pending_review',
-        commitSha,
-      })
-      .run();
-
-    const newCycle = database
-      .select()
-      .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.id, newCycleId))
-      .get();
-
-    if (project) {
-      try {
-        const gitService = new GitService(project.path);
-        const diffData = await gitService.getDiff(
-          pr.baseBranch,
-          pr.sourceBranch,
-        );
-        database
-          .insert(schema.diffSnapshots)
-          .values({
-            id: randomUUID(),
-            reviewCycleId: newCycleId,
-            diffData,
-            fileGroups: fileGroups ? JSON.stringify(fileGroups) : undefined,
-          })
-          .run();
-      } catch {
-        // Non-fatal: snapshot storage failure should not block agent-ready
-        fastify.log.warn(
-          { prId: id },
-          'Failed to store diff snapshot for new cycle',
-        );
-      }
-    }
-
-    if (newCycle) {
-      fastify.broadcast('pr:ready-for-review', {
-        prId: id,
-        cycleNumber: newCycle.cycleNumber,
-      });
-    }
-
-    // Send OS notification that PR is ready for review
     fastify.notificationService.notifyPRReadyForReview(
       pr.title,
       project?.name ?? 'Unknown',
@@ -383,21 +355,12 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const latestCycle = getLatestCycle(database, id);
     const now = new Date().toISOString();
 
-    // Mark current cycle as superseded
     if (latestCycle) {
       database
         .update(schema.reviewCycles)
@@ -406,82 +369,20 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
         .run();
     }
 
-    // Look up project for git operations
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId))
-      .get();
+    const { newCycle, project } = await createCycleAndSnapshot({
+      database,
+      prId: id,
+      pr,
+      latestCycle,
+      context,
+      fastify,
+    });
 
-    // Capture commit SHA
-    let commitSha: string | undefined;
-    if (project) {
-      try {
-        const gitService = new GitService(project.path);
-        commitSha = await gitService.getHeadSha(pr.sourceBranch);
-      } catch {
-        // Non-fatal
-      }
-    }
-
-    // Create new review cycle
-    const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
-    const newCycleId = randomUUID();
-    database
-      .insert(schema.reviewCycles)
-      .values({
-        id: newCycleId,
-        prId: id,
-        cycleNumber: newCycleNumber,
-        status: 'pending_review',
-        commitSha,
-        context,
-      })
-      .run();
-
-    const newCycle = database
-      .select()
-      .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.id, newCycleId))
-      .get();
-
-    // Store diff snapshot
-    if (project) {
-      try {
-        const gitService = new GitService(project.path);
-        const diffData = await gitService.getDiff(
-          pr.baseBranch,
-          pr.sourceBranch,
-        );
-        database
-          .insert(schema.diffSnapshots)
-          .values({
-            id: randomUUID(),
-            reviewCycleId: newCycleId,
-            diffData,
-          })
-          .run();
-      } catch {
-        fastify.log.warn(
-          { prId: id },
-          'Failed to store diff snapshot for resubmit cycle',
-        );
-      }
-    }
-
-    // Update PR updatedAt
     database
       .update(schema.pullRequests)
       .set({ updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
-
-    if (newCycle) {
-      fastify.broadcast('pr:ready-for-review', {
-        prId: id,
-        cycleNumber: newCycle.cycleNumber,
-      });
-    }
 
     fastify.notificationService.notifyPRReadyForReview(
       pr.title,
@@ -494,16 +395,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/run-insights', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const orchestrator = fastify.orchestrator;
     if (orchestrator) {
@@ -519,16 +412,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { source } = request.query as { source?: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const orchestrator = fastify.orchestrator;
     if (orchestrator) {
@@ -541,16 +426,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/close', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     if (pr.status !== 'open') {
       await reply
@@ -562,9 +439,9 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
     const latestCycle = getLatestCycle(database, id);
 
     if (latestCycle?.status === 'agent_working') {
-      await reply
-        .code(409)
-        .send({ error: 'Agent is currently working. Cancel the agent first.' });
+      await reply.code(409).send({
+        error: 'Agent is currently working. Cancel the agent first.',
+      });
       return;
     }
 
@@ -589,16 +466,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/reopen', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     if (pr.status !== 'closed') {
       await reply.code(400).send({ error: 'Only closed PRs can be reopened' });
@@ -626,16 +495,8 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.get('/api/prs/:id/cycles', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     return database
       .select()

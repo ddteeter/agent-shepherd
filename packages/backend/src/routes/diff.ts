@@ -6,6 +6,7 @@ import type { AppDatabase } from '../db/index.js';
 import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 import type { FileGroup } from '@agent-shepherd/shared';
+import { findPrOrFail, findProjectOrFail } from './route-helpers.js';
 
 type ReviewCycleRow = InferSelectModel<typeof schema.reviewCycles>;
 
@@ -72,15 +73,8 @@ async function handleInterCycleDiff(
     return;
   }
 
-  const project = database
-    .select()
-    .from(schema.projects)
-    .where(eq(schema.projects.id, pr.projectId))
-    .get();
-  if (!project) {
-    await reply.code(404).send({ error: 'Project not found' });
-    return;
-  }
+  const project = await findProjectOrFail(database, pr.projectId, reply);
+  if (!project) return;
 
   const gitService = new GitService(project.path);
   const diff = await gitService.getDiffBetweenCommits(
@@ -165,15 +159,8 @@ export function diffRoutes(fastify: FastifyInstance) {
       to?: string;
     };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     if (from !== undefined && to !== undefined) {
       return handleInterCycleDiff(database, pr, id, from, to, reply);
@@ -183,15 +170,8 @@ export function diffRoutes(fastify: FastifyInstance) {
       return handleCycleDiff(database, id, cycle, reply);
     }
 
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId))
-      .get();
-    if (!project) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const project = await findProjectOrFail(database, pr.projectId, reply);
+    if (!project) return;
 
     const gitService = new GitService(project.path);
     const diff = await gitService.getDiff(pr.baseBranch, pr.sourceBranch);
@@ -220,15 +200,8 @@ export function diffRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { cycle } = request.query as { cycle?: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     let reviewCycle;
     if (cycle === undefined) {
@@ -271,25 +244,11 @@ export function diffRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/diff/snapshot', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId))
-      .get();
-    if (!project) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const project = await findProjectOrFail(database, pr.projectId, reply);
+    if (!project) return;
 
     const latestCycle = getLatestCycle(database, id);
 
@@ -333,15 +292,8 @@ export function diffRoutes(fastify: FastifyInstance) {
   fastify.get('/api/prs/:id/cycles/details', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = database
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
-    if (!pr) {
-      await reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+    const pr = await findPrOrFail(database, id, reply);
+    if (!pr) return;
 
     const cycles = database
       .select()

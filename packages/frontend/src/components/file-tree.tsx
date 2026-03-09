@@ -29,6 +29,78 @@ const STATUS_BADGE: Record<FileStatus, { label: string; color: string }> = {
   modified: { label: 'M', color: 'var(--color-warning)' },
 };
 
+function FileItemButton({
+  filePath,
+  displayName,
+  depth,
+  selectedFile,
+  onSelectFile,
+  fileStatuses,
+  commentCounts,
+}: Readonly<{
+  filePath: string;
+  displayName: string;
+  depth: number;
+  selectedFile: string | undefined;
+  onSelectFile: (file: string) => void;
+  fileStatuses?: Record<string, FileStatus>;
+  commentCounts?: Record<string, number>;
+}>) {
+  const badge = fileStatuses?.[filePath]
+    ? STATUS_BADGE[fileStatuses[filePath]]
+    : undefined;
+  const count = commentCounts?.[filePath] ?? 0;
+  return (
+    <li key={filePath}>
+      <button
+        data-file-path={filePath}
+        onClick={() => {
+          onSelectFile(filePath);
+        }}
+        className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
+          selectedFile === filePath ? 'font-medium' : ''
+        }`}
+        style={{
+          paddingLeft: depth * 16 + 28,
+          ...(selectedFile === filePath
+            ? {
+                backgroundColor: 'var(--color-list-active-bg)',
+                color: 'var(--color-list-active-fg)',
+              }
+            : {}),
+        }}
+      >
+        <FileIcon
+          fileName={displayName}
+          autoAssign
+          className="w-4 h-4 shrink-0"
+        />
+        <span className="whitespace-nowrap flex-1">{displayName}</span>
+        {count > 0 && (
+          <span
+            className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
+            style={{
+              backgroundColor:
+                'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+              color: 'var(--color-accent)',
+            }}
+          >
+            {count}
+          </span>
+        )}
+        {badge && (
+          <span
+            className="text-xs font-bold shrink-0"
+            style={{ color: badge.color }}
+          >
+            {badge.label}
+          </span>
+        )}
+      </button>
+    </li>
+  );
+}
+
 function TreeNodeList({
   nodes,
   depth,
@@ -97,58 +169,17 @@ function TreeNodeList({
           );
         }
 
-        const badge = fileStatuses?.[node.path]
-          ? STATUS_BADGE[fileStatuses[node.path]]
-          : undefined;
-        const count = commentCounts?.[node.path] ?? 0;
         return (
-          <li key={node.path}>
-            <button
-              data-file-path={node.path}
-              onClick={() => {
-                onSelectFile(node.path);
-              }}
-              className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
-                selectedFile === node.path ? 'font-medium' : ''
-              }`}
-              style={{
-                paddingLeft: depth * 16 + 28,
-                ...(selectedFile === node.path
-                  ? {
-                      backgroundColor: 'var(--color-list-active-bg)',
-                      color: 'var(--color-list-active-fg)',
-                    }
-                  : {}),
-              }}
-            >
-              <FileIcon
-                fileName={node.name}
-                autoAssign
-                className="w-4 h-4 shrink-0"
-              />
-              <span className="whitespace-nowrap flex-1">{node.name}</span>
-              {count > 0 && (
-                <span
-                  className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
-                  style={{
-                    backgroundColor:
-                      'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                    color: 'var(--color-accent)',
-                  }}
-                >
-                  {count}
-                </span>
-              )}
-              {badge && (
-                <span
-                  className="text-xs font-bold shrink-0"
-                  style={{ color: badge.color }}
-                >
-                  {badge.label}
-                </span>
-              )}
-            </button>
-          </li>
+          <FileItemButton
+            key={node.path}
+            filePath={node.path}
+            displayName={node.name}
+            depth={depth}
+            selectedFile={selectedFile}
+            onSelectFile={onSelectFile}
+            fileStatuses={fileStatuses}
+            commentCounts={commentCounts}
+          />
         );
       })}
     </>
@@ -198,130 +229,37 @@ function GroupedTreeNodeList({
                 </svg>
                 <span>{node.name}</span>
               </button>
-              {!isCollapsed && (
-                <>
-                  {node.children && (
-                    <ul>
-                      {node.children.map((child) => {
-                        const badge = fileStatuses?.[child.path]
-                          ? STATUS_BADGE[fileStatuses[child.path]]
-                          : undefined;
-                        const count = commentCounts?.[child.path] ?? 0;
-                        return (
-                          <li key={child.path}>
-                            <button
-                              data-file-path={child.path}
-                              onClick={() => {
-                                onSelectFile(child.path);
-                              }}
-                              className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
-                                selectedFile === child.path ? 'font-medium' : ''
-                              }`}
-                              style={{
-                                paddingLeft: (depth + 1) * 16 + 28,
-                                ...(selectedFile === child.path
-                                  ? {
-                                      backgroundColor:
-                                        'var(--color-list-active-bg)',
-                                      color: 'var(--color-list-active-fg)',
-                                    }
-                                  : {}),
-                              }}
-                            >
-                              <FileIcon
-                                fileName={
-                                  child.path.split('/').pop() ?? child.path
-                                }
-                                autoAssign
-                                className="w-4 h-4 shrink-0"
-                              />
-                              <span className="whitespace-nowrap flex-1">
-                                {child.path}
-                              </span>
-                              {count > 0 && (
-                                <span
-                                  className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
-                                  style={{
-                                    backgroundColor:
-                                      'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                                    color: 'var(--color-accent)',
-                                  }}
-                                >
-                                  {count}
-                                </span>
-                              )}
-                              {badge && (
-                                <span
-                                  className="text-xs font-bold shrink-0"
-                                  style={{ color: badge.color }}
-                                >
-                                  {badge.label}
-                                </span>
-                              )}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </>
+              {!isCollapsed && node.children && (
+                <ul>
+                  {node.children.map((child) => (
+                    <FileItemButton
+                      key={child.path}
+                      filePath={child.path}
+                      displayName={child.path}
+                      depth={depth + 1}
+                      selectedFile={selectedFile}
+                      onSelectFile={onSelectFile}
+                      fileStatuses={fileStatuses}
+                      commentCounts={commentCounts}
+                    />
+                  ))}
+                </ul>
               )}
             </li>
           );
         }
 
-        const badge = fileStatuses?.[node.path]
-          ? STATUS_BADGE[fileStatuses[node.path]]
-          : undefined;
-        const count = commentCounts?.[node.path] ?? 0;
         return (
-          <li key={node.path}>
-            <button
-              data-file-path={node.path}
-              onClick={() => {
-                onSelectFile(node.path);
-              }}
-              className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
-                selectedFile === node.path ? 'font-medium' : ''
-              }`}
-              style={{
-                paddingLeft: depth * 16 + 28,
-                ...(selectedFile === node.path
-                  ? {
-                      backgroundColor: 'var(--color-list-active-bg)',
-                      color: 'var(--color-list-active-fg)',
-                    }
-                  : {}),
-              }}
-            >
-              <FileIcon
-                fileName={node.path.split('/').pop() ?? node.path}
-                autoAssign
-                className="w-4 h-4 shrink-0"
-              />
-              <span className="whitespace-nowrap flex-1">{node.path}</span>
-              {count > 0 && (
-                <span
-                  className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
-                  style={{
-                    backgroundColor:
-                      'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-                    color: 'var(--color-accent)',
-                  }}
-                >
-                  {count}
-                </span>
-              )}
-              {badge && (
-                <span
-                  className="text-xs font-bold shrink-0"
-                  style={{ color: badge.color }}
-                >
-                  {badge.label}
-                </span>
-              )}
-            </button>
-          </li>
+          <FileItemButton
+            key={node.path}
+            filePath={node.path}
+            displayName={node.path}
+            depth={depth}
+            selectedFile={selectedFile}
+            onSelectFile={onSelectFile}
+            fileStatuses={fileStatuses}
+            commentCounts={commentCounts}
+          />
         );
       })}
     </>

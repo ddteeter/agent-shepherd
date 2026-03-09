@@ -1,13 +1,4 @@
-export interface CommentSummary {
-  total: number;
-  bySeverity: Record<string, number>;
-  files: {
-    path: string;
-    count: number;
-    bySeverity: Record<string, number>;
-  }[];
-  generalCount: number;
-}
+import type { CommentSummary } from '@agent-shepherd/shared';
 
 interface PromptInput {
   prId: string;

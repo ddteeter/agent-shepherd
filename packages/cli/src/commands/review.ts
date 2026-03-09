@@ -1,16 +1,6 @@
 import { Command } from 'commander';
+import type { CommentSummary } from '@agent-shepherd/shared';
 import { ApiClient } from '../api-client.js';
-
-interface CommentSummary {
-  total: number;
-  bySeverity: Record<string, number>;
-  files: {
-    path: string;
-    count: number;
-    bySeverity: Record<string, number>;
-  }[];
-  generalCount: number;
-}
 
 interface Comment {
   id: string;

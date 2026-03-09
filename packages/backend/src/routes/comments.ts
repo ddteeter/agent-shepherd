@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type {
   CreateCommentInput,
   BatchCommentPayload,
+  CommentSummary,
 } from '@agent-shepherd/shared';
 import { eq, inArray, type InferSelectModel } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -12,14 +13,15 @@ import { extractFilesFromDiff } from './diff.js';
 type ReviewCycleRow = InferSelectModel<typeof schema.reviewCycles>;
 type CommentRow = InferSelectModel<typeof schema.comments>;
 
-interface CommentSummary {
-  total: number;
-  bySeverity: Record<string, number>;
-  files: { path: string; count: number; bySeverity: Record<string, number> }[];
-  generalCount: number;
+function findCommentOrFail(database: AppDatabase, id: string) {
+  return database
+    .select()
+    .from(schema.comments)
+    .where(eq(schema.comments.id, id))
+    .get();
 }
 
-function buildCommentSummary(
+export function buildCommentSummary(
   allComments: CommentRow[],
   cycles: ReviewCycleRow[],
   database: AppDatabase,
@@ -303,12 +305,7 @@ export function commentRoutes(fastify: FastifyInstance) {
       resolved: boolean;
     }>;
 
-    const existing = database
-      .select()
-      .from(schema.comments)
-      .where(eq(schema.comments.id, id))
-      .get();
-
+    const existing = findCommentOrFail(database, id);
     if (!existing) {
       await reply.code(404).send({ error: 'Comment not found' });
       return;
@@ -330,12 +327,7 @@ export function commentRoutes(fastify: FastifyInstance) {
   fastify.delete('/api/comments/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const existing = database
-      .select()
-      .from(schema.comments)
-      .where(eq(schema.comments.id, id))
-      .get();
-
+    const existing = findCommentOrFail(database, id);
     if (!existing) {
       await reply.code(404).send({ error: 'Comment not found' });
       return;

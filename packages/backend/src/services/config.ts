@@ -7,45 +7,31 @@ import { schema } from '../db/index.js';
 
 export type ConfigRecord = Record<string, unknown>;
 
+function readYamlConfig(filePath: string): ConfigRecord {
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    const parsed = yaml.load(content);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as ConfigRecord;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 export class ConfigService {
   constructor(
     private database: AppDatabase,
     private globalConfigPath: string,
   ) {}
 
-  /**
-   * Read the global config file (~/.agent-shepherd/config.yml).
-   * Returns empty object if the file doesn't exist or can't be parsed.
-   */
   readGlobalFileConfig(): ConfigRecord {
-    try {
-      const content = readFileSync(this.globalConfigPath, 'utf8');
-      const parsed = yaml.load(content);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as ConfigRecord;
-      }
-      return {};
-    } catch {
-      return {};
-    }
+    return readYamlConfig(this.globalConfigPath);
   }
 
-  /**
-   * Read the per-project config file (.agent-shepherd.yml in repo root).
-   * Returns empty object if the file doesn't exist or can't be parsed.
-   */
   readProjectFileConfig(projectPath: string): ConfigRecord {
-    try {
-      const filePath = path.join(projectPath, '.agent-shepherd.yml');
-      const content = readFileSync(filePath, 'utf8');
-      const parsed = yaml.load(content);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as ConfigRecord;
-      }
-      return {};
-    } catch {
-      return {};
-    }
+    return readYamlConfig(path.join(projectPath, '.agent-shepherd.yml'));
   }
 
   /**

@@ -38,6 +38,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky",
+    "check:duplication": "jscpd ./packages --reporters console",
     "prepublishOnly": "npm run build"
   },
   "engines": {
@@ -64,6 +65,7 @@
     "eslint-plugin-sonarjs": "^4.0.1",
     "eslint-plugin-unicorn": "^63.0.0",
     "husky": "^9.1.7",
+    "jscpd": "^4.0.8",
     "lint-staged": "^16.3.2",
     "prettier": "^3.8.1",
     "typescript-eslint": "^8.56.1"

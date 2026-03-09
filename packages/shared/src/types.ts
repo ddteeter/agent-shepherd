@@ -104,6 +104,13 @@ export interface CreatePRInput {
   workingDirectory?: string;
 }
 
+export interface CommentSummary {
+  total: number;
+  bySeverity: Record<string, number>;
+  files: { path: string; count: number; bySeverity: Record<string, number> }[];
+  generalCount: number;
+}
+
 export interface CreateCommentInput {
   filePath?: string | null;
   startLine?: number | null;

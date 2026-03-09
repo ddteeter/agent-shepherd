@@ -1,12 +1,12 @@
 import { eq, inArray, type InferSelectModel } from 'drizzle-orm';
 import { AgentRunner } from '../agent-runner.js';
 import { buildReviewPrompt } from './prompt-builder.js';
+import { buildCommentSummary } from '../../routes/comments.js';
 import { getLatestCycle } from '../../db/queries.js';
 import { NotificationService } from '../../services/notifications.js';
 import type { AppDatabase } from '../../db/index.js';
 import type * as schemaModule from '../../db/schema.js';
 
-type CommentRow = InferSelectModel<typeof schemaModule.comments>;
 type ReviewCycleRow = InferSelectModel<typeof schemaModule.reviewCycles>;
 
 interface FeedbackIntegratorDeps {
@@ -72,46 +72,17 @@ export class FeedbackIntegrator {
       .where(inArray(this.schema.comments.reviewCycleId, cycleIds))
       .all();
 
-    const topLevel = allComments.filter(
-      (comment: CommentRow) => !comment.parentCommentId && !comment.resolved,
+    const commentSummary = buildCommentSummary(
+      allComments,
+      allCycles,
+      this.database,
     );
-
-    const bySeverity: Record<string, number> = {};
-    const fileMap = new Map<
-      string,
-      { count: number; bySeverity: Record<string, number> }
-    >();
-    let generalCount = 0;
-
-    for (const comment of topLevel) {
-      bySeverity[comment.severity] = (bySeverity[comment.severity] ?? 0) + 1;
-      if (comment.filePath) {
-        const entry = fileMap.get(comment.filePath) ?? {
-          count: 0,
-          bySeverity: {},
-        };
-        entry.count++;
-        entry.bySeverity[comment.severity] =
-          (entry.bySeverity[comment.severity] ?? 0) + 1;
-        fileMap.set(comment.filePath, entry);
-      } else {
-        generalCount++;
-      }
-    }
 
     const prompt = buildReviewPrompt({
       prId,
       prTitle: pr.title,
       agentContext: pr.agentContext ?? undefined,
-      commentSummary: {
-        total: topLevel.length,
-        bySeverity,
-        files: [...fileMap.entries()].map(([filePath, data]) => ({
-          path: filePath,
-          ...data,
-        })),
-        generalCount,
-      },
+      commentSummary,
     });
 
     this.setCycleStatus(currentCycle.id, 'agent_working');

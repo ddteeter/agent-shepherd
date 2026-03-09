@@ -1,9 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import path from 'node:path';
 import { homedir } from 'node:os';
-import { eq } from 'drizzle-orm';
-import { schema } from '../db/index.js';
 import { ConfigService } from '../services/config.js';
+import { findProjectOrFail } from './route-helpers.js';
+
+function hasKeyAndValue(body: {
+  key?: string;
+  value?: string;
+}): body is { key: string; value: string } {
+  return !!body.key && body.value !== undefined;
+}
 
 export function configRoutes(fastify: FastifyInstance) {
   const database = fastify.db;
@@ -19,55 +25,39 @@ export function configRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/api/config', async (request, reply) => {
-    const { key, value } = request.body as { key?: string; value?: string };
+    const body = request.body as { key?: string; value?: string };
 
-    if (!key || value === undefined) {
+    if (!hasKeyAndValue(body)) {
       await reply.code(400).send({ error: 'key and value are required' });
       return;
     }
 
-    configService.setGlobalDbConfig(key, value);
+    configService.setGlobalDbConfig(body.key, body.value);
     return configService.getMergedGlobalConfig();
   });
 
   fastify.get('/api/projects/:id/config', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
-
-    if (!project) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const project = await findProjectOrFail(database, id, reply);
+    if (!project) return;
 
     return configService.getMergedProjectConfig(id, project.path);
   });
 
   fastify.put('/api/projects/:id/config', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { key, value } = request.body as { key?: string; value?: string };
+    const body = request.body as { key?: string; value?: string };
 
-    const project = database
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
+    const project = await findProjectOrFail(database, id, reply);
+    if (!project) return;
 
-    if (!project) {
-      await reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
-
-    if (!key || value === undefined) {
+    if (!hasKeyAndValue(body)) {
       await reply.code(400).send({ error: 'key and value are required' });
       return;
     }
 
-    configService.setProjectDbConfig(id, key, value);
+    configService.setProjectDbConfig(id, body.key, body.value);
     return configService.getMergedProjectConfig(id, project.path);
   });
 }
