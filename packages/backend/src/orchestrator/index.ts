@@ -6,6 +6,8 @@ import { InsightsAnalyzer } from './insights/insights-analyzer.js';
 import { ClaudeCodeSessionLogProvider } from './session-log/claude-code-provider.js';
 import { NotificationService } from '../services/notifications.js';
 import type { SessionLogProvider } from './session-log/provider.js';
+import type { AppDatabase } from '../db/index.js';
+import type * as schemaModule from '../db/schema.js';
 
 export { AgentRunner } from './agent-runner.js';
 export { ClaudeCodeAdapter } from './claude-code-adapter.js';
@@ -15,9 +17,9 @@ export type { AgentAdapter, AgentSession, AgentSource } from './types.js';
 export { buildReviewPrompt } from './review/prompt-builder.js';
 
 interface OrchestratorDeps {
-  db: any;
-  schema: any;
-  broadcast?: (event: string, data: any) => void;
+  db: AppDatabase;
+  schema: typeof schemaModule;
+  broadcast?: (event: string, data: unknown) => void;
   adapter?: AgentAdapter;
   sessionLogProvider?: SessionLogProvider;
   notificationService?: NotificationService;
@@ -31,12 +33,16 @@ export class Orchestrator {
 
   constructor(deps: OrchestratorDeps) {
     const adapter =
-      deps.adapter || new ClaudeCodeAdapter({ devMode: deps.devMode });
-    const broadcast = deps.broadcast || (() => {});
+      deps.adapter ?? new ClaudeCodeAdapter({ devMode: deps.devMode });
+    const broadcast: (event: string, data: unknown) => void =
+      deps.broadcast ??
+      (() => {
+        /* no-op */
+      });
     const notificationService =
-      deps.notificationService || new NotificationService();
+      deps.notificationService ?? new NotificationService();
     const sessionLogProvider =
-      deps.sessionLogProvider || new ClaudeCodeSessionLogProvider();
+      deps.sessionLogProvider ?? new ClaudeCodeSessionLogProvider();
 
     this.agentRunner = new AgentRunner({ adapter, broadcast });
 
@@ -56,11 +62,13 @@ export class Orchestrator {
   }
 
   async handleRequestChanges(prId: string): Promise<void> {
-    // Run both in parallel — insights errors don't block code-fix
     const codeFixPromise = this.feedbackIntegrator.run(prId);
-    const insightsPromise = this.insightsAnalyzer.run(prId).catch((error) => {
-      console.error(`Insights analysis failed for PR ${prId}:`, error.message);
-    });
+    const insightsPromise = this.insightsAnalyzer
+      .run(prId)
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Insights analysis failed for PR ${prId}:`, message);
+      });
 
     await Promise.all([codeFixPromise, insightsPromise]);
   }
@@ -77,7 +85,6 @@ export class Orchestrator {
     if (source) {
       await this.agentRunner.cancel(prId, source);
     } else {
-      // Cancel both if no source specified
       await this.agentRunner.cancel(prId, 'code-fix');
       await this.agentRunner.cancel(prId, 'insights');
     }

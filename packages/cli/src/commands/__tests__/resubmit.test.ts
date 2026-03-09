@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { resubmitCommand } from '../resubmit.js';
+import type { ApiClient } from '../../api-client.js';
 
 vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
@@ -10,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 
 describe('resubmitCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { post: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -18,8 +19,10 @@ describe('resubmitCommand', () => {
     program = new Command();
     program.exitOverride();
     client = { post: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    resubmitCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    resubmitCommand(program, client as unknown as ApiClient);
   });
 
   it('resubmits PR with context from file', async () => {
@@ -35,7 +38,7 @@ describe('resubmitCommand', () => {
       '/tmp/context.txt',
     ]);
 
-    expect(readFile).toHaveBeenCalledWith('/tmp/context.txt', 'utf-8');
+    expect(readFile).toHaveBeenCalledWith('/tmp/context.txt', 'utf8');
     expect(client.post).toHaveBeenCalledWith('/api/prs/pr-1/resubmit', {
       context: 'Updated the config parsing logic',
     });

@@ -2,9 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import notifier from 'node-notifier';
 import { NotificationService } from '../notifications.js';
 
+const { notifyMock } = vi.hoisted(() => ({
+  notifyMock: vi.fn(),
+}));
+
 vi.mock('node-notifier', () => ({
   default: {
-    notify: vi.fn(),
+    notify: notifyMock,
   },
 }));
 
@@ -20,11 +24,11 @@ describe('NotificationService', () => {
     it('calls node-notifier with correct title and message', () => {
       service.notifyPRReadyForReview('Fix login bug', 'my-app');
 
-      expect(notifier.notify).toHaveBeenCalledOnce();
-      expect(notifier.notify).toHaveBeenCalledWith(
+      expect(notifyMock).toHaveBeenCalledOnce();
+      expect(notifyMock).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Agent Shepherd',
-          message: expect.stringContaining('Fix login bug'),
+          message: expect.stringContaining('Fix login bug') as string,
         }),
       );
     });
@@ -32,15 +36,15 @@ describe('NotificationService', () => {
     it('includes project name in the message', () => {
       service.notifyPRReadyForReview('Add tests', 'cool-project');
 
-      expect(notifier.notify).toHaveBeenCalledWith(
+      expect(notifyMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: expect.stringContaining('cool-project'),
+          message: expect.stringContaining('cool-project') as string,
         }),
       );
     });
 
     it('does not throw when node-notifier throws', () => {
-      vi.mocked(notifier.notify).mockImplementation(() => {
+      notifyMock.mockImplementation(() => {
         throw new Error('Notification system unavailable');
       });
 
@@ -50,11 +54,8 @@ describe('NotificationService', () => {
     });
 
     it('does not throw when node-notifier callback receives error', () => {
-      // Simulate a callback-style error (node-notifier swallows these internally,
-      // but we want to ensure our wrapper is robust)
-      vi.mocked(notifier.notify).mockImplementation(() => {
-        // no-op; simulating silent failure
-        return {} as any;
+      notifyMock.mockImplementation(() => {
+        return {} as unknown as notifier.NodeNotifier;
       });
 
       expect(() => {

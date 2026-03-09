@@ -1,19 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { reviewCommand } from '../review.js';
+import type { ApiClient } from '../../api-client.js';
 
 describe('reviewCommand', () => {
   let program: Command;
-  let client: any;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-
+  let client: { get: ReturnType<typeof vi.fn> };
   beforeEach(() => {
     vi.restoreAllMocks();
     program = new Command();
     program.exitOverride();
     client = { get: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    reviewCommand(program, client);
+    vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    reviewCommand(program, client as unknown as ApiClient);
   });
 
   describe('comments --summary', () => {
@@ -42,7 +43,7 @@ describe('reviewCommand', () => {
         '--summary',
       ]);
 
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Review Comments for: My PR');
       expect(output).toContain('2 must-fix');
       expect(output).toContain('3 suggestion');
@@ -66,7 +67,7 @@ describe('reviewCommand', () => {
         'pr-2',
         '--summary',
       ]);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).not.toContain('General comments');
     });
   });
@@ -84,18 +85,18 @@ describe('reviewCommand', () => {
             body: 'Fix this',
             severity: 'must-fix',
             author: 'human',
-            parentCommentId: null,
+            parentCommentId: undefined,
             resolved: false,
           },
           {
             id: 'c2',
-            filePath: null,
-            startLine: null,
-            endLine: null,
+            filePath: undefined,
+            startLine: undefined,
+            endLine: undefined,
             body: 'General note',
             severity: 'suggestion',
             author: 'human',
-            parentCommentId: null,
+            parentCommentId: undefined,
             resolved: false,
           },
           {
@@ -113,7 +114,7 @@ describe('reviewCommand', () => {
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
 
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('All comments');
       expect(output).toContain('[MUST FIX]');
       expect(output).toContain('Line 10');
@@ -133,13 +134,13 @@ describe('reviewCommand', () => {
           body: 'Refactor this range',
           severity: 'request',
           author: 'human',
-          parentCommentId: null,
+          parentCommentId: undefined,
           resolved: false,
         },
       ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Lines 5-10');
       expect(output).toContain('[REQUEST]');
     });
@@ -162,7 +163,7 @@ describe('reviewCommand', () => {
       expect(client.get).toHaveBeenCalledWith(
         '/api/prs/pr-1/comments?filePath=src%2Fa.ts',
       );
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Comments for: src/a.ts');
     });
 
@@ -184,7 +185,7 @@ describe('reviewCommand', () => {
       expect(client.get).toHaveBeenCalledWith(
         '/api/prs/pr-1/comments?severity=must-fix',
       );
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('must-fix comments');
     });
 
@@ -198,33 +199,33 @@ describe('reviewCommand', () => {
           body: 'Resolved comment',
           severity: 'suggestion',
           author: 'human',
-          parentCommentId: null,
+          parentCommentId: undefined,
           resolved: true,
         },
       ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).not.toContain('Resolved comment');
     });
 
-    it('handles comments with null endLine', async () => {
+    it('handles comments with undefined endLine', async () => {
       client.get.mockResolvedValueOnce({ title: 'PR' }).mockResolvedValueOnce([
         {
           id: 'c1',
           filePath: 'src/a.ts',
           startLine: 5,
-          endLine: null,
+          endLine: undefined,
           body: 'Single line',
           severity: 'suggestion',
           author: 'human',
-          parentCommentId: null,
+          parentCommentId: undefined,
           resolved: false,
         },
       ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Line 5');
     });
   });

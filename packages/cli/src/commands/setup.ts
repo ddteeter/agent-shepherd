@@ -1,19 +1,17 @@
 import { Command } from 'commander';
 import { execSync } from 'node:child_process';
-import { PACKAGE_ROOT, isDevMode as isDevelopmentMode } from '../paths.js';
+import { PACKAGE_ROOT, isDevelopmentMode } from '../paths.js';
 
 export function setupCommand(program: Command) {
   program
     .command('setup')
     .description('Install skills and verify prerequisites')
-    .action(async () => {
-      const results: { label: string; ok: boolean; detail?: string }[] =
-        [];
+    .action(() => {
+      const results: { label: string; ok: boolean; detail?: string }[] = [];
 
-      // 1. Verify claude is on PATH
       try {
         const version = execSync('claude --version', {
-          encoding: 'utf-8',
+          encoding: 'utf8',
           stdio: ['pipe', 'pipe', 'pipe'],
         }).trim();
         results.push({ label: 'Claude CLI', ok: true, detail: version });
@@ -26,12 +24,11 @@ export function setupCommand(program: Command) {
         });
       }
 
-      // 2. Install skills via npx skills
       try {
         execSync(
           `npx skills add ${PACKAGE_ROOT} --global -a claude-code --yes`,
           {
-            encoding: 'utf-8',
+            encoding: 'utf8',
             stdio: 'inherit',
           },
         );
@@ -44,12 +41,11 @@ export function setupCommand(program: Command) {
         });
       }
 
-      // 3. In dev mode, npm link to put agent-shepherd on PATH
       if (isDevelopmentMode()) {
         try {
           execSync('npm link', {
             cwd: PACKAGE_ROOT,
-            encoding: 'utf-8',
+            encoding: 'utf8',
             stdio: 'inherit',
           });
           results.push({ label: 'npm link (dev)', ok: true });
@@ -63,7 +59,6 @@ export function setupCommand(program: Command) {
         }
       }
 
-      // Print summary
       console.log('\n--- Setup Summary ---');
       for (const r of results) {
         const icon = r.ok ? '[OK]' : '[FAIL]';
@@ -74,9 +69,10 @@ export function setupCommand(program: Command) {
       const failed = results.filter((r) => !r.ok);
       if (failed.length > 0) {
         console.log(
-          `\n${failed.length} step(s) failed. Fix the issues above and re-run: agent-shepherd setup`,
+          `\n${String(failed.length)} step(s) failed. Fix the issues above and re-run: agent-shepherd setup`,
         );
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       } else {
         console.log('\nSetup complete!');
       }

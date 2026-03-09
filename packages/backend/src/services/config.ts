@@ -1,14 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import path from 'node:path';
 import yaml from 'js-yaml';
 import { eq } from 'drizzle-orm';
+import type { AppDatabase } from '../db/index.js';
 import { schema } from '../db/index.js';
 
 export type ConfigRecord = Record<string, unknown>;
 
 export class ConfigService {
   constructor(
-    private database: any,
+    private database: AppDatabase,
     private globalConfigPath: string,
   ) {}
 
@@ -18,7 +19,7 @@ export class ConfigService {
    */
   readGlobalFileConfig(): ConfigRecord {
     try {
-      const content = readFileSync(this.globalConfigPath, 'utf-8');
+      const content = readFileSync(this.globalConfigPath, 'utf8');
       const parsed = yaml.load(content);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         return parsed as ConfigRecord;
@@ -35,8 +36,8 @@ export class ConfigService {
    */
   readProjectFileConfig(projectPath: string): ConfigRecord {
     try {
-      const filePath = join(projectPath, '.agent-shepherd.yml');
-      const content = readFileSync(filePath, 'utf-8');
+      const filePath = path.join(projectPath, '.agent-shepherd.yml');
+      const content = readFileSync(filePath, 'utf8');
       const parsed = yaml.load(content);
       if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
         return parsed as ConfigRecord;
@@ -51,7 +52,7 @@ export class ConfigService {
    * Get all global config entries from the DB as a key-value object.
    */
   getGlobalDbConfig(): ConfigRecord {
-    const rows = this.db.select().from(schema.globalConfig).all();
+    const rows = this.database.select().from(schema.globalConfig).all();
     const result: ConfigRecord = {};
     for (const row of rows) {
       result[row.key] = row.value;
@@ -63,7 +64,7 @@ export class ConfigService {
    * Get all project-specific config entries from the DB.
    */
   getProjectDbConfig(projectId: string): ConfigRecord {
-    const rows = this.db
+    const rows = this.database
       .select()
       .from(schema.projectConfig)
       .where(eq(schema.projectConfig.projectId, projectId))
@@ -79,7 +80,7 @@ export class ConfigService {
    * Set (upsert) a global config key in the DB.
    */
   setGlobalDbConfig(key: string, value: string): void {
-    this.db
+    this.database
       .insert(schema.globalConfig)
       .values({ key, value })
       .onConflictDoUpdate({
@@ -93,7 +94,7 @@ export class ConfigService {
    * Set (upsert) a project config key in the DB.
    */
   setProjectDbConfig(projectId: string, key: string, value: string): void {
-    this.db
+    this.database
       .insert(schema.projectConfig)
       .values({ projectId, key, value })
       .onConflictDoUpdate({
@@ -121,6 +122,10 @@ export class ConfigService {
     const globalFileConfig = this.readGlobalFileConfig();
     const projectFileConfig = this.readProjectFileConfig(projectPath);
     const projectDatabaseConfig = this.getProjectDbConfig(projectId);
-    return { ...globalFileConfig, ...projectFileConfig, ...projectDatabaseConfig };
+    return {
+      ...globalFileConfig,
+      ...projectFileConfig,
+      ...projectDatabaseConfig,
+    };
   }
 }

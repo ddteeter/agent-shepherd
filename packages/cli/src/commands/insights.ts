@@ -1,6 +1,15 @@
 import { Command } from 'commander';
 import { ApiClient } from '../api-client.js';
 
+interface InsightsResult {
+  categories: Record<string, unknown>;
+}
+
+interface CommentHistory {
+  id: string;
+  body: string;
+}
+
 export function insightsCommand(program: Command, client: ApiClient) {
   const insights = program
     .command('insights')
@@ -10,12 +19,14 @@ export function insightsCommand(program: Command, client: ApiClient) {
     .command('get <pr-id>')
     .description('Get current insights for a PR')
     .action(async (prId: string) => {
-      const result = await client.get<any>(`/api/prs/${prId}/insights`);
+      const result = await client.get<InsightsResult | undefined>(
+        `/api/prs/${prId}/insights`,
+      );
       if (!result) {
         console.log('No insights found for this PR.');
         return;
       }
-      console.log(JSON.stringify(result.categories, null, 2));
+      console.log(JSON.stringify(result.categories, undefined, 2));
     });
 
   insights
@@ -25,20 +36,23 @@ export function insightsCommand(program: Command, client: ApiClient) {
     .action(async (prId: string, options: { stdin?: boolean }) => {
       if (!options.stdin) {
         console.error('Must specify --stdin');
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
 
       const chunks: Buffer[] = [];
       for await (const chunk of process.stdin) {
-        chunks.push(chunk);
+        chunks.push(chunk as Buffer);
       }
-      const payload = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-      const result = await client.put<any>(
+      const payload = JSON.parse(
+        Buffer.concat(chunks).toString('utf8'),
+      ) as unknown;
+      const result = await client.put<InsightsResult>(
         `/api/prs/${prId}/insights`,
         payload,
       );
       console.log(
-        `Insights updated for PR ${prId} (${Object.keys(result.categories).length} categories)`,
+        `Insights updated for PR ${prId} (${String(Object.keys(result.categories).length)} categories)`,
       );
     });
 
@@ -46,9 +60,9 @@ export function insightsCommand(program: Command, client: ApiClient) {
     .command('history <project-id>')
     .description('Get all comments across PRs for a project')
     .action(async (projectId: string) => {
-      const comments = await client.get<any[]>(
+      const comments = await client.get<CommentHistory[]>(
         `/api/projects/${projectId}/comments/history`,
       );
-      console.log(JSON.stringify(comments, null, 2));
+      console.log(JSON.stringify(comments, undefined, 2));
     });
 }

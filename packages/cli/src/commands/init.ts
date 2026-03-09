@@ -1,6 +1,11 @@
 import { Command } from 'commander';
-import { resolve, basename } from 'node:path';
+import path from 'node:path';
 import { ApiClient } from '../api-client.js';
+
+interface ProjectResult {
+  name: string;
+  id: string;
+}
 
 export function initCommand(program: Command, client: ApiClient) {
   program
@@ -10,20 +15,18 @@ export function initCommand(program: Command, client: ApiClient) {
     .option('-b, --base-branch <branch>', 'Base branch', 'main')
     .action(
       async (
-        path: string | undefined,
+        initPath: string | undefined,
         options: { name?: string; baseBranch: string },
       ) => {
-        const projectPath = resolve(path || '.');
-        const name = options.name || basename(projectPath);
+        const projectPath = path.resolve(initPath ?? '.');
+        const name = options.name ?? path.basename(projectPath);
 
-        const project = await client.post('/api/projects', {
+        const project = await client.post<ProjectResult>('/api/projects', {
           name,
           path: projectPath,
           baseBranch: options.baseBranch,
         });
-        console.log(
-          `Project registered: ${(project as any).name} (${(project as any).id})`,
-        );
+        console.log(`Project registered: ${project.name} (${project.id})`);
       },
     );
 }

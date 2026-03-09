@@ -1,19 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir, homedir } from 'node:os';
-import { createDb as createDatabase } from '../../db/index.js';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { createDatabase } from '../../db/index.js';
 import { schema } from '../../db/index.js';
 import { ConfigService } from '../config.js';
 
 describe('ConfigService', () => {
-  let tmpDir: string;
+  let temporaryDirectory: string;
   let database: ReturnType<typeof createDatabase>['db'];
   let sqlite: ReturnType<typeof createDatabase>['sqlite'];
   let configService: ConfigService;
 
   beforeEach(async () => {
-    tmpDir = await mkdtemp(join(tmpdir(), 'shepherd-config-test-'));
+    temporaryDirectory = await mkdtemp(
+      path.join(tmpdir(), 'shepherd-config-test-'),
+    );
     const result = createDatabase(':memory:');
     database = result.db;
     sqlite = result.sqlite;
@@ -21,41 +23,47 @@ describe('ConfigService', () => {
 
   afterEach(async () => {
     sqlite.close();
-    await rm(tmpDir, { recursive: true, force: true });
+    await rm(temporaryDirectory, { recursive: true, force: true });
   });
 
   describe('readGlobalFileConfig', () => {
     it('returns empty object when global config file does not exist', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.readGlobalFileConfig();
       expect(config).toEqual({});
     });
 
     it('reads and parses global YAML config file', async () => {
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
       await writeFile(
-        join(configDir, 'config.yml'),
+        path.join(configDirectory, 'config.yml'),
         'reviewModel: claude-3\nmaxRetries: 3\n',
       );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
       const config = configService.readGlobalFileConfig();
       expect(config).toEqual({ reviewModel: 'claude-3', maxRetries: 3 });
     });
 
     it('returns empty object for invalid YAML', async () => {
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
       await writeFile(
-        join(configDir, 'config.yml'),
+        path.join(configDirectory, 'config.yml'),
         ': : invalid:\nyaml\n  bad',
       );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
       const config = configService.readGlobalFileConfig();
       expect(config).toEqual({});
     });
@@ -65,25 +73,25 @@ describe('ConfigService', () => {
     it('returns empty object when project config file does not exist', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.readProjectFileConfig('/nonexistent/path');
       expect(config).toEqual({});
     });
 
     it('reads and parses project .agent-shepherd.yml file', async () => {
-      const projectDir = join(tmpDir, 'my-project');
-      await mkdir(projectDir, { recursive: true });
+      const projectDirectory = path.join(temporaryDirectory, 'my-project');
+      await mkdir(projectDirectory, { recursive: true });
       await writeFile(
-        join(projectDir, '.agent-shepherd.yml'),
+        path.join(projectDirectory, '.agent-shepherd.yml'),
         'baseBranch: develop\nautoReview: true\n',
       );
 
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
-      const config = configService.readProjectFileConfig(projectDir);
+      const config = configService.readProjectFileConfig(projectDirectory);
       expect(config).toEqual({ baseBranch: 'develop', autoReview: true });
     });
   });
@@ -92,7 +100,7 @@ describe('ConfigService', () => {
     it('returns empty object when no DB config entries exist', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
       const config = configService.getGlobalDbConfig();
       expect(config).toEqual({});
@@ -101,13 +109,15 @@ describe('ConfigService', () => {
     it('returns DB config entries as key-value object', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
-      database.insert(schema.globalConfig)
+      database
+        .insert(schema.globalConfig)
         .values({ key: 'reviewModel', value: 'gpt-4' })
         .run();
-      database.insert(schema.globalConfig)
+      database
+        .insert(schema.globalConfig)
         .values({ key: 'maxRetries', value: '5' })
         .run();
 
@@ -120,11 +130,11 @@ describe('ConfigService', () => {
     it('returns empty object when no project DB config entries exist', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
-      // Create a project first
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -139,10 +149,11 @@ describe('ConfigService', () => {
     it('returns project-specific DB config entries', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -150,10 +161,12 @@ describe('ConfigService', () => {
         })
         .run();
 
-      database.insert(schema.projectConfig)
+      database
+        .insert(schema.projectConfig)
         .values({ projectId: 'proj-1', key: 'baseBranch', value: 'staging' })
         .run();
-      database.insert(schema.projectConfig)
+      database
+        .insert(schema.projectConfig)
         .values({ projectId: 'proj-1', key: 'autoReview', value: 'false' })
         .run();
 
@@ -166,7 +179,7 @@ describe('ConfigService', () => {
     it('inserts a new global config key', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
       configService.setGlobalDbConfig('reviewModel', 'claude-3');
@@ -177,7 +190,7 @@ describe('ConfigService', () => {
     it('updates an existing global config key', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
       configService.setGlobalDbConfig('reviewModel', 'claude-3');
@@ -192,10 +205,11 @@ describe('ConfigService', () => {
     it('inserts a new project config key', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -211,10 +225,11 @@ describe('ConfigService', () => {
     it('updates an existing project config key', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
 
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'test-project',
@@ -232,34 +247,42 @@ describe('ConfigService', () => {
 
   describe('getMergedGlobalConfig', () => {
     it('merges global file config with DB overrides (DB wins)', async () => {
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
       await writeFile(
-        join(configDir, 'config.yml'),
+        path.join(configDirectory, 'config.yml'),
         'reviewModel: claude-3\nmaxRetries: 3\nlogLevel: info\n',
       );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
 
-      // DB override for reviewModel
       configService.setGlobalDbConfig('reviewModel', 'gpt-4');
       configService.setGlobalDbConfig('newKey', 'newValue');
 
       const config = configService.getMergedGlobalConfig();
       expect(config).toEqual({
-        reviewModel: 'gpt-4', // DB wins over file
-        maxRetries: 3, // file value preserved
-        logLevel: 'info', // file value preserved
-        newKey: 'newValue', // DB-only value included
+        reviewModel: 'gpt-4',
+        maxRetries: 3,
+        logLevel: 'info',
+        newKey: 'newValue',
       });
     });
 
     it('returns only file config when no DB entries exist', async () => {
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
-      await writeFile(join(configDir, 'config.yml'), 'reviewModel: claude-3\n');
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
+      await writeFile(
+        path.join(configDirectory, 'config.yml'),
+        'reviewModel: claude-3\n',
+      );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
       const config = configService.getMergedGlobalConfig();
       expect(config).toEqual({ reviewModel: 'claude-3' });
     });
@@ -267,7 +290,7 @@ describe('ConfigService', () => {
     it('returns only DB config when no file exists', () => {
       configService = new ConfigService(
         database,
-        join(tmpDir, '.agent-shepherd', 'config.yml'),
+        path.join(temporaryDirectory, '.agent-shepherd', 'config.yml'),
       );
       configService.setGlobalDbConfig('reviewModel', 'gpt-4');
 
@@ -278,71 +301,84 @@ describe('ConfigService', () => {
 
   describe('getMergedProjectConfig', () => {
     it('merges all three tiers with correct precedence (DB > project file > global file)', async () => {
-      // Set up global file
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
       await writeFile(
-        join(configDir, 'config.yml'),
+        path.join(configDirectory, 'config.yml'),
         'reviewModel: claude-3\nmaxRetries: 3\nglobalOnly: fromGlobal\n',
       );
 
-      // Set up project file
-      const projectDir = join(tmpDir, 'my-project');
-      await mkdir(projectDir, { recursive: true });
+      const projectDirectory = path.join(temporaryDirectory, 'my-project');
+      await mkdir(projectDirectory, { recursive: true });
       await writeFile(
-        join(projectDir, '.agent-shepherd.yml'),
+        path.join(projectDirectory, '.agent-shepherd.yml'),
         'reviewModel: project-model\nbaseBranch: develop\nprojectOnly: fromProject\n',
       );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
 
-      // Create project in DB
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'my-project',
-          path: projectDir,
+          path: projectDirectory,
         })
         .run();
 
-      // DB overrides
       configService.setProjectDbConfig('proj-1', 'reviewModel', 'db-model');
       configService.setProjectDbConfig('proj-1', 'dbOnly', 'fromDb');
 
-      const config = configService.getMergedProjectConfig('proj-1', projectDir);
+      const config = configService.getMergedProjectConfig(
+        'proj-1',
+        projectDirectory,
+      );
       expect(config).toEqual({
-        reviewModel: 'db-model', // DB wins over both
-        maxRetries: 3, // global file value
-        globalOnly: 'fromGlobal', // global file only
-        baseBranch: 'develop', // project file value
-        projectOnly: 'fromProject', // project file only
-        dbOnly: 'fromDb', // DB only
+        reviewModel: 'db-model',
+        maxRetries: 3,
+        globalOnly: 'fromGlobal',
+        baseBranch: 'develop',
+        projectOnly: 'fromProject',
+        dbOnly: 'fromDb',
       });
     });
 
     it('merges global + project file when no DB entries exist', async () => {
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
-      await writeFile(join(configDir, 'config.yml'), 'reviewModel: claude-3\n');
-
-      const projectDir = join(tmpDir, 'my-project');
-      await mkdir(projectDir, { recursive: true });
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
       await writeFile(
-        join(projectDir, '.agent-shepherd.yml'),
+        path.join(configDirectory, 'config.yml'),
+        'reviewModel: claude-3\n',
+      );
+
+      const projectDirectory = path.join(temporaryDirectory, 'my-project');
+      await mkdir(projectDirectory, { recursive: true });
+      await writeFile(
+        path.join(projectDirectory, '.agent-shepherd.yml'),
         'baseBranch: develop\n',
       );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
 
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'my-project',
-          path: projectDir,
+          path: projectDirectory,
         })
         .run();
 
-      const config = configService.getMergedProjectConfig('proj-1', projectDir);
+      const config = configService.getMergedProjectConfig(
+        'proj-1',
+        projectDirectory,
+      );
       expect(config).toEqual({
         reviewModel: 'claude-3',
         baseBranch: 'develop',
@@ -350,31 +386,38 @@ describe('ConfigService', () => {
     });
 
     it('project file overrides global file', async () => {
-      const configDir = join(tmpDir, '.agent-shepherd');
-      await mkdir(configDir, { recursive: true });
+      const configDirectory = path.join(temporaryDirectory, '.agent-shepherd');
+      await mkdir(configDirectory, { recursive: true });
       await writeFile(
-        join(configDir, 'config.yml'),
+        path.join(configDirectory, 'config.yml'),
         'reviewModel: global-model\n',
       );
 
-      const projectDir = join(tmpDir, 'my-project');
-      await mkdir(projectDir, { recursive: true });
+      const projectDirectory = path.join(temporaryDirectory, 'my-project');
+      await mkdir(projectDirectory, { recursive: true });
       await writeFile(
-        join(projectDir, '.agent-shepherd.yml'),
+        path.join(projectDirectory, '.agent-shepherd.yml'),
         'reviewModel: project-model\n',
       );
 
-      configService = new ConfigService(database, join(configDir, 'config.yml'));
+      configService = new ConfigService(
+        database,
+        path.join(configDirectory, 'config.yml'),
+      );
 
-      database.insert(schema.projects)
+      database
+        .insert(schema.projects)
         .values({
           id: 'proj-1',
           name: 'my-project',
-          path: projectDir,
+          path: projectDirectory,
         })
         .run();
 
-      const config = configService.getMergedProjectConfig('proj-1', projectDir);
+      const config = configService.getMergedProjectConfig(
+        'proj-1',
+        projectDirectory,
+      );
       expect(config).toEqual({ reviewModel: 'project-model' });
     });
   });

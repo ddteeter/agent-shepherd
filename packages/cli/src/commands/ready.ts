@@ -2,6 +2,19 @@ import { Command } from 'commander';
 import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
+interface BatchResult {
+  created: number;
+}
+
+interface ReadyResult {
+  cycleNumber: number;
+}
+
+interface FileGroup {
+  name: string;
+  files: string[];
+}
+
 export function readyCommand(program: Command, client: ApiClient) {
   program
     .command('ready <pr-id>')
@@ -17,27 +30,30 @@ export function readyCommand(program: Command, client: ApiClient) {
     .action(
       async (prId: string, options: { file?: string; fileGroups?: string }) => {
         if (options.file) {
-          const payload = await readFile(options.file, 'utf-8');
-          const result = await client.post(
+          const payload = await readFile(options.file, 'utf8');
+          const result = await client.post<BatchResult>(
             `/api/prs/${prId}/comments/batch`,
-            JSON.parse(payload),
+            JSON.parse(payload) as unknown,
           );
           console.log(
-            `Batch submitted: ${(result as any).created} items created`,
+            `Batch submitted: ${String(result.created)} items created`,
           );
         }
 
-        let fileGroups: any[] | undefined;
+        let fileGroups: FileGroup[] | undefined;
         if (options.fileGroups) {
-          const raw = await readFile(options.fileGroups, 'utf-8');
-          fileGroups = JSON.parse(raw);
+          const raw = await readFile(options.fileGroups, 'utf8');
+          fileGroups = JSON.parse(raw) as FileGroup[];
         }
 
-        const result = await client.post(`/api/prs/${prId}/agent-ready`, {
-          fileGroups,
-        });
+        const result = await client.post<ReadyResult>(
+          `/api/prs/${prId}/agent-ready`,
+          {
+            fileGroups,
+          },
+        );
         console.log(
-          `PR ready for review (cycle ${(result as any).cycleNumber})`,
+          `PR ready for review (cycle ${String(result.cycleNumber)})`,
         );
       },
     );

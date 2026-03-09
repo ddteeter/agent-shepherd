@@ -1,33 +1,62 @@
 import { describe, it, expect, vi } from 'vitest';
 import { InsightsAnalyzer } from '../insights-analyzer.js';
 import type { AgentRunner } from '../../agent-runner.js';
-import type { SessionLogProvider } from '../../session-log/provider.js';
+import type { AgentRunConfig, AgentRunCallbacks } from '../../types.js';
+import type {
+  SessionLogProvider,
+  SessionLog,
+} from '../../session-log/provider.js';
+import type { AppDatabase } from '../../../db/index.js';
+import type * as schemaModule from '../../../db/schema.js';
 
 vi.mock('../transcript-formatter.js', () => ({
-  formatTranscript: vi.fn(
-    async (session: any, _outputDir: string) =>
-      `/tmp/formatted/${session.sessionId}.md`,
+  formatTranscript: vi.fn((...arguments_: [SessionLog, string]) =>
+    Promise.resolve(`/tmp/formatted/${arguments_[0].sessionId}.md`),
   ),
 }));
 
-function createMockRunner(): AgentRunner {
-  return {
-    run: vi.fn(async () => {}),
-    cancel: vi.fn(async () => {}),
-    hasActiveSession: vi.fn(() => false),
-  } as any;
+function createMockRunner() {
+  const runMock = vi
+    .fn<
+      (config: AgentRunConfig, callbacks: AgentRunCallbacks) => Promise<void>
+    >()
+    .mockImplementation(() => Promise.resolve());
+  const cancelMock = vi.fn(() => Promise.resolve());
+  const hasActiveSessionMock = vi.fn(() => false);
+  const runner = {
+    run: runMock,
+    cancel: cancelMock,
+    hasActiveSession: hasActiveSessionMock,
+  } as unknown as AgentRunner;
+  return { runner, runMock };
 }
 
-function createMockSessionLogProvider(
-  sessions: any[] = [],
-): SessionLogProvider {
-  return {
+function createMockSessionLogProvider(sessions: SessionLog[] = []) {
+  const findSessionsMock = vi
+    .fn<() => Promise<SessionLog[]>>()
+    .mockResolvedValue(sessions);
+  const provider: SessionLogProvider = {
     name: 'mock',
-    findSessions: vi.fn(async () => sessions),
+    findSessions: findSessionsMock,
   };
+  return { provider, findSessionsMock };
 }
 
-function createMockDatabase(options?: { pr?: any; project?: any; insights?: any }) {
+interface MockDatabaseOptions {
+  pr?:
+    | {
+        id: string;
+        projectId: string;
+        title: string;
+        sourceBranch: string;
+        workingDirectory?: string | undefined;
+      }
+    | undefined;
+  project?: { id: string; path: string; name: string } | undefined;
+  insights?: { id: string; prId: string; updatedAt: string } | undefined;
+}
+
+function createMockDatabase(options?: MockDatabaseOptions) {
   const pr =
     options !== undefined && 'pr' in options
       ? options.pr
@@ -43,7 +72,9 @@ function createMockDatabase(options?: { pr?: any; project?: any; insights?: any 
       ? options.project
       : { id: 'proj-1', path: '/tmp/project', name: 'Test' };
   const insightsRow =
-    options !== undefined && 'insights' in options ? options.insights : null;
+    options !== undefined && 'insights' in options
+      ? options.insights
+      : undefined;
 
   let callCount = 0;
   return {
@@ -64,32 +95,38 @@ function createMockDatabase(options?: { pr?: any; project?: any; insights?: any 
   };
 }
 
+const mockSchemaStub = {
+  pullRequests: {},
+  projects: {},
+  insights: {},
+} as unknown as typeof schemaModule;
+
 describe('InsightsAnalyzer', () => {
   it('discovers session logs, formats them, and spawns agent', async () => {
-    const runner = createMockRunner();
-    const sessionLogProvider = createMockSessionLogProvider([
-      {
-        sessionId: 's1',
-        filePath: '/path/to/s1.jsonl',
-        startedAt: '2026-01-01',
-        branch: 'feat/x',
-      },
-    ]);
+    const { runner, runMock } = createMockRunner();
+    const { provider: sessionLogProvider, findSessionsMock } =
+      createMockSessionLogProvider([
+        {
+          sessionId: 's1',
+          filePath: '/path/to/s1.jsonl',
+          startedAt: '2026-01-01',
+          branch: 'feat/x',
+        },
+      ]);
 
     const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
       sessionLogProvider,
     });
 
     await analyzer.run('pr-1');
 
-    expect(sessionLogProvider.findSessions).toHaveBeenCalled();
+    expect(findSessionsMock).toHaveBeenCalled();
 
-    // Verify formatTranscript was called
     const { formatTranscript } = await import('../transcript-formatter.js');
     expect(formatTranscript).toHaveBeenCalledWith(
       {
@@ -101,116 +138,114 @@ describe('InsightsAnalyzer', () => {
       expect.stringContaining('transcripts'),
     );
 
-    // Verify the prompt includes formatted paths (not raw JSONL paths)
-    const runCall = (runner.run as any).mock.calls[0];
-    expect(runCall[0].prompt).toContain('/tmp/formatted/s1.md');
-    expect(runCall[0].prompt).not.toContain('s1.jsonl');
+    const runConfig = runMock.mock.calls[0][0];
+    expect(runConfig.prompt).toContain('/tmp/formatted/s1.md');
+    expect(runConfig.prompt).not.toContain('s1.jsonl');
 
-    // Verify additionalDirs is passed so the agent sandbox can access transcript files
-    expect(runCall[0].additionalDirs).toEqual([
+    expect(runConfig.additionalDirs).toEqual([
       expect.stringContaining('transcripts'),
     ]);
 
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runMock).toHaveBeenCalledWith(
       expect.objectContaining({ prId: 'pr-1', source: 'insights' }),
       expect.any(Object),
     );
   });
 
   it('throws when PR is not found', async () => {
-    const database = createMockDatabase({ pr: null });
+    const database = createMockDatabase({ pr: undefined });
+    const { runner } = createMockRunner();
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
-      agentRunner: createMockRunner(),
-      sessionLogProvider: createMockSessionLogProvider(),
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
+      agentRunner: runner,
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
     await expect(analyzer.run('nonexistent')).rejects.toThrow('PR not found');
   });
 
   it('throws when project is not found', async () => {
-    const database = createMockDatabase({ project: null });
+    const database = createMockDatabase({ project: undefined });
+    const { runner } = createMockRunner();
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
-      agentRunner: createMockRunner(),
-      sessionLogProvider: createMockSessionLogProvider(),
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
+      agentRunner: runner,
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
     await expect(analyzer.run('pr-1')).rejects.toThrow('Project not found');
   });
 
   it('spawns agent even with empty session logs', async () => {
-    const runner = createMockRunner();
-    const sessionLogProvider = createMockSessionLogProvider([]);
+    const { runner, runMock } = createMockRunner();
+    const { provider: sessionLogProvider } = createMockSessionLogProvider([]);
     const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
       sessionLogProvider,
     });
 
     await analyzer.run('pr-1');
 
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runMock).toHaveBeenCalledWith(
       expect.objectContaining({ prId: 'pr-1', source: 'insights' }),
       expect.any(Object),
     );
   });
 
   it('uses workingDirectory when available, falls back to project.path', async () => {
-    const runner = createMockRunner();
+    const { runner, runMock } = createMockRunner();
     const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
-      sessionLogProvider: createMockSessionLogProvider(),
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
     await analyzer.run('pr-1');
 
-    // workingDirectory is '/tmp/worktree' on the mock PR
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runMock).toHaveBeenCalledWith(
       expect.objectContaining({ projectPath: '/tmp/worktree' }),
       expect.any(Object),
     );
   });
 
   it('falls back to project.path when workingDirectory is null', async () => {
-    const runner = createMockRunner();
+    const { runner, runMock } = createMockRunner();
     const database = createMockDatabase({
       pr: {
         id: 'pr-1',
         projectId: 'proj-1',
         title: 'Test',
         sourceBranch: 'feat/x',
-        workingDirectory: null,
+        workingDirectory: undefined,
       },
     });
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
-      sessionLogProvider: createMockSessionLogProvider(),
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
     await analyzer.run('pr-1');
 
-    // Should fall back to project.path '/tmp/project'
-    expect(runner.run).toHaveBeenCalledWith(
+    expect(runMock).toHaveBeenCalledWith(
       expect.objectContaining({ projectPath: '/tmp/project' }),
       expect.any(Object),
     );
   });
 
   it('passes previousUpdatedAt to prompt when insights exist', async () => {
-    const runner = createMockRunner();
+    const { runner, runMock } = createMockRunner();
     const database = createMockDatabase({
       insights: {
         id: 'ins-1',
@@ -220,49 +255,48 @@ describe('InsightsAnalyzer', () => {
     });
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
-      sessionLogProvider: createMockSessionLogProvider(),
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
     await analyzer.run('pr-1');
 
-    const runCall = (runner.run as any).mock.calls[0];
-    expect(runCall[0].prompt).toContain('2026-03-07T10:00:00Z');
-    expect(runCall[0].prompt).toContain('Incremental Analysis');
+    const runConfig = runMock.mock.calls[0][0];
+    expect(runConfig.prompt).toContain('2026-03-07T10:00:00Z');
+    expect(runConfig.prompt).toContain('Incremental Analysis');
   });
 
   it('omits previousUpdatedAt when no prior insights exist', async () => {
-    const runner = createMockRunner();
+    const { runner, runMock } = createMockRunner();
     const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
-      sessionLogProvider: createMockSessionLogProvider(),
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
     await analyzer.run('pr-1');
 
-    const runCall = (runner.run as any).mock.calls[0];
-    expect(runCall[0].prompt).not.toContain('Incremental Analysis');
+    const runConfig = runMock.mock.calls[0][0];
+    expect(runConfig.prompt).not.toContain('Incremental Analysis');
   });
 
   it('does not throw when agentRunner.run fails (non-critical)', async () => {
-    const runner = createMockRunner();
-    (runner.run as any).mockRejectedValue(new Error('spawn failed'));
+    const { runner, runMock } = createMockRunner();
+    runMock.mockRejectedValue(new Error('spawn failed'));
     const database = createMockDatabase();
 
     const analyzer = new InsightsAnalyzer({
-      db: database,
-      schema: { pullRequests: {}, projects: {}, insights: {} } as any,
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
       agentRunner: runner,
-      sessionLogProvider: createMockSessionLogProvider(),
+      sessionLogProvider: createMockSessionLogProvider().provider,
     });
 
-    // Should not throw — error is caught internally
     await expect(analyzer.run('pr-1')).resolves.toBeUndefined();
   });
 });

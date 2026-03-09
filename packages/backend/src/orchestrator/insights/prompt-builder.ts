@@ -9,19 +9,20 @@ interface InsightsPromptInput {
 
 export function buildInsightsPrompt(input: InsightsPromptInput): string {
   const { prId, prTitle, branch, projectId, transcriptPaths } = input;
-  const sections: string[] = [ `# Workflow Insights Analysis for PR: ${prTitle}\n`, `## PR Details
+  const sections: string[] = [
+    `# Workflow Insights Analysis for PR: ${prTitle}\n`,
+    `## PR Details
 
 - PR ID: ${prId}
 - Branch: ${branch}
 - Project ID: ${projectId}
-`];
-
-
+`,
+  ];
 
   if (transcriptPaths.length > 0) {
     sections.push(`## Session Transcripts
 
-${transcriptPaths.map((p, index) => `${index + 1}. ${p}`).join('\n')}
+${transcriptPaths.map((transcriptPath, index) => `${String(index + 1)}. ${transcriptPath}`).join('\n')}
 `);
   } else {
     sections.push(`## Session Transcripts

@@ -14,25 +14,28 @@ interface CommentSummary {
 
 interface Comment {
   id: string;
-  filePath: string | null;
-  startLine: number | null;
-  endLine: number | null;
+  filePath: string | undefined;
+  startLine: number | undefined;
+  endLine: number | undefined;
   body: string;
   severity: string;
   author: string;
-  parentCommentId: string | null;
+  parentCommentId: string | undefined;
   resolved: boolean;
 }
 
 function formatSummary(summary: CommentSummary, prTitle: string): string {
-  const lines: string[] = [ `# Review Comments for: ${prTitle} (${summary.total} comments)\n`, `## Summary`];
+  const lines: string[] = [
+    `# Review Comments for: ${prTitle} (${String(summary.total)} comments)\n`,
+    `## Summary`,
+  ];
   for (const [sev, count] of Object.entries(summary.bySeverity)) {
-    lines.push(`- ${count} ${sev}`);
+    lines.push(`- ${String(count)} ${sev}`);
   }
   lines.push('');
 
   if (summary.generalCount > 0) {
-    lines.push(`General comments: ${summary.generalCount}`, '');
+    lines.push(`General comments: ${String(summary.generalCount)}`, '');
   }
 
   if (summary.files.length > 0) {
@@ -40,9 +43,11 @@ function formatSummary(summary: CommentSummary, prTitle: string): string {
     for (let index = 0; index < summary.files.length; index++) {
       const f = summary.files[index];
       const sevParts = Object.entries(f.bySeverity)
-        .map(([s, c]) => `${c} ${s}`)
+        .map(([s, c]) => `${String(c)} ${s}`)
         .join(', ');
-      lines.push(`${index + 1}. ${f.path} (${f.count} comments: ${sevParts})`);
+      lines.push(
+        `${String(index + 1)}. ${f.path} (${String(f.count)} comments: ${sevParts})`,
+      );
     }
   }
 
@@ -50,17 +55,15 @@ function formatSummary(summary: CommentSummary, prTitle: string): string {
 }
 
 function formatComments(comments: Comment[], heading: string): string {
-  // Separate top-level from replies
   const topLevel = comments.filter((c) => !c.parentCommentId && !c.resolved);
   const replies = comments.filter((c) => c.parentCommentId);
 
-  // Sort top-level: general first, then by line number
   const general = topLevel.filter((c) => !c.filePath);
   const withFile = topLevel.filter((c) => c.filePath);
   withFile.sort((a, b) => (a.startLine ?? 0) - (b.startLine ?? 0));
 
   const ordered = [...general, ...withFile];
-  const lines: string[] = [ `# ${heading}\n`];
+  const lines: string[] = [`# ${heading}\n`];
 
   for (const c of ordered) {
     const sevLabel =
@@ -69,12 +72,11 @@ function formatComments(comments: Comment[], heading: string): string {
     if (c.startLine != undefined) {
       location =
         c.startLine === c.endLine || c.endLine == undefined
-          ? ` Line ${c.startLine}`
-          : ` Lines ${c.startLine}-${c.endLine}`;
+          ? ` Line ${String(c.startLine)}`
+          : ` Lines ${String(c.startLine)}-${String(c.endLine)}`;
     }
     lines.push(`[${sevLabel}]${location} (comment ID: ${c.id})`, `> ${c.body}`);
 
-    // Find thread replies for this comment
     const thread = replies.filter((r) => r.parentCommentId === c.id);
     if (thread.length > 0) {
       lines.push('Thread:');
@@ -123,7 +125,6 @@ export function reviewCommand(program: Command, client: ApiClient) {
           return;
         }
 
-        // Build query params
         const parameters = new URLSearchParams();
         if (options.file) parameters.set('filePath', options.file);
         if (options.severity) parameters.set('severity', options.severity);

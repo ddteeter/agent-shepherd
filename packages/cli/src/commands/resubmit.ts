@@ -2,6 +2,10 @@ import { Command } from 'commander';
 import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
+interface ResubmitResult {
+  cycleNumber: number;
+}
+
 export function resubmitCommand(program: Command, client: ApiClient) {
   program
     .command('resubmit <pr-id>')
@@ -11,13 +15,16 @@ export function resubmitCommand(program: Command, client: ApiClient) {
       'Path to context file describing what changed',
     )
     .action(async (prId: string, options: { contextFile: string }) => {
-      const context = await readFile(options.contextFile, 'utf-8');
+      const context = await readFile(options.contextFile, 'utf8');
 
-      const result = await client.post(`/api/prs/${prId}/resubmit`, {
-        context,
-      });
+      const result = await client.post<ResubmitResult>(
+        `/api/prs/${prId}/resubmit`,
+        {
+          context,
+        },
+      );
       console.log(
-        `PR resubmitted for review (cycle ${(result as any).cycleNumber})`,
+        `PR resubmitted for review (cycle ${String(result.cycleNumber)})`,
       );
     });
 }

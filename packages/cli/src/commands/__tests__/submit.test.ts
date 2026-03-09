@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { submitCommand } from '../submit.js';
+import type { ApiClient } from '../../api-client.js';
 
 vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
@@ -15,7 +16,7 @@ import { execSync } from 'node:child_process';
 
 describe('submitCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { post: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -23,8 +24,10 @@ describe('submitCommand', () => {
     program = new Command();
     program.exitOverride();
     client = { post: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    submitCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    submitCommand(program, client as unknown as ApiClient);
   });
 
   it('submits PR with auto-detected branch', async () => {
@@ -38,7 +41,7 @@ describe('submitCommand', () => {
     await program.parseAsync(['node', 'test', 'submit', '-p', 'proj-1']);
 
     expect(execSync).toHaveBeenCalledWith('git rev-parse --abbrev-ref HEAD', {
-      encoding: 'utf-8',
+      encoding: 'utf8',
     });
     expect(client.post).toHaveBeenCalledWith(
       '/api/projects/proj-1/prs',
@@ -117,7 +120,7 @@ describe('submitCommand', () => {
       '/tmp/context.json',
     ]);
 
-    expect(readFile).toHaveBeenCalledWith('/tmp/context.json', 'utf-8');
+    expect(readFile).toHaveBeenCalledWith('/tmp/context.json', 'utf8');
     expect(client.post).toHaveBeenCalledWith(
       '/api/projects/proj-1/prs',
       expect.objectContaining({

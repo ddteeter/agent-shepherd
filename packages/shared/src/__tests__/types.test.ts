@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Project,
-  PullRequest,
-  ReviewCycle,
-  Comment,
-  DiffSnapshot,
   PRStatus,
   ReviewCycleStatus,
   CommentSeverity,
-  CommentAuthor,
   BatchCommentPayload,
 } from '../types.js';
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import { createTestServer, jsonBody } from '../../__tests__/helpers.js';
 
 describe('Projects API - additional coverage', () => {
   let server: FastifyInstance;
@@ -20,16 +20,16 @@ describe('Projects API - additional coverage', () => {
       url: '/api/projects',
       payload: { name: 'proj', path: '/tmp/p' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'PUT',
-      url: `/api/projects/${id}`,
+      url: `/api/projects/${id as string}`,
       payload: { name: 'updated-proj', baseBranch: 'develop' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().name).toBe('updated-proj');
-    expect(response.json().baseBranch).toBe('develop');
+    expect(jsonBody(response).name).toBe('updated-proj');
+    expect(jsonBody(response).baseBranch).toBe('develop');
   });
 
   it('PUT /api/projects/:id returns 404 for missing project', async () => {

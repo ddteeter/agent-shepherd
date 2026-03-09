@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { listProjectsCommand } from '../list-projects.js';
+import type { ApiClient } from '../../api-client.js';
 
 describe('listProjectsCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { get: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -12,8 +13,10 @@ describe('listProjectsCommand', () => {
     program = new Command();
     program.exitOverride();
     client = { get: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    listProjectsCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    listProjectsCommand(program, client as unknown as ApiClient);
   });
 
   it('shows message when no projects', async () => {
@@ -30,7 +33,10 @@ describe('listProjectsCommand', () => {
     ]);
     await program.parseAsync(['node', 'test', 'list-projects']);
 
-    const allOutput = logSpy.mock.calls.map((c: string[]) => c[0]).join('\n');
+    const allOutput = vi
+      .mocked(console.log)
+      .mock.calls.map((c) => String(c[0]))
+      .join('\n');
     expect(allOutput).toContain('ID');
     expect(allOutput).toContain('Name');
     expect(allOutput).toContain('myproject');

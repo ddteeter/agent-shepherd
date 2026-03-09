@@ -8,11 +8,11 @@ vi.mock('child_process', () => ({
 
 vi.mock('../../paths.js', () => ({
   PACKAGE_ROOT: '/mock/root',
-  isDevMode: vi.fn(),
+  isDevelopmentMode: vi.fn(),
 }));
 
 import { execSync } from 'node:child_process';
-import { isDevMode as isDevelopmentMode } from '../../paths.js';
+import { isDevelopmentMode } from '../../paths.js';
 
 describe('setupCommand', () => {
   let program: Command;
@@ -22,7 +22,9 @@ describe('setupCommand', () => {
     vi.restoreAllMocks();
     program = new Command();
     program.exitOverride();
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
     setupCommand(program);
   });
 
@@ -42,9 +44,6 @@ describe('setupCommand', () => {
   });
 
   it('reports failure when claude CLI not found', async () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('claude --version'))
         throw new Error('not found');
@@ -52,14 +51,13 @@ describe('setupCommand', () => {
     });
     vi.mocked(isDevelopmentMode).mockReturnValue(false);
 
-    await expect(program.parseAsync(['node', 'test', 'setup'])).rejects.toThrow(
-      'exit',
-    );
+    await program.parseAsync(['node', 'test', 'setup']);
 
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('[FAIL] Claude CLI'),
     );
-    exitSpy.mockRestore();
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
   });
 
   it('runs npm link in dev mode', async () => {
@@ -78,9 +76,6 @@ describe('setupCommand', () => {
   });
 
   it('reports npm link failure in dev mode', async () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('npm link'))
         throw new Error('permission denied');
@@ -88,20 +83,16 @@ describe('setupCommand', () => {
     });
     vi.mocked(isDevelopmentMode).mockReturnValue(true);
 
-    await expect(program.parseAsync(['node', 'test', 'setup'])).rejects.toThrow(
-      'exit',
-    );
+    await program.parseAsync(['node', 'test', 'setup']);
 
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('[FAIL] npm link (dev)'),
     );
-    exitSpy.mockRestore();
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
   });
 
   it('reports skills install failure', async () => {
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
-      throw new Error('exit');
-    });
     vi.mocked(execSync).mockImplementation((cmd: string) => {
       if (typeof cmd === 'string' && cmd.includes('npx skills'))
         throw new Error('failed');
@@ -109,13 +100,12 @@ describe('setupCommand', () => {
     });
     vi.mocked(isDevelopmentMode).mockReturnValue(false);
 
-    await expect(program.parseAsync(['node', 'test', 'setup'])).rejects.toThrow(
-      'exit',
-    );
+    await program.parseAsync(['node', 'test', 'setup']);
 
     expect(logSpy).toHaveBeenCalledWith(
       expect.stringContaining('[FAIL] Skills install'),
     );
-    exitSpy.mockRestore();
+    expect(process.exitCode).toBe(1);
+    process.exitCode = 0;
   });
 });

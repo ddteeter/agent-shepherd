@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer, TEST_TOKEN } from './helpers.js';
+import { createTestServer, jsonBody } from './helpers.js';
 
 describe('Server', () => {
   let server: FastifyInstance;
@@ -20,7 +20,7 @@ describe('Server', () => {
       url: '/api/health',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: 'ok' });
+    expect(jsonBody(response)).toEqual({ status: 'ok' });
   });
 });
 
@@ -42,7 +42,7 @@ describe('Session token auth', () => {
       url: '/api/projects',
     });
     expect(response.statusCode).toBe(401);
-    expect(response.json().error).toContain('session token');
+    expect(jsonBody(response).error).toContain('session token');
   });
 
   it('rejects API requests with wrong token', async () => {
@@ -83,7 +83,6 @@ describe('Session token auth', () => {
       method: 'GET',
       url: '/some-static-route',
     });
-    // Will be 404 since no static files, but not 401
     expect(response.statusCode).not.toBe(401);
   });
 });

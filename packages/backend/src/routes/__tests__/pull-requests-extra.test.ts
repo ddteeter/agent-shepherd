@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import { eq } from 'drizzle-orm';
+import { createTestServer, jsonBody } from '../../__tests__/helpers.js';
+import { schema } from '../../db/index.js';
 
 describe('Pull Requests API - additional coverage', () => {
   let server: FastifyInstance;
@@ -9,12 +11,12 @@ describe('Pull Requests API - additional coverage', () => {
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
-    const res = await inject({
+    const response = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
-    projectId = res.json().id;
+    projectId = jsonBody(response).id as string;
   });
 
   afterEach(async () => {
@@ -35,15 +37,15 @@ describe('Pull Requests API - additional coverage', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'Original', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'PUT',
-      url: `/api/prs/${id}`,
+      url: `/api/prs/${id as string}`,
       payload: { title: 'Updated Title', description: 'New description' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().title).toBe('Updated Title');
+    expect(jsonBody(response).title).toBe('Updated Title');
   });
 
   it('PUT /api/prs/:id returns 404 for nonexistent PR', async () => {
@@ -70,11 +72,11 @@ describe('Pull Requests API - additional coverage', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'invalid-action' },
     });
     expect(response.statusCode).toBe(400);
@@ -127,19 +129,17 @@ describe('Pull Requests API - additional coverage', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
-    // Manually set cycle status to agent_working
-    const database = (server as any).db;
-    const { schema } = await import('../../db/index.js');
-    const { eq } = await import('drizzle-orm');
+    const database = server.db;
     const cycles = database
       .select()
       .from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, id))
+      .where(eq(schema.reviewCycles.prId, id as string))
       .all();
     if (cycles.length > 0) {
-      database.update(schema.reviewCycles)
+      database
+        .update(schema.reviewCycles)
         .set({ status: 'agent_working' })
         .where(eq(schema.reviewCycles.id, cycles[0].id))
         .run();
@@ -147,7 +147,7 @@ describe('Pull Requests API - additional coverage', () => {
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/close`,
+      url: `/api/prs/${id as string}/close`,
     });
     expect(response.statusCode).toBe(409);
   });
@@ -158,17 +158,17 @@ describe('Pull Requests API - additional coverage', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'request-changes' },
     });
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/close`,
+      url: `/api/prs/${id as string}/close`,
     });
     expect(response.statusCode).toBe(200);
   });

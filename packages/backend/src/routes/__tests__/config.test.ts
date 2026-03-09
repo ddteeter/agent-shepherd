@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import { createTestServer, jsonBody } from '../../__tests__/helpers.js';
 
 describe('Config API', () => {
   let server: FastifyInstance;
@@ -9,12 +9,12 @@ describe('Config API', () => {
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test-config' },
     });
-    projectId = proj.json().id;
+    projectId = jsonBody(projectResponse).id as string;
   });
 
   afterEach(async () => {
@@ -27,7 +27,7 @@ describe('Config API', () => {
       url: '/api/config',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toBeDefined();
+    expect(jsonBody(response)).toBeDefined();
   });
 
   it('PUT /api/config sets a global config key', async () => {
@@ -37,7 +37,7 @@ describe('Config API', () => {
       payload: { key: 'theme', value: 'dark' },
     });
     expect(response.statusCode).toBe(200);
-    const config = response.json();
+    const config = jsonBody(response);
     expect(config.theme).toBe('dark');
   });
 
@@ -54,7 +54,8 @@ describe('Config API', () => {
     const response = await inject({
       method: 'PUT',
       url: '/api/config',
-      payload: { key: 'theme', value: null },
+      // eslint wants undefined but the API expects null to test validation
+      payload: { key: 'theme', value: undefined },
     });
     expect(response.statusCode).toBe(400);
   });
@@ -82,7 +83,7 @@ describe('Config API', () => {
       payload: { key: 'lint', value: 'true' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().lint).toBe('true');
+    expect(jsonBody(response).lint).toBe('true');
   });
 
   it('PUT /api/projects/:id/config returns 404 for missing project', async () => {
@@ -107,7 +108,7 @@ describe('Config API', () => {
     const response = await inject({
       method: 'PUT',
       url: `/api/projects/${projectId}/config`,
-      payload: { key: 'lint', value: null },
+      payload: { key: 'lint', value: undefined },
     });
     expect(response.statusCode).toBe(400);
   });

@@ -1,28 +1,30 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { formatTranscript } from '../transcript-formatter.js';
 import type { SessionLog } from '../../session-log/provider.js';
 
 async function createTemporaryJsonl(lines: object[]): Promise<{
   inputPath: string;
-  outputDir: string;
+  outputDirectory: string;
   cleanup: () => Promise<void>;
 }> {
-  const tempDir = await mkdtemp(join(tmpdir(), 'transcript-test-'));
-  const inputPath = join(tempDir, 'test-session.jsonl');
-  const outputDir = join(tempDir, 'output');
+  const temporaryDirectory = await mkdtemp(
+    path.join(tmpdir(), 'transcript-test-'),
+  );
+  const inputPath = path.join(temporaryDirectory, 'test-session.jsonl');
+  const outputDirectory = path.join(temporaryDirectory, 'output');
   await writeFile(
     inputPath,
     lines.map((l) => JSON.stringify(l)).join('\n'),
-    'utf-8',
+    'utf8',
   );
   return {
     inputPath,
-    outputDir,
-    cleanup: () => rm(tempDir, { recursive: true, force: true }),
+    outputDirectory,
+    cleanup: () => rm(temporaryDirectory, { recursive: true, force: true }),
   };
 }
 
@@ -44,7 +46,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('produces frontmatter with session metadata', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: { content: [{ type: 'text', text: 'Hello' }] },
@@ -52,8 +54,11 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('session_id: sess-abc');
     expect(content).toContain('branch: feat/test');
@@ -62,7 +67,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('preserves assistant text blocks fully', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: {
@@ -77,8 +82,11 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('## Assistant [line 1]');
     expect(content).toContain(
@@ -87,7 +95,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('formats tool_use blocks with key params', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: {
@@ -104,8 +112,11 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('**Tool:** `Read`(file_path: "src/App.tsx")');
     expect(content).toContain('**Tool:** `Bash`(command: "npm test")');
@@ -113,7 +124,7 @@ describe('TranscriptFormatter', () => {
 
   it('truncates large params in tool_use blocks', async () => {
     const largeContent = 'x'.repeat(200);
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: {
@@ -129,15 +140,18 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('content: (200 chars)');
     expect(content).not.toContain(largeContent);
   });
 
   it('preserves user text blocks', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'user',
         message: {
@@ -147,8 +161,11 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('## User [line 1]');
     expect(content).toContain('Please fix the login bug');
@@ -156,7 +173,7 @@ describe('TranscriptFormatter', () => {
 
   it('truncates tool_result blocks with preview', async () => {
     const longResult = 'A'.repeat(500);
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'user',
         message: {
@@ -168,8 +185,11 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('**Tool Result** (500 chars)');
     expect(content).toContain('A'.repeat(200) + '...');
@@ -177,7 +197,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('handles tool_result with nested content blocks', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'user',
         message: {
@@ -193,15 +213,18 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).toContain('**Tool Result** (18 chars)');
     expect(content).toContain('file contents here');
   });
 
   it('skips progress and file-history-snapshot types', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       { type: 'progress', data: { percent: 50 } },
       { type: 'file-history-snapshot', files: [] },
       {
@@ -211,8 +234,11 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
     expect(content).not.toContain('progress');
     expect(content).not.toContain('file-history-snapshot');
@@ -220,7 +246,7 @@ describe('TranscriptFormatter', () => {
   });
 
   it('includes correct line numbers', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       { type: 'progress', data: {} },
       {
         type: 'assistant',
@@ -233,16 +259,18 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    const content = await readFile(result, 'utf-8');
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    const content = await readFile(result, 'utf8');
 
-    // Line 1 is progress (skipped), line 2 is assistant, line 3 is user
     expect(content).toContain('## Assistant [line 2]');
     expect(content).toContain('## User [line 3]');
   });
 
   it('writes output to the correct path', async () => {
-    const { inputPath, outputDir, cleanup } = await createTemporaryJsonl([
+    const { inputPath, outputDirectory, cleanup } = await createTemporaryJsonl([
       {
         type: 'assistant',
         message: { content: [{ type: 'text', text: 'hi' }] },
@@ -250,7 +278,10 @@ describe('TranscriptFormatter', () => {
     ]);
     cleanups.push(cleanup);
 
-    const result = await formatTranscript(makeSessionLog(inputPath), outputDir);
-    expect(result).toBe(join(outputDir, 'sess-abc.md'));
+    const result = await formatTranscript(
+      makeSessionLog(inputPath),
+      outputDirectory,
+    );
+    expect(result).toBe(path.join(outputDirectory, 'sess-abc.md'));
   });
 });

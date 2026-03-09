@@ -1,13 +1,11 @@
 import { createReadStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
-import { join } from 'node:path';
+import path from 'node:path';
 import type { SessionLog } from '../session-log/provider.js';
 
-/** Max chars to show for tool result previews */
 const TOOL_RESULT_PREVIEW_LENGTH = 200;
 
-/** Params to truncate in tool_use blocks (contain large content) */
 const LARGE_PARAMS = new Set([
   'content',
   'new_string',
@@ -15,7 +13,6 @@ const LARGE_PARAMS = new Set([
   'command',
 ]);
 
-/** Max chars for a large param value in tool_use output */
 const LARGE_PARAM_MAX = 120;
 
 interface ContentBlock {
@@ -34,25 +31,26 @@ interface TranscriptLine {
   };
 }
 
-/**
- * Reads a raw JSONL session log and writes a formatted markdown file
- * preserving behavioral signal while dropping bulk tool result content.
- * Returns the path to the formatted file.
- */
 export async function formatTranscript(
   sessionLog: SessionLog,
-  outputDir: string,
+  outputDirectory: string,
 ): Promise<string> {
-  await mkdir(outputDir, { recursive: true });
+  await mkdir(outputDirectory, { recursive: true });
 
-  const outputPath = join(outputDir, `${sessionLog.sessionId}.md`);
-  const lines: string[] = [ '---', `source: ${sessionLog.filePath}`, `session_id: ${sessionLog.sessionId}`, `branch: ${sessionLog.branch}`, `started_at: ${sessionLog.startedAt}`, '---', ''];
-
-  // Frontmatter
+  const outputPath = path.join(outputDirectory, `${sessionLog.sessionId}.md`);
+  const lines: string[] = [
+    '---',
+    `source: ${sessionLog.filePath}`,
+    `session_id: ${sessionLog.sessionId}`,
+    `branch: ${sessionLog.branch}`,
+    `started_at: ${sessionLog.startedAt}`,
+    '---',
+    '',
+  ];
 
   const rl = createInterface({
-    input: createReadStream(sessionLog.filePath, 'utf-8'),
-    crlfDelay: Infinity,
+    input: createReadStream(sessionLog.filePath, 'utf8'),
+    crlfDelay: Number.POSITIVE_INFINITY,
   });
 
   let lineNumber = 0;
@@ -62,9 +60,9 @@ export async function formatTranscript(
 
     let parsed: TranscriptLine;
     try {
-      parsed = JSON.parse(rawLine);
+      parsed = JSON.parse(rawLine) as TranscriptLine;
     } catch {
-      continue; // skip malformed lines
+      continue;
     }
 
     if (parsed.type === 'progress' || parsed.type === 'file-history-snapshot') {
@@ -75,18 +73,19 @@ export async function formatTranscript(
     if (!content || !Array.isArray(content)) continue;
 
     if (parsed.type === 'assistant') {
-      lines.push(`## Assistant [line ${lineNumber}]`, '');
+      lines.push(`## Assistant [line ${String(lineNumber)}]`, '');
       for (const block of content) {
         if (block.type === 'text' && block.text) {
           lines.push(block.text, '');
         } else if (block.type === 'tool_use' && block.name) {
           lines.push(
-            `**Tool:** \`${block.name}\`${formatToolParameters(block.input)}`, ''
+            `**Tool:** \`${block.name}\`${formatToolParameters(block.input)}`,
+            '',
           );
         }
       }
     } else if (parsed.type === 'user') {
-      lines.push(`## User [line ${lineNumber}]`, '');
+      lines.push(`## User [line ${String(lineNumber)}]`, '');
       for (const block of content) {
         if (block.type === 'text' && block.text) {
           lines.push(block.text, '');
@@ -96,14 +95,15 @@ export async function formatTranscript(
           const preview = resultText.slice(0, TOOL_RESULT_PREVIEW_LENGTH);
           const truncated = size > TOOL_RESULT_PREVIEW_LENGTH ? '...' : '';
           lines.push(
-            `**Tool Result** (${size} chars): \`${preview}${truncated}\``, ''
+            `**Tool Result** (${String(size)} chars): \`${preview}${truncated}\``,
+            '',
           );
         }
       }
     }
   }
 
-  await writeFile(outputPath, lines.join('\n'), 'utf-8');
+  await writeFile(outputPath, lines.join('\n'), 'utf8');
   return outputPath;
 }
 
@@ -112,10 +112,11 @@ function formatToolParameters(input?: Record<string, unknown>): string {
 
   const parts: string[] = [];
   for (const [key, value] of Object.entries(input)) {
-    if (value === undefined || value === null) continue;
-    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+    if (value === undefined) continue;
+    const stringValue =
+      typeof value === 'string' ? value : JSON.stringify(value);
     if (LARGE_PARAMS.has(key) && stringValue.length > LARGE_PARAM_MAX) {
-      parts.push(`${key}: (${stringValue.length} chars)`);
+      parts.push(`${key}: (${String(stringValue.length)} chars)`);
     } else {
       parts.push(`${key}: ${JSON.stringify(value)}`);
     }
@@ -128,7 +129,7 @@ function extractToolResultText(block: ContentBlock): string {
   if (Array.isArray(block.content)) {
     return block.content
       .filter((b) => b.type === 'text' && b.text)
-      .map((b) => b.text!)
+      .map((b) => b.text ?? '')
       .join('\n');
   }
   return '';

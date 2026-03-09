@@ -3,10 +3,26 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 
+interface InsightItem {
+  applied?: boolean;
+  confidence?: string;
+  appliedPath?: string;
+  [key: string]: unknown;
+}
+
+interface InsightCategories {
+  claudeMdRecommendations?: InsightItem[];
+  skillRecommendations?: InsightItem[];
+  promptEngineering?: InsightItem[];
+  agentBehaviorObservations?: InsightItem[];
+  recurringPatterns?: InsightItem[];
+  [key: string]: InsightItem[] | undefined;
+}
+
 export function migrateInsightCategories(
-  categories: Record<string, any[]>,
-): Record<string, any[]> {
-  const migrate = (items: any[]) =>
+  categories: InsightCategories,
+): Record<string, InsightItem[]> {
+  const migrate = (items: InsightItem[]) =>
     items.map(({ applied, ...rest }) => ({
       ...rest,
       confidence: rest.confidence ?? 'medium',
@@ -24,11 +40,10 @@ export function migrateInsightCategories(
   };
 }
 
-export async function insightsRoutes(fastify: FastifyInstance) {
-  const database = (fastify as any).db;
+export function insightsRoutes(fastify: FastifyInstance) {
+  const database = fastify.db;
 
-  // GET /api/prs/:prId/insights — returns insights row with parsed categories, or null
-  fastify.get('/api/prs/:prId/insights', async (request) => {
+  fastify.get('/api/prs/:prId/insights', (request) => {
     const { prId } = request.params as { prId: string };
 
     const row = database
@@ -38,17 +53,18 @@ export async function insightsRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!row) {
-      return null;
+      return;
     }
 
     return {
       ...row,
-      categories: migrateInsightCategories(JSON.parse(row.categories)),
+      categories: migrateInsightCategories(
+        JSON.parse(row.categories) as InsightCategories,
+      ),
     };
   });
 
-  // PUT /api/prs/:prId/insights — upsert: create if not exists, update if exists
-  fastify.put('/api/prs/:prId/insights', async (request) => {
+  fastify.put('/api/prs/:prId/insights', (request) => {
     const { prId } = request.params as { prId: string };
     const { categories, branchRef, worktreePath } = request.body as {
       categories: Record<string, unknown>;
@@ -65,7 +81,8 @@ export async function insightsRoutes(fastify: FastifyInstance) {
       .get();
 
     if (existing) {
-      database.update(schema.insights)
+      database
+        .update(schema.insights)
         .set({
           categories: categoriesJson,
           ...(branchRef === undefined ? {} : { branchRef }),
@@ -76,13 +93,14 @@ export async function insightsRoutes(fastify: FastifyInstance) {
         .run();
     } else {
       const id = randomUUID();
-      database.insert(schema.insights)
+      database
+        .insert(schema.insights)
         .values({
           id,
           prId,
           categories: categoriesJson,
-          branchRef: branchRef ?? null,
-          worktreePath: worktreePath ?? null,
+          branchRef,
+          worktreePath,
           updatedAt: new Date().toISOString(),
         })
         .run();
@@ -94,9 +112,15 @@ export async function insightsRoutes(fastify: FastifyInstance) {
       .where(eq(schema.insights.prId, prId))
       .get();
 
+    if (!row) {
+      return;
+    }
+
     return {
       ...row,
-      categories: migrateInsightCategories(JSON.parse(row.categories)),
+      categories: migrateInsightCategories(
+        JSON.parse(row.categories) as InsightCategories,
+      ),
     };
   });
 }

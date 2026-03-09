@@ -34,6 +34,9 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
+    },
   },
 
   // React-specific rules (frontend only)

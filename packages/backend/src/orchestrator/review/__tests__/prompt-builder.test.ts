@@ -38,11 +38,11 @@ describe('PromptBuilder', () => {
     expect(prompt).toContain('Built the auth system');
   });
 
-  it('handles null agent context', () => {
+  it('handles undefined agent context', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: { total: 0, bySeverity: {}, files: [], generalCount: 0 },
     });
     expect(prompt).toContain('PR');
@@ -53,7 +53,7 @@ describe('PromptBuilder', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: {
         total: 3,
         bySeverity: { request: 3 },
@@ -72,7 +72,7 @@ describe('PromptBuilder', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: {
         total: 1,
         bySeverity: { 'must-fix': 1 },
@@ -83,7 +83,6 @@ describe('PromptBuilder', () => {
       },
     });
 
-    // The prompt should NOT contain individual comment markers — those come from CLI
     expect(prompt).not.toContain('comment ID:');
   });
 });

@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { fileGroupsCommand } from '../file-groups.js';
+import type { ApiClient } from '../../api-client.js';
 
 describe('fileGroupsCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { get: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     program = new Command();
     program.exitOverride();
     client = { get: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    fileGroupsCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    fileGroupsCommand(program, client as unknown as ApiClient);
   });
 
-  it('shows "no file groups" when null', async () => {
-    client.get.mockResolvedValue({ fileGroups: null, cycleNumber: 1 });
+  it('shows "no file groups" when undefined', async () => {
+    client.get.mockResolvedValue({ fileGroups: undefined, cycleNumber: 1 });
     await program.parseAsync(['node', 'test', 'file-groups', 'pr-1']);
 
     expect(client.get).toHaveBeenCalledWith('/api/prs/pr-1/file-groups');
@@ -28,7 +31,7 @@ describe('fileGroupsCommand', () => {
     client.get.mockResolvedValue({ fileGroups: groups, cycleNumber: 2 });
     await program.parseAsync(['node', 'test', 'file-groups', 'pr-1']);
 
-    expect(logSpy).toHaveBeenCalledWith(JSON.stringify(groups, null, 2));
+    expect(logSpy).toHaveBeenCalledWith(JSON.stringify(groups, undefined, 2));
   });
 
   it('passes cycle query param when provided', async () => {

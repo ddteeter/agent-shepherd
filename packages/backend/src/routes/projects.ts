@@ -4,15 +4,20 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 
-export async function projectRoutes(fastify: FastifyInstance) {
-  const database = (fastify as any).db;
+export function projectRoutes(fastify: FastifyInstance) {
+  const database = fastify.db;
 
   fastify.post('/api/projects', async (request, reply) => {
-    const { name, path, baseBranch } = request.body as CreateProjectInput;
+    const {
+      name,
+      path: projectPath,
+      baseBranch,
+    } = request.body as CreateProjectInput;
 
     const id = randomUUID();
-    database.insert(schema.projects)
-      .values({ id, name, path, baseBranch: baseBranch || 'main' })
+    database
+      .insert(schema.projects)
+      .values({ id, name, path: projectPath, baseBranch: baseBranch ?? 'main' })
       .run();
 
     const project = database
@@ -21,10 +26,10 @@ export async function projectRoutes(fastify: FastifyInstance) {
       .where(eq(schema.projects.id, id))
       .get();
 
-    reply.code(201).send(project);
+    await reply.code(201).send(project);
   });
 
-  fastify.get('/api/projects', async () => {
+  fastify.get('/api/projects', () => {
     return database.select().from(schema.projects).all();
   });
 
@@ -37,7 +42,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!project) {
-      reply.code(404).send({ error: 'Project not found' });
+      await reply.code(404).send({ error: 'Project not found' });
       return;
     }
     return project;
@@ -58,11 +63,12 @@ export async function projectRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!existing) {
-      reply.code(404).send({ error: 'Project not found' });
+      await reply.code(404).send({ error: 'Project not found' });
       return;
     }
 
-    database.update(schema.projects)
+    database
+      .update(schema.projects)
       .set(updates)
       .where(eq(schema.projects.id, id))
       .run();
@@ -84,11 +90,11 @@ export async function projectRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!existing) {
-      reply.code(404).send({ error: 'Project not found' });
+      await reply.code(404).send({ error: 'Project not found' });
       return;
     }
 
     database.delete(schema.projects).where(eq(schema.projects.id, id)).run();
-    reply.code(204).send();
+    await reply.code(204).send();
   });
 }

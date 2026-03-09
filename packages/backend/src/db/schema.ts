@@ -60,7 +60,9 @@ export const comments = sqliteTable('comments', {
   body: text('body').notNull(),
   severity: text('severity').notNull().default('suggestion'),
   author: text('author').notNull(),
-  parentCommentId: text('parent_comment_id').references((): any => comments.id),
+  parentCommentId: text('parent_comment_id').references(
+    (): ReturnType<typeof text> => comments.id,
+  ),
   resolved: integer('resolved', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at')
     .notNull()

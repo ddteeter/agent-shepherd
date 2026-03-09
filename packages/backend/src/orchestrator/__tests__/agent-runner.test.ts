@@ -6,44 +6,55 @@ import type {
   AgentActivityEntry,
 } from '../types.js';
 
-function createMockSession(id = 'session-1'): AgentSession & {
-  _onComplete: () => void;
-  _onError: (error: Error) => void;
-  _onOutput: (entry: AgentActivityEntry) => void;
-} {
-  let onComplete: () => void = () => {};
-  let onError: (error: Error) => void = () => {};
-  let onOutput: (entry: AgentActivityEntry) => void = () => {};
+const noop = () => {
+  /* default callback placeholder */
+};
 
-  return {
+function createMockSession(id = 'session-1') {
+  let onComplete: () => void = noop;
+  let onError: (error: Error) => void = noop;
+  let onOutput: (entry: AgentActivityEntry) => void = noop;
+
+  const killMock = vi.fn(() => Promise.resolve());
+
+  const session: AgentSession = {
     id,
-    onComplete: vi.fn((callback) => {
+    onComplete: vi.fn((callback: () => void) => {
       onComplete = callback;
     }),
-    onError: vi.fn((callback) => {
+    onError: vi.fn((callback: (error: Error) => void) => {
       onError = callback;
     }),
-    onOutput: vi.fn((callback) => {
+    onOutput: vi.fn((callback: (entry: AgentActivityEntry) => void) => {
       onOutput = callback;
     }),
-    kill: vi.fn(async () => {}),
-    get _onComplete() {
-      return onComplete;
+    kill: killMock,
+  };
+
+  return {
+    session,
+    killMock,
+    triggerComplete() {
+      onComplete();
     },
-    get _onError() {
-      return onError;
+    triggerError(error: Error) {
+      onError(error);
     },
-    get _onOutput() {
-      return onOutput;
+    triggerOutput(entry: AgentActivityEntry) {
+      onOutput(entry);
     },
   };
 }
 
-function createMockAdapter(session: AgentSession): AgentAdapter {
-  return {
+function createMockAdapter(session: AgentSession) {
+  const startSessionMock = vi
+    .fn<AgentAdapter['startSession']>()
+    .mockResolvedValue(session);
+  const adapter: AgentAdapter = {
     name: 'mock',
-    startSession: vi.fn(async () => session),
+    startSession: startSessionMock,
   };
+  return { adapter, startSessionMock };
 }
 
 describe('AgentRunner', () => {
@@ -56,8 +67,8 @@ describe('AgentRunner', () => {
   });
 
   it('spawns agent and tracks session (hasActiveSession returns true)', async () => {
-    const session = createMockSession();
-    const adapter = createMockAdapter(session);
+    const mock = createMockSession();
+    const { adapter, startSessionMock } = createMockAdapter(mock.session);
     const runner = new AgentRunner({ adapter, broadcast });
 
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
@@ -73,7 +84,7 @@ describe('AgentRunner', () => {
     );
 
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(true);
-    expect(adapter.startSession).toHaveBeenCalledWith({
+    expect(startSessionMock).toHaveBeenCalledWith({
       projectPath: '/tmp',
       prompt: 'fix bugs',
     });
@@ -84,14 +95,14 @@ describe('AgentRunner', () => {
   });
 
   it('supports two sessions for same PR with different sources', async () => {
-    const session1 = createMockSession('s1');
-    const session2 = createMockSession('s2');
+    const mock1 = createMockSession('s1');
+    const mock2 = createMockSession('s2');
     const adapter: AgentAdapter = {
       name: 'mock',
       startSession: vi
-        .fn()
-        .mockResolvedValueOnce(session1)
-        .mockResolvedValueOnce(session2),
+        .fn<AgentAdapter['startSession']>()
+        .mockResolvedValueOnce(mock1.session)
+        .mockResolvedValueOnce(mock2.session),
     };
     const runner = new AgentRunner({ adapter, broadcast });
 
@@ -114,8 +125,8 @@ describe('AgentRunner', () => {
   });
 
   it('broadcasts output with source field', async () => {
-    const session = createMockSession();
-    const adapter = createMockAdapter(session);
+    const mock = createMockSession();
+    const { adapter } = createMockAdapter(mock.session);
     const runner = new AgentRunner({ adapter, broadcast });
 
     await runner.run(
@@ -128,7 +139,7 @@ describe('AgentRunner', () => {
       type: 'tool_use',
       summary: 'Editing file',
     };
-    session._onOutput(entry);
+    mock.triggerOutput(entry);
 
     expect(broadcast).toHaveBeenCalledWith('agent:output', {
       prId: 'pr-1',
@@ -138,8 +149,8 @@ describe('AgentRunner', () => {
   });
 
   it('cancel kills session and removes from tracking', async () => {
-    const session = createMockSession();
-    const adapter = createMockAdapter(session);
+    const mock = createMockSession();
+    const { adapter } = createMockAdapter(mock.session);
     const runner = new AgentRunner({ adapter, broadcast });
 
     await runner.run(
@@ -151,7 +162,7 @@ describe('AgentRunner', () => {
 
     await runner.cancel('pr-1', 'code-fix');
 
-    expect(session.kill).toHaveBeenCalled();
+    expect(mock.killMock).toHaveBeenCalled();
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
     expect(broadcast).toHaveBeenCalledWith('agent:cancelled', {
       prId: 'pr-1',
@@ -160,8 +171,8 @@ describe('AgentRunner', () => {
   });
 
   it('cleans up session on complete and calls callback', async () => {
-    const session = createMockSession();
-    const adapter = createMockAdapter(session);
+    const mock = createMockSession();
+    const { adapter } = createMockAdapter(mock.session);
     const runner = new AgentRunner({ adapter, broadcast });
     const onComplete = vi.fn();
 
@@ -170,7 +181,7 @@ describe('AgentRunner', () => {
       { onComplete, onError: vi.fn() },
     );
 
-    session._onComplete();
+    mock.triggerComplete();
 
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
     expect(onComplete).toHaveBeenCalled();
@@ -181,8 +192,8 @@ describe('AgentRunner', () => {
   });
 
   it('cleans up session on error and calls callback', async () => {
-    const session = createMockSession();
-    const adapter = createMockAdapter(session);
+    const mock = createMockSession();
+    const { adapter } = createMockAdapter(mock.session);
     const runner = new AgentRunner({ adapter, broadcast });
     const onError = vi.fn();
     const error = new Error('something went wrong');
@@ -192,7 +203,7 @@ describe('AgentRunner', () => {
       { onComplete: vi.fn(), onError },
     );
 
-    session._onError(error);
+    mock.triggerError(error);
 
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(false);
     expect(onError).toHaveBeenCalledWith(error);

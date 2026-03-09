@@ -3,6 +3,26 @@ import { execSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
 
+interface SubmitOptions {
+  project: string;
+  title?: string;
+  description: string;
+  sourceBranch?: string;
+  contextFile?: string;
+  fileGroups?: string;
+}
+
+interface FileGroup {
+  name: string;
+  files: string[];
+}
+
+interface PrResult {
+  id: string;
+  title: string;
+  status: string;
+}
+
 export function submitCommand(program: Command, client: ApiClient) {
   program
     .command('submit')
@@ -19,40 +39,43 @@ export function submitCommand(program: Command, client: ApiClient) {
       '--file-groups <path>',
       'Path to JSON file with logical file groupings',
     )
-    .action(async (options) => {
+    .action(async (options: SubmitOptions) => {
       let agentContext: string | undefined;
       if (options.contextFile) {
-        agentContext = await readFile(options.contextFile, 'utf-8');
+        agentContext = await readFile(options.contextFile, 'utf8');
       }
 
       let sourceBranch = options.sourceBranch;
       if (!sourceBranch) {
         try {
           sourceBranch = execSync('git rev-parse --abbrev-ref HEAD', {
-            encoding: 'utf-8',
+            encoding: 'utf8',
           }).trim();
         } catch {
           sourceBranch = 'HEAD';
         }
       }
 
-      let fileGroups: any[] | undefined;
+      let fileGroups: FileGroup[] | undefined;
       if (options.fileGroups) {
-        const raw = await readFile(options.fileGroups, 'utf-8');
-        fileGroups = JSON.parse(raw);
+        const raw = await readFile(options.fileGroups, 'utf8');
+        fileGroups = JSON.parse(raw) as FileGroup[];
       }
 
-      const pr = await client.post(`/api/projects/${options.project}/prs`, {
-        title: options.title || 'Agent PR',
-        description: options.description,
-        sourceBranch,
-        agentContext,
-        workingDirectory: process.cwd(),
-        fileGroups,
-      });
+      const pr = await client.post<PrResult>(
+        `/api/projects/${options.project}/prs`,
+        {
+          title: options.title ?? 'Agent PR',
+          description: options.description,
+          sourceBranch,
+          agentContext,
+          workingDirectory: process.cwd(),
+          fileGroups,
+        },
+      );
 
-      console.log(`PR created: ${(pr as any).id}`);
-      console.log(`Title: ${(pr as any).title}`);
-      console.log(`Status: ${(pr as any).status}`);
+      console.log(`PR created: ${pr.id}`);
+      console.log(`Title: ${pr.title}`);
+      console.log(`Status: ${pr.status}`);
     });
 }

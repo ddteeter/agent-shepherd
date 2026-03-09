@@ -1,25 +1,64 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EventEmitter } from 'node:events';
 
-// Mock child_process.spawn before importing the adapter
-const mockSpawn = vi.fn();
+interface MockWritable {
+  end: ReturnType<typeof vi.fn>;
+}
+
+interface MockReadable {
+  on(event: string, listener: (...arguments_: unknown[]) => void): void;
+  emit(event: string, ...arguments_: unknown[]): boolean;
+}
+
+interface MockProcess {
+  stdin: MockWritable;
+  stdout: MockReadable;
+  stderr: MockReadable;
+  pid: number | undefined;
+  kill: ReturnType<typeof vi.fn>;
+  on(event: string, listener: (...arguments_: unknown[]) => void): void;
+  emit(event: string, ...arguments_: unknown[]): boolean;
+}
+
+const mockSpawn = vi.fn<(...arguments_: unknown[]) => MockProcess>();
 vi.mock('child_process', () => ({
-  spawn: (...arguments_: any[]) => mockSpawn(...arguments_),
+  spawn: (...arguments_: unknown[]) => mockSpawn(...arguments_),
 }));
 
 const { ClaudeCodeAdapter } = await import('../claude-code-adapter.js');
 
-function createMockProcess() {
-  const stdin = { end: vi.fn() };
-  const stdout = new EventEmitter();
-  const stderr = new EventEmitter();
-  const proc = new EventEmitter() as any;
-  proc.stdin = stdin;
-  proc.stdout = stdout;
-  proc.stderr = stderr;
-  proc.pid = 12_345;
-  proc.kill = vi.fn();
-  return proc;
+function createEmitter(): MockReadable & {
+  on: ReturnType<typeof vi.fn>;
+  emit: (...arguments_: [string, ...unknown[]]) => boolean;
+} {
+  const listeners = new Map<string, ((...arguments_: unknown[]) => void)[]>();
+  return {
+    on: vi.fn((event: string, listener: (...arguments_: unknown[]) => void) => {
+      const list = listeners.get(event) ?? [];
+      list.push(listener);
+      listeners.set(event, list);
+    }),
+    emit(event: string, ...arguments_: unknown[]) {
+      const list = listeners.get(event) ?? [];
+      for (const listener of list) listener(...arguments_);
+      return list.length > 0;
+    },
+  };
+}
+
+function createMockProcess(): MockProcess {
+  const stdin: MockWritable = { end: vi.fn() };
+  const stdout = createEmitter();
+  const stderr = createEmitter();
+  const procEmitter = createEmitter();
+  return {
+    stdin,
+    stdout,
+    stderr,
+    pid: 12_345 as number | undefined,
+    kill: vi.fn(),
+    on: procEmitter.on,
+    emit: procEmitter.emit.bind(procEmitter),
+  };
 }
 
 describe('ClaudeCodeAdapter', () => {
@@ -68,15 +107,15 @@ describe('ClaudeCodeAdapter', () => {
         additionalDirs: ['/tmp/other', '/tmp/third'],
       });
 
-      const arguments_ = mockSpawn.mock.calls[0][1] as string[];
-      expect(arguments_).toContain('--add-dir');
-      const addDirIndices = arguments_.reduce((accumulator: number[], value, index) => {
-        if (value === '--add-dir') accumulator.push(index);
-        return accumulator;
-      }, []);
-      expect(addDirIndices).toHaveLength(2);
-      expect(arguments_[addDirIndices[0] + 1]).toBe('/tmp/other');
-      expect(arguments_[addDirIndices[1] + 1]).toBe('/tmp/third');
+      const spawnArguments = mockSpawn.mock.calls[0][1] as string[];
+      expect(spawnArguments).toContain('--add-dir');
+      const addDirectoryIndices: number[] = [];
+      for (const [index, value] of spawnArguments.entries()) {
+        if (value === '--add-dir') addDirectoryIndices.push(index);
+      }
+      expect(addDirectoryIndices).toHaveLength(2);
+      expect(spawnArguments[addDirectoryIndices[0] + 1]).toBe('/tmp/other');
+      expect(spawnArguments[addDirectoryIndices[1] + 1]).toBe('/tmp/third');
     });
   });
 
@@ -93,7 +132,6 @@ describe('ClaudeCodeAdapter', () => {
       const onComplete = vi.fn();
       session.onComplete(onComplete);
 
-      // Emit a non-end_turn assistant message
       proc.stdout.emit(
         'data',
         Buffer.from(
@@ -124,10 +162,9 @@ describe('ClaudeCodeAdapter', () => {
       proc.emit('exit', 1);
 
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain(
-        'Claude Code exited with code 1',
-      );
-      expect(onError.mock.calls[0][0].message).toContain('some error');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toContain('Claude Code exited with code 1');
+      expect(errorArgument.message).toContain('some error');
     });
 
     it('calls onError with end_turn message when stop_reason is end_turn', async () => {
@@ -142,7 +179,6 @@ describe('ClaudeCodeAdapter', () => {
       const onError = vi.fn();
       session.onError(onError);
 
-      // Emit an end_turn stop reason with text content
       proc.stdout.emit(
         'data',
         Buffer.from(
@@ -158,8 +194,9 @@ describe('ClaudeCodeAdapter', () => {
 
       proc.emit('exit', 0);
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain('end_turn');
-      expect(onError.mock.calls[0][0].message).toContain('I am done');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toContain('end_turn');
+      expect(errorArgument.message).toContain('I am done');
     });
 
     it('calls onError when process emits error event', async () => {
@@ -176,7 +213,8 @@ describe('ClaudeCodeAdapter', () => {
 
       proc.emit('error', new Error('spawn failed'));
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toBe('spawn failed');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toBe('spawn failed');
     });
 
     it('emits tool_use entries via onOutput', async () => {
@@ -267,7 +305,8 @@ describe('ClaudeCodeAdapter', () => {
 
       proc.emit('exit', 2);
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain('no output captured');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toContain('no output captured');
     });
 
     it('ignores unparseable stdout lines', async () => {
@@ -314,7 +353,6 @@ describe('ClaudeCodeAdapter', () => {
       const onError = vi.fn();
       session.onError(onError);
 
-      // Set stop_reason to end_turn but no text content
       proc.stdout.emit(
         'data',
         Buffer.from(
@@ -327,7 +365,8 @@ describe('ClaudeCodeAdapter', () => {
 
       proc.emit('exit', 0);
       expect(onError).toHaveBeenCalled();
-      expect(onError.mock.calls[0][0].message).not.toContain('Last message');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).not.toContain('Last message');
     });
 
     it('handles pid as undefined', async () => {
@@ -432,11 +471,9 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: { type: string; summary: string; detail?: string }[] =
-        [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
-      // Emit a text block
       proc.stdout.emit(
         'data',
         Buffer.from(
@@ -455,7 +492,6 @@ describe('ClaudeCodeAdapter', () => {
       expect(outputs[0].type).toBe('text');
       expect(outputs[0].detail).toBe('Thinking about the problem...');
 
-      // Emit a tool_use block (should include detail in devMode)
       proc.stdout.emit(
         'data',
         Buffer.from(
@@ -477,7 +513,6 @@ describe('ClaudeCodeAdapter', () => {
       expect(outputs).toHaveLength(2);
       expect(outputs[1].detail).toContain('file_path');
 
-      // Emit a result message (devMode only)
       proc.stdout.emit(
         'data',
         Buffer.from(
@@ -503,8 +538,7 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: { type: string; summary: string; detail?: string }[] =
-        [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       proc.stdout.emit(
@@ -531,8 +565,7 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: { type: string; summary: string; detail?: string }[] =
-        [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       const longText = 'x'.repeat(200);
@@ -563,8 +596,7 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: { type: string; summary: string; detail?: string }[] =
-        [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       const longResult = 'y'.repeat(200);
@@ -604,7 +636,6 @@ describe('ClaudeCodeAdapter', () => {
         },
       });
 
-      // Split in middle
       const half = Math.floor(fullLine.length / 2);
       proc.stdout.emit('data', Buffer.from(fullLine.slice(0, half)));
       expect(onOutput).not.toHaveBeenCalled();

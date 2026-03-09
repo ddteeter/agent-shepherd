@@ -19,7 +19,7 @@ describe('api', () => {
     globalThis.fetch = originalFetch;
   });
 
-  function mockResponse(data: any, status = 200) {
+  function mockResponse(data: unknown, status = 200) {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status,
@@ -52,7 +52,9 @@ describe('api', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/projects',
         expect.objectContaining({
-          headers: expect.objectContaining({ 'X-Session-Token': 'mock-token' }),
+          headers: expect.objectContaining({
+            'X-Session-Token': 'mock-token',
+          }) as Record<string, string>,
         }),
       );
     });
@@ -65,7 +67,7 @@ describe('api', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-          }),
+          }) as Record<string, string>,
           method: 'POST',
           body: JSON.stringify({ name: 'test' }),
         }),
@@ -81,8 +83,11 @@ describe('api', () => {
 
     it('returns undefined for 204 status', async () => {
       mock204();
-      const result = await api.comments.delete('c1');
-      expect(result).toBeUndefined();
+      await api.comments.delete('c1');
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/comments/c1',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
     });
   });
 
@@ -172,7 +177,7 @@ describe('api', () => {
     });
 
     it('fileGroups calls GET /prs/:id/file-groups', async () => {
-      mockResponse({ fileGroups: null, cycleNumber: 1 });
+      mockResponse({ fileGroups: undefined, cycleNumber: 1 });
       await api.prs.fileGroups('pr-1');
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/prs/pr-1/file-groups',
@@ -181,7 +186,7 @@ describe('api', () => {
     });
 
     it('fileGroups passes cycle param', async () => {
-      mockResponse({ fileGroups: null, cycleNumber: 2 });
+      mockResponse({ fileGroups: undefined, cycleNumber: 2 });
       await api.prs.fileGroups('pr-1', { cycle: 2 });
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/prs/pr-1/file-groups?cycle=2',
@@ -287,7 +292,7 @@ describe('api', () => {
 
   describe('insights', () => {
     it('get calls GET /prs/:id/insights', async () => {
-      mockResponse(null);
+      mockResponse({});
       await api.insights.get('pr-1');
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/prs/pr-1/insights',

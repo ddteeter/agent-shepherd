@@ -1,18 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { statusCommand } from '../status.js';
+import type { ApiClient } from '../../api-client.js';
 
 describe('statusCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { get: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     program = new Command();
     program.exitOverride();
     client = { get: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    statusCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    statusCommand(program, client as unknown as ApiClient);
   });
 
   it('shows PR status with cycle info', async () => {

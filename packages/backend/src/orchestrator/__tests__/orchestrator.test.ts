@@ -18,14 +18,14 @@ describe('Orchestrator cross-cycle comment query', () => {
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
-    projectId = proj.json().id;
+    projectId = String(proj.json<Record<string, unknown>>().id);
 
     const pr = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'Test PR', description: '', sourceBranch: 'feat/x' },
     });
-    prId = pr.json().id;
+    prId = String(pr.json<Record<string, unknown>>().id);
   });
 
   afterEach(async () => {
@@ -33,9 +33,8 @@ describe('Orchestrator cross-cycle comment query', () => {
   });
 
   it('includes comment summary in the prompt', async () => {
-    const database = (server as any).db;
+    const database = server.db;
 
-    // Add comments on cycle 1
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
@@ -61,20 +60,19 @@ describe('Orchestrator cross-cycle comment query', () => {
       },
     });
 
-    // Build summary the way the orchestrator would
     const allCycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
       .all();
-    const cycleIds = allCycles.map((c: any) => c.id);
+    const cycleIds = allCycles.map((c) => c.id);
     const allComments = database
       .select()
       .from(schema.comments)
       .where(inArray(schema.comments.reviewCycleId, cycleIds))
       .all();
     const topLevel = allComments.filter(
-      (c: any) => !c.parentCommentId && !c.resolved,
+      (c) => !c.parentCommentId && !c.resolved,
     );
 
     const bySeverity: Record<string, number> = {};
@@ -84,11 +82,11 @@ describe('Orchestrator cross-cycle comment query', () => {
     >();
     let generalCount = 0;
     for (const c of topLevel) {
-      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
+      bySeverity[c.severity] = (bySeverity[c.severity] ?? 0) + 1;
       if (c.filePath) {
-        const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
+        const entry = fileMap.get(c.filePath) ?? { count: 0, bySeverity: {} };
         entry.count++;
-        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
+        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] ?? 0) + 1;
         fileMap.set(c.filePath, entry);
       } else {
         generalCount++;
@@ -98,12 +96,12 @@ describe('Orchestrator cross-cycle comment query', () => {
     const prompt = buildReviewPrompt({
       prId,
       prTitle: 'Test PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: {
         total: topLevel.length,
         bySeverity,
-        files: [...fileMap.entries()].map(([path, data]) => ({
-          path,
+        files: [...fileMap.entries()].map(([filePath, data]) => ({
+          path: filePath,
           ...data,
         })),
         generalCount,
@@ -114,14 +112,12 @@ describe('Orchestrator cross-cycle comment query', () => {
     expect(prompt).toContain('src/index.ts');
     expect(prompt).toContain('src/auth.ts');
     expect(prompt).toContain('agent-shepherd review');
-    // Should NOT contain the actual comment body text
     expect(prompt).not.toContain('Fix the null check');
   });
 
   it('excludes resolved comments from the summary', async () => {
-    const database = (server as any).db;
+    const database = server.db;
 
-    // Add two comments
     const c1Resp = await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
@@ -134,7 +130,7 @@ describe('Orchestrator cross-cycle comment query', () => {
         author: 'human',
       },
     });
-    const resolvedCommentId = c1Resp.json().id;
+    const resolvedCommentId = String(c1Resp.json<Record<string, unknown>>().id);
 
     await inject({
       method: 'POST',
@@ -149,20 +145,18 @@ describe('Orchestrator cross-cycle comment query', () => {
       },
     });
 
-    // Resolve the first comment
     await inject({
       method: 'PUT',
       url: `/api/comments/${resolvedCommentId}`,
       payload: { resolved: true },
     });
 
-    // Build summary (same logic as orchestrator)
     const allCycles = database
       .select()
       .from(schema.reviewCycles)
       .where(eq(schema.reviewCycles.prId, prId))
       .all();
-    const cycleIds = allCycles.map((c: any) => c.id);
+    const cycleIds = allCycles.map((c) => c.id);
 
     const allComments = database
       .select()
@@ -171,7 +165,7 @@ describe('Orchestrator cross-cycle comment query', () => {
       .all();
 
     const topLevel = allComments.filter(
-      (c: any) => !c.parentCommentId && !c.resolved,
+      (c) => !c.parentCommentId && !c.resolved,
     );
 
     const bySeverity: Record<string, number> = {};
@@ -181,11 +175,11 @@ describe('Orchestrator cross-cycle comment query', () => {
     >();
     let generalCount = 0;
     for (const c of topLevel) {
-      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
+      bySeverity[c.severity] = (bySeverity[c.severity] ?? 0) + 1;
       if (c.filePath) {
-        const entry = fileMap.get(c.filePath) || { count: 0, bySeverity: {} };
+        const entry = fileMap.get(c.filePath) ?? { count: 0, bySeverity: {} };
         entry.count++;
-        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] || 0) + 1;
+        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] ?? 0) + 1;
         fileMap.set(c.filePath, entry);
       } else {
         generalCount++;
@@ -195,22 +189,20 @@ describe('Orchestrator cross-cycle comment query', () => {
     const prompt = buildReviewPrompt({
       prId,
       prTitle: 'Test PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: {
         total: topLevel.length,
         bySeverity,
-        files: [...fileMap.entries()].map(([path, data]) => ({
-          path,
+        files: [...fileMap.entries()].map(([filePath, data]) => ({
+          path: filePath,
           ...data,
         })),
         generalCount,
       },
     });
 
-    // Summary should show 1 comment (the resolved one is excluded)
     expect(prompt).toContain('1 comment');
     expect(prompt).toContain('1 must-fix');
-    // Should NOT contain the actual comment body text
     expect(prompt).not.toContain('This is resolved already');
     expect(prompt).not.toContain('This still needs work');
     expect(topLevel).toHaveLength(1);
@@ -227,20 +219,19 @@ describe('Orchestrator cross-cycle comment query', () => {
         workingDirectory: '/repo/.claude/worktrees/task-1',
       },
     });
-    const pr = createResp.json();
-    expect(pr.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
+    const prData = createResp.json<Record<string, unknown>>();
+    expect(prData.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
 
-    // Verify that both project.path and pr.workingDirectory are available
-    const database = (server as any).db;
+    const database = server.db;
     const project = database
       .select()
       .from(schema.projects)
-      .where(eq(schema.projects.id, pr.projectId))
+      .where(eq(schema.projects.id, prData.projectId as string))
       .get();
-    expect(project.path).toBe('/tmp/test');
+    expect(project?.path).toBe('/tmp/test');
 
-    // Orchestrator should prefer pr.workingDirectory over project.path
-    const effectivePath = pr.workingDirectory ?? project.path;
+    const effectivePath =
+      (prData.workingDirectory as string | undefined) ?? project?.path;
     expect(effectivePath).toBe('/repo/.claude/worktrees/task-1');
   });
 });

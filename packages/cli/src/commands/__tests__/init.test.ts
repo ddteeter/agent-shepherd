@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { initCommand } from '../init.js';
+import type { ApiClient } from '../../api-client.js';
 
 describe('initCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { post: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -13,8 +14,10 @@ describe('initCommand', () => {
     client = {
       post: vi.fn(),
     };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    initCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    initCommand(program, client as unknown as ApiClient);
   });
 
   it('registers a project with default name from path basename', async () => {

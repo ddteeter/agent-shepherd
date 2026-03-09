@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { readyCommand } from '../ready.js';
+import type { ApiClient } from '../../api-client.js';
 
 vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
@@ -10,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 
 describe('readyCommand', () => {
   let program: Command;
-  let client: any;
+  let client: { post: ReturnType<typeof vi.fn> };
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -18,8 +19,10 @@ describe('readyCommand', () => {
     program = new Command();
     program.exitOverride();
     client = { post: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    readyCommand(program, client);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    readyCommand(program, client as unknown as ApiClient);
   });
 
   it('signals ready without batch file', async () => {

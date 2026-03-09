@@ -5,10 +5,10 @@ import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
-import { NotificationService } from '../services/notifications.js';
+import type { AgentSource } from '../orchestrator/types.js';
 
-export async function pullRequestRoutes(fastify: FastifyInstance) {
-  const database = (fastify as any).db;
+export function pullRequestRoutes(fastify: FastifyInstance) {
+  const database = fastify.db;
 
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
@@ -35,26 +35,27 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!project) {
-      reply.code(404).send({ error: 'Project not found' });
+      await reply.code(404).send({ error: 'Project not found' });
       return;
     }
 
     const prId = randomUUID();
-    database.insert(schema.pullRequests)
+    database
+      .insert(schema.pullRequests)
       .values({
         id: prId,
         projectId,
         title,
-        description: description || '',
+        description: description ?? '',
         sourceBranch,
-        baseBranch: baseBranch || project.baseBranch || 'main',
+        baseBranch: baseBranch ?? project.baseBranch,
         status: 'open',
-        workingDirectory: workingDirectory || null,
+        workingDirectory,
       })
       .run();
 
     // Try to capture commit SHA for the initial cycle
-    let commitSha: string | null = null;
+    let commitSha: string | undefined;
     try {
       const gitService = new GitService(project.path);
       commitSha = await gitService.getHeadSha(sourceBranch);
@@ -64,7 +65,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     // Create first review cycle
     const cycleId = randomUUID();
-    database.insert(schema.reviewCycles)
+    database
+      .insert(schema.reviewCycles)
       .values({
         id: cycleId,
         prId,
@@ -75,24 +77,23 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .run();
 
     // Store diff snapshot for cycle 1
-    if (project) {
-      try {
-        const gitService = new GitService(project.path);
-        const diffData = await gitService.getDiff(
-          baseBranch || project.baseBranch || 'main',
-          sourceBranch,
-        );
-        database.insert(schema.diffSnapshots)
-          .values({
-            id: randomUUID(),
-            reviewCycleId: cycleId,
-            diffData,
-            fileGroups: fileGroups ? JSON.stringify(fileGroups) : null,
-          })
-          .run();
-      } catch {
-        // Non-fatal: snapshot storage failure should not block PR creation
-      }
+    try {
+      const gitService = new GitService(project.path);
+      const diffData = await gitService.getDiff(
+        baseBranch ?? project.baseBranch,
+        sourceBranch,
+      );
+      database
+        .insert(schema.diffSnapshots)
+        .values({
+          id: randomUUID(),
+          reviewCycleId: cycleId,
+          diffData,
+          fileGroups: fileGroups ? JSON.stringify(fileGroups) : undefined,
+        })
+        .run();
+    } catch {
+      // Non-fatal: snapshot storage failure should not block PR creation
     }
 
     const pr = database
@@ -101,13 +102,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .where(eq(schema.pullRequests.id, prId))
       .get();
 
-    const broadcast = (fastify as any).broadcast;
-    if (broadcast) broadcast('pr:created', pr);
+    fastify.broadcast('pr:created', pr);
 
-    reply.code(201).send(pr);
+    await reply.code(201).send(pr);
   });
 
-  fastify.get('/api/projects/:projectId/prs', async (request) => {
+  fastify.get('/api/projects/:projectId/prs', (request) => {
     const { projectId } = request.params as { projectId: string };
     return database
       .select()
@@ -125,11 +125,11 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
-    const orchestrator = (fastify as any).orchestrator;
+    const orchestrator = fastify.orchestrator;
     const agents = orchestrator
       ? {
           codeFix: orchestrator.hasActiveAgent(id, 'code-fix'),
@@ -155,11 +155,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!existing) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
-    database.update(schema.pullRequests)
+    database
+      .update(schema.pullRequests)
       .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(eq(schema.pullRequests.id, id))
       .run();
@@ -182,7 +183,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
@@ -191,41 +192,42 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     if (action === 'approve') {
       // Set PR status to approved
-      database.update(schema.pullRequests)
+      database
+        .update(schema.pullRequests)
         .set({ status: 'approved', updatedAt: now })
         .where(eq(schema.pullRequests.id, id))
         .run();
 
       // Set cycle status to approved
       if (latestCycle) {
-        database.update(schema.reviewCycles)
+        database
+          .update(schema.reviewCycles)
           .set({ status: 'approved', reviewedAt: now })
           .where(eq(schema.reviewCycles.id, latestCycle.id))
           .run();
       }
 
-      const broadcast = (fastify as any).broadcast;
-      if (broadcast) broadcast('review:submitted', { prId: id, action });
+      fastify.broadcast('review:submitted', { prId: id, action });
 
       return { status: 'approved' };
-    } else if (action === 'request-changes') {
+    } else {
       // Set cycle status to changes_requested
       if (latestCycle) {
-        database.update(schema.reviewCycles)
+        database
+          .update(schema.reviewCycles)
           .set({ status: 'changes_requested', reviewedAt: now })
           .where(eq(schema.reviewCycles.id, latestCycle.id))
           .run();
       }
 
-      const broadcast = (fastify as any).broadcast;
-      if (broadcast) broadcast('review:submitted', { prId: id, action });
+      fastify.broadcast('review:submitted', { prId: id, action });
 
       // Fire and forget: kick off the agent orchestrator
-      const orchestrator = (fastify as any).orchestrator;
+      const orchestrator = fastify.orchestrator;
       if (orchestrator) {
-        orchestrator.handleRequestChanges(id).catch((error: Error) => {
+        orchestrator.handleRequestChanges(id).catch((error: unknown) => {
           fastify.log.error(
-            { err: error, prId: id },
+            { error, prId: id },
             'Orchestrator failed to handle request-changes',
           );
         });
@@ -233,20 +235,17 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
       return { status: 'changes_requested' };
     }
-
-    reply.code(400).send({ error: 'Invalid action' });
   });
 
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { fileGroups } =
-      (request.body as {
-        fileGroups?: {
-          name: string;
-          description?: string;
-          files: string[];
-        }[];
-      }) || {};
+    const { fileGroups } = request.body as {
+      fileGroups?: {
+        name: string;
+        description?: string;
+        files: string[];
+      }[];
+    };
 
     const pr = database
       .select()
@@ -255,7 +254,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
@@ -271,7 +270,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
         .get();
 
       if (previousSnapshot?.fileGroups && !fileGroups) {
-        reply.code(400).send({
+        await reply.code(400).send({
           error:
             'This PR has file groups from the previous cycle. You must provide --file-groups. Run `shepherd file-groups ' +
             id +
@@ -283,7 +282,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     // Mark current cycle's agentCompletedAt
     if (latestCycle) {
-      database.update(schema.reviewCycles)
+      database
+        .update(schema.reviewCycles)
         .set({ agentCompletedAt: now })
         .where(eq(schema.reviewCycles.id, latestCycle.id))
         .run();
@@ -297,7 +297,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     // Capture commit SHA for the new cycle
-    let commitSha: string | null = null;
+    let commitSha: string | undefined;
     if (project) {
       try {
         const gitService = new GitService(project.path);
@@ -310,7 +310,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     // Create new review cycle with incremented cycleNumber
     const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
     const newCycleId = randomUUID();
-    database.insert(schema.reviewCycles)
+    database
+      .insert(schema.reviewCycles)
       .values({
         id: newCycleId,
         prId: id,
@@ -333,12 +334,13 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           pr.baseBranch,
           pr.sourceBranch,
         );
-        database.insert(schema.diffSnapshots)
+        database
+          .insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
             reviewCycleId: newCycleId,
             diffData,
-            fileGroups: fileGroups ? JSON.stringify(fileGroups) : null,
+            fileGroups: fileGroups ? JSON.stringify(fileGroups) : undefined,
           })
           .run();
       } catch {
@@ -350,23 +352,18 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       }
     }
 
-    const broadcast = (fastify as any).broadcast;
-    if (broadcast)
-      broadcast('pr:ready-for-review', {
+    if (newCycle) {
+      fastify.broadcast('pr:ready-for-review', {
         prId: id,
         cycleNumber: newCycle.cycleNumber,
       });
+    }
 
     // Send OS notification that PR is ready for review
-    const notificationService: NotificationService | undefined = (
-      fastify as any
-    ).notificationService;
-    if (notificationService) {
-      notificationService.notifyPRReadyForReview(
-        pr.title,
-        project?.name ?? 'Unknown',
-      );
-    }
+    fastify.notificationService.notifyPRReadyForReview(
+      pr.title,
+      project?.name ?? 'Unknown',
+    );
 
     return newCycle;
   });
@@ -376,7 +373,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const { context } = request.body as { context?: string };
 
     if (!context) {
-      reply.code(400).send({ error: 'Context is required for resubmit' });
+      await reply.code(400).send({ error: 'Context is required for resubmit' });
       return;
     }
 
@@ -387,7 +384,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
@@ -396,7 +393,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     // Mark current cycle as superseded
     if (latestCycle) {
-      database.update(schema.reviewCycles)
+      database
+        .update(schema.reviewCycles)
         .set({ status: 'superseded' })
         .where(eq(schema.reviewCycles.id, latestCycle.id))
         .run();
@@ -410,7 +408,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     // Capture commit SHA
-    let commitSha: string | null = null;
+    let commitSha: string | undefined;
     if (project) {
       try {
         const gitService = new GitService(project.path);
@@ -423,7 +421,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     // Create new review cycle
     const newCycleNumber = (latestCycle?.cycleNumber ?? 0) + 1;
     const newCycleId = randomUUID();
-    database.insert(schema.reviewCycles)
+    database
+      .insert(schema.reviewCycles)
       .values({
         id: newCycleId,
         prId: id,
@@ -448,7 +447,8 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
           pr.baseBranch,
           pr.sourceBranch,
         );
-        database.insert(schema.diffSnapshots)
+        database
+          .insert(schema.diffSnapshots)
           .values({
             id: randomUUID(),
             reviewCycleId: newCycleId,
@@ -464,27 +464,23 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     }
 
     // Update PR updatedAt
-    database.update(schema.pullRequests)
+    database
+      .update(schema.pullRequests)
       .set({ updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
 
-    const broadcast = (fastify as any).broadcast;
-    if (broadcast)
-      broadcast('pr:ready-for-review', {
+    if (newCycle) {
+      fastify.broadcast('pr:ready-for-review', {
         prId: id,
         cycleNumber: newCycle.cycleNumber,
       });
-
-    const notificationService: NotificationService | undefined = (
-      fastify as any
-    ).notificationService;
-    if (notificationService) {
-      notificationService.notifyPRReadyForReview(
-        pr.title,
-        project?.name ?? 'Unknown',
-      );
     }
+
+    fastify.notificationService.notifyPRReadyForReview(
+      pr.title,
+      project?.name ?? 'Unknown',
+    );
 
     return newCycle;
   });
@@ -499,14 +495,14 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
-    const orchestrator = (fastify as any).orchestrator;
+    const orchestrator = fastify.orchestrator;
     if (orchestrator) {
-      orchestrator.runInsights(id).catch((error: Error) => {
-        fastify.log.error({ err: error, prId: id }, 'Insights analysis failed');
+      orchestrator.runInsights(id).catch((error: unknown) => {
+        fastify.log.error({ error, prId: id }, 'Insights analysis failed');
       });
     }
 
@@ -524,13 +520,13 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
-    const orchestrator = (fastify as any).orchestrator;
+    const orchestrator = fastify.orchestrator;
     if (orchestrator) {
-      await orchestrator.cancelAgent(id, source as any);
+      await orchestrator.cancelAgent(id, source as AgentSource | undefined);
     }
 
     return { status: 'cancelled' };
@@ -546,12 +542,12 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
     if (pr.status !== 'open') {
-      reply
+      await reply
         .code(400)
         .send({ error: `Cannot close a PR with status '${pr.status}'` });
       return;
@@ -560,14 +556,15 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const latestCycle = getLatestCycle(database, id);
 
     if (latestCycle?.status === 'agent_working') {
-      reply
+      await reply
         .code(409)
         .send({ error: 'Agent is currently working. Cancel the agent first.' });
       return;
     }
 
     const now = new Date().toISOString();
-    database.update(schema.pullRequests)
+    database
+      .update(schema.pullRequests)
       .set({ status: 'closed', updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
@@ -578,8 +575,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .where(eq(schema.pullRequests.id, id))
       .get();
 
-    const broadcast = (fastify as any).broadcast;
-    if (broadcast) broadcast('pr:updated', updated);
+    fastify.broadcast('pr:updated', updated);
 
     return updated;
   });
@@ -594,17 +590,18 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
     if (pr.status !== 'closed') {
-      reply.code(400).send({ error: 'Only closed PRs can be reopened' });
+      await reply.code(400).send({ error: 'Only closed PRs can be reopened' });
       return;
     }
 
     const now = new Date().toISOString();
-    database.update(schema.pullRequests)
+    database
+      .update(schema.pullRequests)
       .set({ status: 'open', updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
@@ -615,8 +612,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .where(eq(schema.pullRequests.id, id))
       .get();
 
-    const broadcast = (fastify as any).broadcast;
-    if (broadcast) broadcast('pr:updated', updated);
+    fastify.broadcast('pr:updated', updated);
 
     return updated;
   });
@@ -631,7 +627,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
+      await reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 

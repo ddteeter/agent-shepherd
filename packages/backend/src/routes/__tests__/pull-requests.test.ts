@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import {
+  createTestServer,
+  jsonBody,
+  jsonArrayBody,
+} from '../../__tests__/helpers.js';
 
 describe('Pull Requests API', () => {
   let server: FastifyInstance;
@@ -9,12 +13,12 @@ describe('Pull Requests API', () => {
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
-    const res = await inject({
+    const response = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
-    projectId = res.json().id;
+    projectId = jsonBody(response).id as string;
   });
 
   afterEach(async () => {
@@ -32,7 +36,7 @@ describe('Pull Requests API', () => {
       },
     });
     expect(response.statusCode).toBe(201);
-    const body = response.json();
+    const body = jsonBody(response);
     expect(body.title).toBe('Add feature');
     expect(body.status).toBe('open');
   });
@@ -49,7 +53,7 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toHaveLength(1);
+    expect(jsonArrayBody(response)).toHaveLength(1);
   });
 
   it('GET /api/prs/:id returns a PR', async () => {
@@ -58,14 +62,14 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: 'desc', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'GET',
-      url: `/api/prs/${id}`,
+      url: `/api/prs/${id as string}`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().title).toBe('PR');
+    expect(jsonBody(response).title).toBe('PR');
   });
 
   it('POST /api/prs/:id/review approves a PR', async () => {
@@ -74,17 +78,17 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'approve' },
     });
     expect(response.statusCode).toBe(200);
 
-    const pr = await inject({ method: 'GET', url: `/api/prs/${id}` });
-    expect(pr.json().status).toBe('approved');
+    const pr = await inject({ method: 'GET', url: `/api/prs/${id as string}` });
+    expect(jsonBody(pr).status).toBe('approved');
   });
 
   it('POST /api/prs/:id/review requests changes', async () => {
@@ -93,15 +97,15 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'request-changes' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().status).toBe('changes_requested');
+    expect(jsonBody(response).status).toBe('changes_requested');
   });
 
   it('POST /api/prs/:id/agent-ready creates new review cycle', async () => {
@@ -110,30 +114,27 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
-    // Request changes first
     await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'request-changes' },
     });
 
-    // Agent signals ready
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/agent-ready`,
+      url: `/api/prs/${id as string}/agent-ready`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().cycleNumber).toBe(2);
-    expect(response.json().status).toBe('pending_review');
+    expect(jsonBody(response).cycleNumber).toBe(2);
+    expect(jsonBody(response).status).toBe('pending_review');
 
-    // Check cycles
     const cycles = await inject({
       method: 'GET',
-      url: `/api/prs/${id}/cycles`,
+      url: `/api/prs/${id as string}/cycles`,
     });
-    expect(cycles.json()).toHaveLength(2);
+    expect(jsonArrayBody(cycles)).toHaveLength(2);
   });
 
   it('POST /api/prs/:id/close closes an open PR', async () => {
@@ -142,17 +143,17 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/close`,
+      url: `/api/prs/${id as string}/close`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().status).toBe('closed');
+    expect(jsonBody(response).status).toBe('closed');
 
-    const pr = await inject({ method: 'GET', url: `/api/prs/${id}` });
-    expect(pr.json().status).toBe('closed');
+    const pr = await inject({ method: 'GET', url: `/api/prs/${id as string}` });
+    expect(jsonBody(pr).status).toBe('closed');
   });
 
   it('POST /api/prs/:id/close returns 400 for already-closed PR', async () => {
@@ -161,12 +162,12 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
-    await inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    await inject({ method: 'POST', url: `/api/prs/${id as string}/close` });
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/close`,
+      url: `/api/prs/${id as string}/close`,
     });
     expect(response.statusCode).toBe(400);
   });
@@ -177,17 +178,17 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'approve' },
     });
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/close`,
+      url: `/api/prs/${id as string}/close`,
     });
     expect(response.statusCode).toBe(400);
   });
@@ -206,19 +207,19 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
-    await inject({ method: 'POST', url: `/api/prs/${id}/close` });
+    await inject({ method: 'POST', url: `/api/prs/${id as string}/close` });
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/reopen`,
+      url: `/api/prs/${id as string}/reopen`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().status).toBe('open');
+    expect(jsonBody(response).status).toBe('open');
 
-    const pr = await inject({ method: 'GET', url: `/api/prs/${id}` });
-    expect(pr.json().status).toBe('open');
+    const pr = await inject({ method: 'GET', url: `/api/prs/${id as string}` });
+    expect(jsonBody(pr).status).toBe('open');
   });
 
   it('POST /api/prs/:id/reopen returns 400 for non-closed PR', async () => {
@@ -227,11 +228,11 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/reopen`,
+      url: `/api/prs/${id as string}/reopen`,
     });
     expect(response.statusCode).toBe(400);
   });
@@ -248,7 +249,7 @@ describe('Pull Requests API', () => {
       },
     });
     expect(response.statusCode).toBe(201);
-    const body = response.json();
+    const body = jsonBody(response);
     expect(body.workingDirectory).toBe('/repo/.claude/worktrees/task-1');
   });
 
@@ -258,28 +259,28 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/resubmit`,
+      url: `/api/prs/${id as string}/resubmit`,
       payload: { context: 'Fixed the auth flow manually in Claude Code' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().cycleNumber).toBe(2);
-    expect(response.json().status).toBe('pending_review');
-    expect(response.json().context).toBe(
+    expect(jsonBody(response).cycleNumber).toBe(2);
+    expect(jsonBody(response).status).toBe('pending_review');
+    expect(jsonBody(response).context).toBe(
       'Fixed the auth flow manually in Claude Code',
     );
 
-    // Check cycles — cycle 1 should be superseded
     const cycles = await inject({
       method: 'GET',
-      url: `/api/prs/${id}/cycles`,
+      url: `/api/prs/${id as string}/cycles`,
     });
-    expect(cycles.json()).toHaveLength(2);
-    expect(cycles.json()[0].status).toBe('superseded');
-    expect(cycles.json()[1].status).toBe('pending_review');
+    const cyclesData = jsonArrayBody(cycles);
+    expect(cyclesData).toHaveLength(2);
+    expect(cyclesData[0].status).toBe('superseded');
+    expect(cyclesData[1].status).toBe('pending_review');
   });
 
   it('POST /api/prs/:id/resubmit works regardless of current cycle status', async () => {
@@ -288,23 +289,21 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
-    // Request changes (puts cycle in changes_requested)
     await inject({
       method: 'POST',
-      url: `/api/prs/${id}/review`,
+      url: `/api/prs/${id as string}/review`,
       payload: { action: 'request-changes' },
     });
 
-    // Resubmit should still work
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/resubmit`,
+      url: `/api/prs/${id as string}/resubmit`,
       payload: { context: 'Took over from agent' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().cycleNumber).toBe(2);
+    expect(jsonBody(response).cycleNumber).toBe(2);
   });
 
   it('POST /api/prs/:id/resubmit requires context', async () => {
@@ -313,11 +312,11 @@ describe('Pull Requests API', () => {
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'POST',
-      url: `/api/prs/${id}/resubmit`,
+      url: `/api/prs/${id as string}/resubmit`,
       payload: {},
     });
     expect(response.statusCode).toBe(400);
@@ -343,6 +342,6 @@ describe('Pull Requests API', () => {
       },
     });
     expect(response.statusCode).toBe(201);
-    expect(response.json().workingDirectory).toBeNull();
+    expect(jsonBody(response).workingDirectory).toBeNull();
   });
 });

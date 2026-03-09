@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { migrateInsightCategories } from '../insights.js';
-
 describe('migrateInsightCategories', () => {
   it('converts applied: true to appliedPath: "CLAUDE.md"', () => {
     const input = {
@@ -68,7 +67,9 @@ describe('migrateInsightCategories', () => {
   });
 
   it('handles missing categories gracefully', () => {
-    const result = migrateInsightCategories({} as any);
+    const result = migrateInsightCategories(
+      {} as unknown as Parameters<typeof migrateInsightCategories>[0],
+    );
     expect(result.claudeMdRecommendations).toEqual([]);
     expect(result.recurringPatterns).toEqual([]);
   });
