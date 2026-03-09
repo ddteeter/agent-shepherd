@@ -30,22 +30,43 @@ import sonarjs from 'eslint-plugin-sonarjs';
 sonarjs.configs.recommended,
 ```
 
-Applies to all TS/TSX files alongside existing `strictTypeChecked`, `unicorn/recommended`, and React rules. No custom rule overrides — start with defaults and tune later.
+Applies to all TS/TSX files alongside existing `strictTypeChecked`, `unicorn/recommended`, and React rules.
+
+Disable rules that overlap with typescript-eslint (in the rules block alongside existing unicorn overrides):
+
+```js
+'sonarjs/no-unused-vars': 'off',
+'sonarjs/unused-import': 'off',
+'sonarjs/no-dead-store': 'off',
+```
+
+These three rules duplicate what `@typescript-eslint/no-unused-vars` already covers. All other sonarjs recommended rules stay enabled.
 
 ### jscpd (`.jscpd.json`)
 
 ```json
 {
-  "threshold": 0,
-  "reporters": ["console"],
-  "ignore": ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/drizzle/**", "**/__tests__/**"],
+  "threshold": 5,
   "minTokens": 75,
-  "absolute": true
+  "minLines": 5,
+  "mode": "strict",
+  "reporters": ["console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/drizzle/**",
+    "**/__tests__/**"
+  ],
+  "gitignore": true
 }
 ```
 
 - **`minTokens: 75`** — catches meaningful duplication without flagging trivial patterns
-- **`threshold: 0`** — any clone above the token minimum fails
+- **`minLines: 5`** — minimum 5 lines to flag as duplicate
+- **`threshold: 5`** — allows up to 5% project-wide duplication before failing (zero tolerance is too aggressive)
+- **`mode: "strict"`** — strict matching for accurate detection
+- **`gitignore: true`** — automatically respects .gitignore patterns
 - **Test files ignored** — tests often have legitimate repetition in setup/assertions
 
 ### Scripts
@@ -117,7 +138,7 @@ Triggered after every Edit/Write tool call on TS/TSX files:
 - **No jscpd in PostToolUse hook** — duplication is a commit-time concern, too slow/noisy at edit time
 - **No Prettier in PostToolUse hook** — already handled by eslint --fix and lint-staged
 - **No jscpd CI integration** — pre-commit hook is the enforcement point for now
-- **No custom sonarjs rule overrides** — start with defaults, tune based on experience
+- **No custom sonarjs rule overrides** beyond disabling typescript-eslint overlaps
 
 ## Decisions
 

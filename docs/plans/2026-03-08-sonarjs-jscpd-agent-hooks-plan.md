@@ -61,6 +61,17 @@ Add `sonarjs.configs.recommended` to the config array, after `unicorn.configs['f
   sonarjs.configs.recommended,
 ```
 
+Then add these rule overrides to the existing rules block (alongside `unicorn/no-useless-undefined`) to disable rules that overlap with typescript-eslint:
+
+```js
+rules: {
+  'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
+  'sonarjs/no-unused-vars': 'off',
+  'sonarjs/unused-import': 'off',
+  'sonarjs/no-dead-store': 'off',
+},
+```
+
 **Step 2: Run ESLint to check for new violations**
 
 Run:
@@ -131,7 +142,10 @@ Create `.jscpd.json` at project root:
 
 ```json
 {
-  "threshold": 0,
+  "threshold": 5,
+  "minTokens": 75,
+  "minLines": 5,
+  "mode": "strict",
   "reporters": ["console"],
   "ignore": [
     "**/node_modules/**",
@@ -140,8 +154,7 @@ Create `.jscpd.json` at project root:
     "**/drizzle/**",
     "**/__tests__/**"
   ],
-  "minTokens": 75,
-  "absolute": true
+  "gitignore": true
 }
 ```
 
