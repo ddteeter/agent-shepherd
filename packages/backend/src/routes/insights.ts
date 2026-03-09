@@ -43,7 +43,7 @@ export function migrateInsightCategories(
 export function insightsRoutes(fastify: FastifyInstance) {
   const database = fastify.db;
 
-  fastify.get('/api/prs/:prId/insights', (request) => {
+  fastify.get('/api/prs/:prId/insights', (request, reply) => {
     const { prId } = request.params as { prId: string };
 
     const row = database
@@ -53,7 +53,7 @@ export function insightsRoutes(fastify: FastifyInstance) {
       .get();
 
     if (!row) {
-      return;
+      return reply.send(JSON.parse('null') as unknown);
     }
 
     return {

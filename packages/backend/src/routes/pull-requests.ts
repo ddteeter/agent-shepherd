@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { CreatePRInput, SubmitReviewInput } from '@agent-shepherd/shared';
+import type { CreatePRInput } from '@agent-shepherd/shared';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
@@ -174,7 +174,12 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/prs/:id/review', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action } = request.body as SubmitReviewInput;
+    const { action } = request.body as { action: string };
+
+    if (action !== 'approve' && action !== 'request-changes') {
+      await reply.code(400).send({ error: 'Invalid action' });
+      return;
+    }
 
     const pr = database
       .select()
@@ -239,13 +244,14 @@ export function pullRequestRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { fileGroups } = request.body as {
+    const body = (request.body ?? {}) as {
       fileGroups?: {
         name: string;
         description?: string;
         files: string[];
       }[];
     };
+    const { fileGroups } = body;
 
     const pr = database
       .select()

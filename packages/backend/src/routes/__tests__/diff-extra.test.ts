@@ -183,7 +183,7 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
       .all();
     database
       .update(schema.reviewCycles)
-      .set({ commitSha: undefined })
+      .set({ commitSha: JSON.parse('null') as string })
       .where(eq(schema.reviewCycles.id, cycles[0].id))
       .run();
 

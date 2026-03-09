@@ -6,6 +6,9 @@ import { getLatestCycle } from '../db/queries.js';
 import { GitService } from '../services/git.js';
 import type { FileGroup } from '@agent-shepherd/shared';
 
+// SQLite/JSON uses null for absent values; this avoids a null literal (unicorn/no-null)
+const JSON_NULL = JSON.parse('null') as null;
+
 type ReviewCycleRow = InferSelectModel<typeof schema.reviewCycles>;
 
 export function diffRoutes(fastify: FastifyInstance) {
@@ -105,7 +108,7 @@ export function diffRoutes(fastify: FastifyInstance) {
         fromCycle: fromNumber,
         toCycle: toNumber,
         isInterCycleDiff: true,
-        fileGroups: undefined,
+        fileGroups: JSON_NULL,
       };
     }
 
@@ -141,18 +144,16 @@ export function diffRoutes(fastify: FastifyInstance) {
         .get();
 
       if (!snapshot) {
-        await reply
-          .code(404)
-          .send({
-            error: `No diff snapshot found for cycle ${String(cycleNumber)}`,
-          });
+        await reply.code(404).send({
+          error: `No diff snapshot found for cycle ${String(cycleNumber)}`,
+        });
         return;
       }
 
       const files = extractFilesFromDiff(snapshot.diffData);
-      const fileGroups: FileGroup[] | undefined = snapshot.fileGroups
+      const fileGroups: FileGroup[] | null = snapshot.fileGroups
         ? (JSON.parse(snapshot.fileGroups) as FileGroup[])
-        : undefined;
+        : JSON_NULL;
       return {
         diff: snapshot.diffData,
         files,
@@ -180,7 +181,7 @@ export function diffRoutes(fastify: FastifyInstance) {
     );
 
     const latestCycle = getLatestCycle(database, id);
-    let fileGroups: FileGroup[] | undefined;
+    let fileGroups: FileGroup[] | null = JSON_NULL;
     if (latestCycle) {
       const snapshot = database
         .select()
@@ -241,9 +242,9 @@ export function diffRoutes(fastify: FastifyInstance) {
       .where(eq(schema.diffSnapshots.reviewCycleId, reviewCycle.id))
       .get();
 
-    const fileGroups: FileGroup[] | undefined = snapshot?.fileGroups
+    const fileGroups: FileGroup[] | null = snapshot?.fileGroups
       ? (JSON.parse(snapshot.fileGroups) as FileGroup[])
-      : undefined;
+      : JSON_NULL;
     return { fileGroups, cycleNumber: reviewCycle.cycleNumber };
   });
 
