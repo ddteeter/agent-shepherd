@@ -38,12 +38,19 @@ export default tseslint.config(
     },
     rules: {
       'unicorn/no-useless-undefined': ['error', { checkArguments: false }],
+      // Duplicates typescript-eslint's no-unused-vars which we already enforce
       'sonarjs/no-unused-vars': 'off',
+      // Duplicates typescript-eslint's no-unused-vars for imports
       'sonarjs/unused-import': 'off',
+      // Duplicates typescript-eslint's no-unused-vars for assignments
       'sonarjs/no-dead-store': 'off',
+      // False positives on /tmp usage in tests and CLI — we don't write to user-controlled paths
       'sonarjs/publicly-writable-directories': 'off',
+      // False positives on child_process.spawn with explicit command paths (e.g., claude-code adapter)
       'sonarjs/no-os-command-from-path': 'off',
+      // Math.random is fine for non-security purposes like UUID generation via crypto elsewhere
       'sonarjs/pseudo-random': 'off',
+      // Intentional shell-out in the orchestrator's agent adapters and CLI
       'sonarjs/os-command': 'off',
     },
   },

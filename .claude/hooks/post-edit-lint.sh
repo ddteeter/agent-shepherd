@@ -25,9 +25,10 @@ ESLINT_OUTPUT=$(npx eslint --fix "$FILE_PATH" 2>&1) || {
 }
 
 # Step 2: Run tsc --noEmit using the nearest tsconfig.json (only if eslint passed)
+PROJECT_ROOT=$(echo "$INPUT" | jq -r '.cwd // empty')
 TSCONFIG=""
 DIR=$(dirname "$FILE_PATH")
-while [[ "$DIR" != "/" ]]; do
+while [[ ${#DIR} -ge ${#PROJECT_ROOT} ]]; do
   if [[ -f "$DIR/tsconfig.json" ]]; then
     TSCONFIG="$DIR/tsconfig.json"
     break
