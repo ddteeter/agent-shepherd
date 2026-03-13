@@ -27,7 +27,9 @@ vi.mock('../commands/submit.js', () => ({ submitCommand: vi.fn() }));
 vi.mock('../commands/batch.js', () => ({ batchCommand: vi.fn() }));
 vi.mock('../commands/ready.js', () => ({ readyCommand: vi.fn() }));
 vi.mock('../commands/status.js', () => ({ statusCommand: vi.fn() }));
-vi.mock('../commands/list-projects.js', () => ({ listProjectsCommand: vi.fn() }));
+vi.mock('../commands/list-projects.js', () => ({
+  listProjectsCommand: vi.fn(),
+}));
 vi.mock('../commands/setup.js', () => ({ setupCommand: vi.fn() }));
 vi.mock('../commands/start.js', () => ({ startCommand: vi.fn() }));
 vi.mock('../commands/review.js', () => ({ reviewCommand: vi.fn() }));
@@ -48,7 +50,8 @@ describe('index', () => {
     const { batchCommand } = await import('../commands/batch.js');
     const { readyCommand } = await import('../commands/ready.js');
     const { statusCommand } = await import('../commands/status.js');
-    const { listProjectsCommand } = await import('../commands/list-projects.js');
+    const { listProjectsCommand } =
+      await import('../commands/list-projects.js');
     const { setupCommand } = await import('../commands/setup.js');
     const { startCommand } = await import('../commands/start.js');
     const { reviewCommand } = await import('../commands/review.js');

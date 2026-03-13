@@ -21,7 +21,10 @@ describe('Insights PromptBuilder', () => {
       prTitle: 'PR',
       branch: 'feat/x',
       projectId: 'proj-1',
-      transcriptPaths: ['/tmp/transcripts/sess-1.md', '/tmp/transcripts/sess-2.md'],
+      transcriptPaths: [
+        '/tmp/transcripts/sess-1.md',
+        '/tmp/transcripts/sess-2.md',
+      ],
     });
     expect(prompt).toContain('sess-1.md');
     expect(prompt).toContain('sess-2.md');

@@ -88,6 +88,7 @@ interface SessionLogProvider {
 ```
 
 **Claude Code implementation** (`ClaudeCodeSessionLogProvider`):
+
 - Derives the Claude projects directory from `projectPath` using the `~/.claude/projects/<mangled-path>/` convention
 - Scans `*.jsonl` files, reads first few lines to extract `sessionId`, `gitBranch`, timestamp
 - Filters to sessions matching the requested branch
@@ -162,19 +163,37 @@ Insights are a single living document per PR, not versioned. The analyzer reads 
 ```json
 {
   "claudeMdRecommendations": [
-    { "title": "Add testing convention", "description": "...", "applied": false }
+    {
+      "title": "Add testing convention",
+      "description": "...",
+      "applied": false
+    }
   ],
   "skillRecommendations": [
-    { "title": "Create error-handling skill", "description": "...", "applied": false }
+    {
+      "title": "Create error-handling skill",
+      "description": "...",
+      "applied": false
+    }
   ],
   "promptEngineering": [
-    { "title": "Initial prompt lacked acceptance criteria", "description": "..." }
+    {
+      "title": "Initial prompt lacked acceptance criteria",
+      "description": "..."
+    }
   ],
   "agentBehaviorObservations": [
-    { "title": "Agent explored codebase for 40% of session", "description": "..." }
+    {
+      "title": "Agent explored codebase for 40% of session",
+      "description": "..."
+    }
   ],
   "recurringPatterns": [
-    { "title": "3rd time: unnecessary error handling", "description": "...", "prIds": ["..."] }
+    {
+      "title": "3rd time: unnecessary error handling",
+      "description": "...",
+      "prIds": ["..."]
+    }
   ]
 }
 ```
@@ -210,6 +229,7 @@ The "Run Analyzer" button appears when at least one of: comments exist on the PR
 ### Broadcast Events
 
 Existing broadcast events gain a `source` field:
+
 - `agent:working` -- `{ prId, source: 'code-fix' | 'insights' }`
 - `agent:output` -- `{ prId, source, entry }`
 - `agent:completed` -- `{ prId, source }`
@@ -228,7 +248,10 @@ class Orchestrator {
   async runInsights(prId: string): Promise<void>;
 
   // Updated -- accepts source to cancel specific agent
-  async cancelAgent(prId: string, source?: 'code-fix' | 'insights'): Promise<void>;
+  async cancelAgent(
+    prId: string,
+    source?: 'code-fix' | 'insights',
+  ): Promise<void>;
 }
 ```
 

@@ -11,7 +11,11 @@ describe('PromptBuilder', () => {
         total: 5,
         bySeverity: { 'must-fix': 2, request: 2, suggestion: 1 },
         files: [
-          { path: 'src/auth.ts', count: 3, bySeverity: { 'must-fix': 2, request: 1 } },
+          {
+            path: 'src/auth.ts',
+            count: 3,
+            bySeverity: { 'must-fix': 2, request: 1 },
+          },
           { path: 'src/db.ts', count: 1, bySeverity: { suggestion: 1 } },
         ],
         generalCount: 1,
@@ -34,11 +38,11 @@ describe('PromptBuilder', () => {
     expect(prompt).toContain('Built the auth system');
   });
 
-  it('handles null agent context', () => {
+  it('handles undefined agent context', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: { total: 0, bySeverity: {}, files: [], generalCount: 0 },
     });
     expect(prompt).toContain('PR');
@@ -49,8 +53,13 @@ describe('PromptBuilder', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
-      agentContext: null,
-      commentSummary: { total: 3, bySeverity: { request: 3 }, files: [{ path: 'src/a.ts', count: 3, bySeverity: { request: 3 } }], generalCount: 0 },
+      agentContext: undefined,
+      commentSummary: {
+        total: 3,
+        bySeverity: { request: 3 },
+        files: [{ path: 'src/a.ts', count: 3, bySeverity: { request: 3 } }],
+        generalCount: 0,
+      },
     });
 
     expect(prompt).toContain('agent-shepherd review');
@@ -63,16 +72,17 @@ describe('PromptBuilder', () => {
     const prompt = buildReviewPrompt({
       prId: 'test-pr-id',
       prTitle: 'PR',
-      agentContext: null,
+      agentContext: undefined,
       commentSummary: {
         total: 1,
         bySeverity: { 'must-fix': 1 },
-        files: [{ path: 'src/auth.ts', count: 1, bySeverity: { 'must-fix': 1 } }],
+        files: [
+          { path: 'src/auth.ts', count: 1, bySeverity: { 'must-fix': 1 } },
+        ],
         generalCount: 0,
       },
     });
 
-    // The prompt should NOT contain individual comment markers — those come from CLI
     expect(prompt).not.toContain('comment ID:');
   });
 });

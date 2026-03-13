@@ -1,10 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 
-export function migrateInsightCategories(categories: Record<string, any[]>): Record<string, any[]> {
-  const migrate = (items: any[]) =>
+interface InsightItem {
+  applied?: boolean;
+  confidence?: string;
+  appliedPath?: string;
+  [key: string]: unknown;
+}
+
+interface InsightCategories {
+  claudeMdRecommendations?: InsightItem[];
+  skillRecommendations?: InsightItem[];
+  promptEngineering?: InsightItem[];
+  agentBehaviorObservations?: InsightItem[];
+  recurringPatterns?: InsightItem[];
+  [key: string]: InsightItem[] | undefined;
+}
+
+export function migrateInsightCategories(
+  categories: InsightCategories,
+): Record<string, InsightItem[]> {
+  const migrate = (items: InsightItem[]) =>
     items.map(({ applied, ...rest }) => ({
       ...rest,
       confidence: rest.confidence ?? 'medium',
@@ -15,36 +33,38 @@ export function migrateInsightCategories(categories: Record<string, any[]>): Rec
     claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
     skillRecommendations: migrate(categories.skillRecommendations ?? []),
     promptEngineering: migrate(categories.promptEngineering ?? []),
-    agentBehaviorObservations: migrate(categories.agentBehaviorObservations ?? []),
+    agentBehaviorObservations: migrate(
+      categories.agentBehaviorObservations ?? [],
+    ),
     recurringPatterns: migrate(categories.recurringPatterns ?? []),
   };
 }
 
-export async function insightsRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
+export function insightsRoutes(fastify: FastifyInstance) {
+  const database = fastify.db;
 
-  // GET /api/prs/:prId/insights — returns insights row with parsed categories, or null
-  fastify.get('/api/prs/:prId/insights', async (request) => {
+  fastify.get('/api/prs/:prId/insights', (request, reply) => {
     const { prId } = request.params as { prId: string };
 
-    const row = db
+    const row = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))
       .get();
 
     if (!row) {
-      return null;
+      return reply.send(JSON.parse('null') as unknown);
     }
 
     return {
       ...row,
-      categories: migrateInsightCategories(JSON.parse(row.categories)),
+      categories: migrateInsightCategories(
+        JSON.parse(row.categories) as InsightCategories,
+      ),
     };
   });
 
-  // PUT /api/prs/:prId/insights — upsert: create if not exists, update if exists
-  fastify.put('/api/prs/:prId/insights', async (request) => {
+  fastify.put('/api/prs/:prId/insights', (request) => {
     const { prId } = request.params as { prId: string };
     const { categories, branchRef, worktreePath } = request.body as {
       categories: Record<string, unknown>;
@@ -54,45 +74,53 @@ export async function insightsRoutes(fastify: FastifyInstance) {
 
     const categoriesJson = JSON.stringify(categories);
 
-    const existing = db
+    const existing = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))
       .get();
 
     if (existing) {
-      db.update(schema.insights)
+      database
+        .update(schema.insights)
         .set({
           categories: categoriesJson,
-          ...(branchRef !== undefined ? { branchRef } : {}),
-          ...(worktreePath !== undefined ? { worktreePath } : {}),
+          ...(branchRef === undefined ? {} : { branchRef }),
+          ...(worktreePath === undefined ? {} : { worktreePath }),
           updatedAt: new Date().toISOString(),
         })
         .where(eq(schema.insights.id, existing.id))
         .run();
     } else {
       const id = randomUUID();
-      db.insert(schema.insights)
+      database
+        .insert(schema.insights)
         .values({
           id,
           prId,
           categories: categoriesJson,
-          branchRef: branchRef ?? null,
-          worktreePath: worktreePath ?? null,
+          branchRef,
+          worktreePath,
           updatedAt: new Date().toISOString(),
         })
         .run();
     }
 
-    const row = db
+    const row = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))
       .get();
 
+    if (!row) {
+      return;
+    }
+
     return {
       ...row,
-      categories: migrateInsightCategories(JSON.parse(row.categories)),
+      categories: migrateInsightCategories(
+        JSON.parse(row.categories) as InsightCategories,
+      ),
     };
   });
 }

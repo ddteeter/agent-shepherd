@@ -1,73 +1,63 @@
 import type { FastifyInstance } from 'fastify';
-import { join } from 'path';
-import { homedir } from 'os';
-import { eq } from 'drizzle-orm';
-import { schema } from '../db/index.js';
+import path from 'node:path';
+import { homedir } from 'node:os';
 import { ConfigService } from '../services/config.js';
+import { findProjectOrFail } from './route-helpers.js';
 
-export async function configRoutes(fastify: FastifyInstance) {
-  const db = (fastify as any).db;
-  const globalConfigPath = join(homedir(), '.agent-shepherd', 'config.yml');
-  const configService = new ConfigService(db, globalConfigPath);
+function hasKeyAndValue(body: {
+  key?: string;
+  value?: string;
+}): body is { key: string; value: string } {
+  return !!body.key && body.value !== undefined;
+}
 
-  // GET /api/config - Get merged global config (file + DB)
-  fastify.get('/api/config', async () => {
+export function configRoutes(fastify: FastifyInstance) {
+  const database = fastify.db;
+  const globalConfigPath = path.join(
+    homedir(),
+    '.agent-shepherd',
+    'config.yml',
+  );
+  const configService = new ConfigService(database, globalConfigPath);
+
+  fastify.get('/api/config', () => {
     return configService.getMergedGlobalConfig();
   });
 
-  // PUT /api/config - Set a global config key/value in DB
   fastify.put('/api/config', async (request, reply) => {
-    const { key, value } = request.body as { key: string; value: string };
+    const body = request.body as { key?: string; value?: string };
 
-    if (!key || value === undefined || value === null) {
-      reply.code(400).send({ error: 'key and value are required' });
+    if (!hasKeyAndValue(body)) {
+      await reply.code(400).send({ error: 'key and value are required' });
       return;
     }
 
-    configService.setGlobalDbConfig(key, String(value));
+    configService.setGlobalDbConfig(body.key, body.value);
     return configService.getMergedGlobalConfig();
   });
 
-  // GET /api/projects/:id/config - Get merged project config (global + project file + DB)
   fastify.get('/api/projects/:id/config', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const project = db
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
-
-    if (!project) {
-      reply.code(404).send({ error: 'Project not found' });
-      return;
-    }
+    const project = await findProjectOrFail(database, id, reply);
+    if (!project) return;
 
     return configService.getMergedProjectConfig(id, project.path);
   });
 
-  // PUT /api/projects/:id/config - Set a project config key/value in DB
   fastify.put('/api/projects/:id/config', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { key, value } = request.body as { key: string; value: string };
+    const body = request.body as { key?: string; value?: string };
 
-    const project = db
-      .select()
-      .from(schema.projects)
-      .where(eq(schema.projects.id, id))
-      .get();
+    const project = await findProjectOrFail(database, id, reply);
+    if (!project) return;
 
-    if (!project) {
-      reply.code(404).send({ error: 'Project not found' });
+    if (!hasKeyAndValue(body)) {
+      await reply.code(400).send({ error: 'key and value are required' });
       return;
     }
 
-    if (!key || value === undefined || value === null) {
-      reply.code(400).send({ error: 'key and value are required' });
-      return;
-    }
-
-    configService.setProjectDbConfig(id, key, String(value));
+    configService.setProjectDbConfig(id, body.key, body.value);
     return configService.getMergedProjectConfig(id, project.path);
   });
 }

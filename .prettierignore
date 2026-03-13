@@ -1,0 +1,5 @@
+dist/
+coverage/
+drizzle/
+*.db
+package-lock.json

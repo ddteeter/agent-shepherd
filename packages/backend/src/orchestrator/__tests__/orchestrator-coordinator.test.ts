@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Orchestrator } from '../index.js';
 import type { AgentAdapter, AgentSession } from '../types.js';
+import type { AppDatabase } from '../../db/index.js';
+import type * as schemaModule from '../../db/schema.js';
+
+const noop = () => {
+  /* default callback placeholder */
+};
 
 function createMockAdapter(session?: Partial<AgentSession>): AgentAdapter {
   const mockSession: AgentSession = {
@@ -8,42 +14,46 @@ function createMockAdapter(session?: Partial<AgentSession>): AgentAdapter {
     onComplete: vi.fn(),
     onError: vi.fn(),
     onOutput: vi.fn(),
-    kill: vi.fn(async () => {}),
+    kill: vi.fn(() => Promise.resolve()),
     ...session,
   };
   return {
     name: 'test',
-    startSession: vi.fn(async () => mockSession),
+    startSession: vi
+      .fn<AgentAdapter['startSession']>()
+      .mockResolvedValue(mockSession),
   };
 }
 
-function createMockDb() {
+function createMockDatabase() {
   const pr = {
     id: 'pr-1',
     projectId: 'proj-1',
     title: 'Test PR',
     sourceBranch: 'feat/x',
-    workingDirectory: null,
-    agentContext: null,
+    workingDirectory: undefined,
+    agentContext: undefined,
   };
   const project = { id: 'proj-1', path: '/tmp/project', name: 'Test' };
-  const cycle = { id: 'cycle-1', prId: 'pr-1', cycleNumber: 1, status: 'changes_requested' };
-  const comments: any[] = [];
+  const cycle = {
+    id: 'cycle-1',
+    prId: 'pr-1',
+    cycleNumber: 1,
+    status: 'changes_requested',
+  };
+
+  const whereResult = { get: vi.fn(() => pr), all: vi.fn(() => [cycle]) };
+  const updateWhereResult = { run: vi.fn() };
 
   return {
     select: vi.fn(() => ({
       from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          get: vi.fn(() => pr),
-          all: vi.fn(() => [cycle]),
-        })),
+        where: vi.fn(() => whereResult),
       })),
     })),
     update: vi.fn(() => ({
       set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          run: vi.fn(),
-        })),
+        where: vi.fn(() => updateWhereResult),
       })),
     })),
     _pr: pr,
@@ -52,109 +62,118 @@ function createMockDb() {
   };
 }
 
-// Minimal schema stubs
 const mockSchema = {
   pullRequests: { id: 'pullRequests.id', projectId: 'pullRequests.projectId' },
   projects: { id: 'projects.id' },
   reviewCycles: { id: 'reviewCycles.id', prId: 'reviewCycles.prId' },
   comments: { reviewCycleId: 'comments.reviewCycleId' },
   insights: { prId: 'insights.prId' },
-} as any;
+} as unknown as typeof schemaModule;
 
 describe('Orchestrator (thin coordinator)', () => {
   let adapter: AgentAdapter;
-  let db: ReturnType<typeof createMockDb>;
-  let broadcast: ReturnType<typeof vi.fn<(event: string, data: any) => void>>;
+  let database: ReturnType<typeof createMockDatabase>;
+  let broadcast: ReturnType<
+    typeof vi.fn<(event: string, data: unknown) => void>
+  >;
 
   beforeEach(() => {
     adapter = createMockAdapter();
-    db = createMockDb();
-    broadcast = vi.fn<(event: string, data: any) => void>();
+    database = createMockDatabase();
+    broadcast = vi.fn<(event: string, data: unknown) => void>();
   });
 
   it('runInsights delegates to InsightsAnalyzer', async () => {
     const orchestrator = new Orchestrator({
-      db,
+      db: database as unknown as AppDatabase,
       schema: mockSchema,
       broadcast,
       adapter,
-      sessionLogProvider: { name: 'mock', findSessions: vi.fn(async () => []) },
+      sessionLogProvider: {
+        name: 'mock',
+        findSessions: vi.fn<() => Promise<[]>>().mockResolvedValue([]),
+      },
     });
 
-    // runInsights should not throw (InsightsAnalyzer catches runner errors)
     await expect(orchestrator.runInsights('pr-1')).resolves.toBeUndefined();
   });
 
   it('cancelAgent with source cancels only that source', async () => {
     const orchestrator = new Orchestrator({
-      db,
+      db: database as unknown as AppDatabase,
       schema: mockSchema,
       broadcast,
       adapter,
-      sessionLogProvider: { name: 'mock', findSessions: vi.fn(async () => []) },
+      sessionLogProvider: {
+        name: 'mock',
+        findSessions: vi.fn<() => Promise<[]>>().mockResolvedValue([]),
+      },
     });
 
     await orchestrator.cancelAgent('pr-1', 'insights');
 
-    // Should broadcast cancelled for insights only
-    expect(broadcast).toHaveBeenCalledWith('agent:cancelled', { prId: 'pr-1', source: 'insights' });
-    // Should NOT broadcast for code-fix
+    expect(broadcast).toHaveBeenCalledWith('agent:cancelled', {
+      prId: 'pr-1',
+      source: 'insights',
+    });
     const calls = broadcast.mock.calls.filter(
-      (c: any[]) => c[0] === 'agent:cancelled' && c[1]?.source === 'code-fix'
+      (c) =>
+        c[0] === 'agent:cancelled' &&
+        (c[1] as { source?: string }).source === 'code-fix',
     );
     expect(calls).toHaveLength(0);
   });
 
   it('cancelAgent without source cancels both sources', async () => {
     const orchestrator = new Orchestrator({
-      db,
+      db: database as unknown as AppDatabase,
       schema: mockSchema,
       broadcast,
       adapter,
-      sessionLogProvider: { name: 'mock', findSessions: vi.fn(async () => []) },
+      sessionLogProvider: {
+        name: 'mock',
+        findSessions: vi.fn<() => Promise<[]>>().mockResolvedValue([]),
+      },
     });
 
     await orchestrator.cancelAgent('pr-1');
 
     const cancelledEvents = broadcast.mock.calls.filter(
-      (c: any[]) => c[0] === 'agent:cancelled'
+      (c) => c[0] === 'agent:cancelled',
     );
     expect(cancelledEvents).toHaveLength(2);
-    const sources = cancelledEvents.map((c: any[]) => c[1].source).sort();
-    expect(sources).toEqual(['code-fix', 'insights']);
+    const sources: string[] = cancelledEvents.map(
+      (c) => (c[1] as { source: string }).source,
+    );
+    expect(sources).toEqual(expect.arrayContaining(['code-fix', 'insights']));
   });
 
   it('handleRequestChanges swallows insights errors', async () => {
-    // Create an orchestrator with a session log provider that throws
     const failingProvider = {
       name: 'failing',
-      findSessions: vi.fn(async () => { throw new Error('provider error'); }),
+      findSessions: vi
+        .fn<() => Promise<never>>()
+        .mockRejectedValue(new Error('provider error')),
     };
 
     const orchestrator = new Orchestrator({
-      db,
+      db: database as unknown as AppDatabase,
       schema: mockSchema,
       broadcast,
       adapter,
       sessionLogProvider: failingProvider,
     });
 
-    // Suppress console.error for this test
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(noop);
 
-    // handleRequestChanges calls both modules in parallel.
-    // FeedbackIntegrator will also fail (mock DB doesn't support full query chain),
-    // but we're testing that insights errors don't propagate separately.
-    // The .catch on insightsPromise inside handleRequestChanges should swallow the insights error.
     try {
       await orchestrator.handleRequestChanges('pr-1');
     } catch {
       // FeedbackIntegrator may throw — that's expected with our minimal mock
     }
 
-    // Verify the insights error was logged (not thrown)
     const insightsErrorCalls = consoleSpy.mock.calls.filter(
-      (c: any[]) => typeof c[0] === 'string' && c[0].includes('Insights')
+      (c) => typeof c[0] === 'string' && c[0].includes('Insights'),
     );
     expect(insightsErrorCalls.length).toBeGreaterThan(0);
 

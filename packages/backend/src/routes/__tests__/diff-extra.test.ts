@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { execSync } from 'child_process';
-import { randomUUID } from 'crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
-import { createTestServer } from '../../__tests__/helpers.js';
+import { createTestServer, jsonBody } from '../../__tests__/helpers.js';
 import { schema } from '../../db/index.js';
 import { extractFilesFromDiff } from '../diff.js';
 
@@ -18,32 +18,35 @@ describe('Diff API - additional coverage', () => {
   let prId: string;
 
   beforeEach(async () => {
-    repoPath = await mkdtemp(join(tmpdir(), 'shepherd-diff-extra-'));
+    repoPath = await mkdtemp(path.join(tmpdir(), 'shepherd-diff-extra-'));
     execSync('git init', { cwd: repoPath });
     execSync('git checkout -b main', { cwd: repoPath, stdio: 'pipe' });
     execSync('git config user.email "test@test.com"', { cwd: repoPath });
     execSync('git config user.name "Test"', { cwd: repoPath });
-    await writeFile(join(repoPath, 'index.ts'), 'const x = 1;\n');
+    await writeFile(path.join(repoPath, 'index.ts'), 'const x = 1;\n');
     execSync('git add . && git commit -m "init"', { cwd: repoPath });
     execSync('git checkout -b feat/change', { cwd: repoPath });
-    await writeFile(join(repoPath, 'index.ts'), 'const x = 1;\nconst y = 2;\n');
+    await writeFile(
+      path.join(repoPath, 'index.ts'),
+      'const x = 1;\nconst y = 2;\n',
+    );
     execSync('git add . && git commit -m "add y"', { cwd: repoPath });
 
     ({ server, inject } = await createTestServer());
 
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: repoPath },
     });
-    projectId = proj.json().id;
+    projectId = jsonBody(projectResponse).id as string;
 
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'Add y', description: '', sourceBranch: 'feat/change' },
     });
-    prId = pr.json().id;
+    prId = jsonBody(prResponse).id as string;
   });
 
   afterEach(async () => {
@@ -73,7 +76,7 @@ describe('Diff API - additional coverage', () => {
       url: `/api/prs/${prId}/file-groups`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().cycleNumber).toBe(1);
+    expect(jsonBody(response).cycleNumber).toBe(1);
   });
 
   it('GET /api/prs/:id/file-groups?cycle=1 returns file groups for specific cycle', async () => {
@@ -82,7 +85,7 @@ describe('Diff API - additional coverage', () => {
       url: `/api/prs/${prId}/file-groups?cycle=1`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().cycleNumber).toBe(1);
+    expect(jsonBody(response).cycleNumber).toBe(1);
   });
 
   it('GET /api/prs/:id/file-groups?cycle=invalid returns 400', async () => {
@@ -102,14 +105,12 @@ describe('Diff API - additional coverage', () => {
   });
 
   it('GET /api/prs/:id/diff with from/to returns inter-cycle diff', async () => {
-    // Request changes on cycle 1
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/review`,
       payload: { action: 'request-changes' },
     });
 
-    // Agent ready creates cycle 2
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/agent-ready`,
@@ -120,7 +121,7 @@ describe('Diff API - additional coverage', () => {
       url: `/api/prs/${prId}/diff?from=1&to=2`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().isInterCycleDiff).toBe(true);
+    expect(jsonBody(response).isInterCycleDiff).toBe(true);
   });
 
   it('GET /api/prs/:id/diff with invalid from/to returns 400', async () => {
@@ -161,63 +162,71 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
   });
 
   it('returns 400 when inter-cycle diff has cycles without commit SHAs', async () => {
-    const db = (server as any).db;
+    const database = server.db;
 
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test-no-sha' },
     });
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
-      url: `/api/projects/${proj.json().id}/prs`,
+      url: `/api/projects/${jsonBody(projectResponse).id as string}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const prId = pr.json().id;
+    const prId = jsonBody(prResponse).id as string;
 
-    // Clear the commit SHA from cycle 1
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
-    db.update(schema.reviewCycles)
-      .set({ commitSha: null })
+    const cycles = database
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
+    database
+      .update(schema.reviewCycles)
+      .set({ commitSha: JSON.parse('null') as string })
       .where(eq(schema.reviewCycles.id, cycles[0].id))
       .run();
 
-    db.insert(schema.reviewCycles).values({
-      id: randomUUID(),
-      prId,
-      cycleNumber: 2,
-      status: 'pending_review',
-      commitSha: null,
-    }).run();
+    database
+      .insert(schema.reviewCycles)
+      .values({
+        id: randomUUID(),
+        prId,
+        cycleNumber: 2,
+        status: 'pending_review',
+      })
+      .run();
 
     const response = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/diff?from=1&to=2`,
     });
     expect(response.statusCode).toBe(400);
-    expect(response.json().error).toContain('Commit SHAs not available');
+    expect(jsonBody(response).error).toContain('Commit SHAs not available');
   });
 
   it('returns 404 for snapshot on cycle without stored snapshot', async () => {
-    const db = (server as any).db;
+    const database = server.db;
 
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test-no-snapshot' },
     });
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
-      url: `/api/projects/${proj.json().id}/prs`,
+      url: `/api/projects/${jsonBody(projectResponse).id as string}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    const prId = pr.json().id;
+    const prId = jsonBody(prResponse).id as string;
 
-    // Delete the snapshot that was created at PR submission
-    const cycles = db.select().from(schema.reviewCycles)
-      .where(eq(schema.reviewCycles.prId, prId)).all();
-    db.delete(schema.diffSnapshots)
+    const cycles = database
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, prId))
+      .all();
+    database
+      .delete(schema.diffSnapshots)
       .where(eq(schema.diffSnapshots.reviewCycleId, cycles[0].id))
       .run();
 
@@ -226,62 +235,62 @@ describe('Diff API - inter-cycle SHA edge cases', () => {
       url: `/api/prs/${prId}/diff?cycle=1`,
     });
     expect(response.statusCode).toBe(404);
-    expect(response.json().error).toContain('No diff snapshot');
+    expect(jsonBody(response).error).toContain('No diff snapshot');
   });
 
   it('handles from/to with negative values as 400', async () => {
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test-neg' },
     });
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
-      url: `/api/projects/${proj.json().id}/prs`,
+      url: `/api/projects/${jsonBody(projectResponse).id as string}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
 
     const response = await inject({
       method: 'GET',
-      url: `/api/prs/${pr.json().id}/diff?from=-1&to=1`,
+      url: `/api/prs/${jsonBody(prResponse).id as string}/diff?from=-1&to=1`,
     });
     expect(response.statusCode).toBe(400);
   });
 
   it('handles cycle=0 as invalid', async () => {
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test-zero' },
     });
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
-      url: `/api/projects/${proj.json().id}/prs`,
+      url: `/api/projects/${jsonBody(projectResponse).id as string}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
 
     const response = await inject({
       method: 'GET',
-      url: `/api/prs/${pr.json().id}/diff?cycle=0`,
+      url: `/api/prs/${jsonBody(prResponse).id as string}/diff?cycle=0`,
     });
     expect(response.statusCode).toBe(400);
   });
 
   it('handles file-groups?cycle=0 as invalid', async () => {
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test-fg-zero' },
     });
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
-      url: `/api/projects/${proj.json().id}/prs`,
+      url: `/api/projects/${jsonBody(projectResponse).id as string}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
 
     const response = await inject({
       method: 'GET',
-      url: `/api/prs/${pr.json().id}/file-groups?cycle=0`,
+      url: `/api/prs/${jsonBody(prResponse).id as string}/file-groups?cycle=0`,
     });
     expect(response.statusCode).toBe(400);
   });
@@ -309,7 +318,7 @@ diff --git a/src/other.ts b/src/other.ts
   });
 
   it('returns empty array for non-string input', () => {
-    expect(extractFilesFromDiff(null as any)).toEqual([]);
-    expect(extractFilesFromDiff(undefined as any)).toEqual([]);
+    expect(extractFilesFromDiff(undefined as unknown as string)).toEqual([]);
+    expect(extractFilesFromDiff(undefined as unknown as string)).toEqual([]);
   });
 });

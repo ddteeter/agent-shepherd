@@ -1,19 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Command } from 'commander';
 import { reviewCommand } from '../review.js';
+import type { ApiClient } from '../../api-client.js';
 
 describe('reviewCommand', () => {
   let program: Command;
-  let client: any;
-  let logSpy: ReturnType<typeof vi.spyOn>;
-
+  let client: { get: ReturnType<typeof vi.fn> };
   beforeEach(() => {
     vi.restoreAllMocks();
     program = new Command();
     program.exitOverride();
     client = { get: vi.fn() };
-    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-    reviewCommand(program, client);
+    vi.spyOn(console, 'log').mockImplementation(() => {
+      return;
+    });
+    reviewCommand(program, client as unknown as ApiClient);
   });
 
   describe('comments --summary', () => {
@@ -23,13 +24,26 @@ describe('reviewCommand', () => {
         .mockResolvedValueOnce({
           total: 5,
           bySeverity: { 'must-fix': 2, suggestion: 3 },
-          files: [{ path: 'src/a.ts', count: 3, bySeverity: { 'must-fix': 1, suggestion: 2 } }],
+          files: [
+            {
+              path: 'src/a.ts',
+              count: 3,
+              bySeverity: { 'must-fix': 1, suggestion: 2 },
+            },
+          ],
           generalCount: 2,
         });
 
-      await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1', '--summary']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'review',
+        'comments',
+        'pr-1',
+        '--summary',
+      ]);
 
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Review Comments for: My PR');
       expect(output).toContain('2 must-fix');
       expect(output).toContain('3 suggestion');
@@ -38,17 +52,22 @@ describe('reviewCommand', () => {
     });
 
     it('shows summary without general comments when count is 0', async () => {
-      client.get
-        .mockResolvedValueOnce({ title: 'PR2' })
-        .mockResolvedValueOnce({
-          total: 1,
-          bySeverity: { suggestion: 1 },
-          files: [],
-          generalCount: 0,
-        });
+      client.get.mockResolvedValueOnce({ title: 'PR2' }).mockResolvedValueOnce({
+        total: 1,
+        bySeverity: { suggestion: 1 },
+        files: [],
+        generalCount: 0,
+      });
 
-      await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-2', '--summary']);
-      const output = logSpy.mock.calls[0][0] as string;
+      await program.parseAsync([
+        'node',
+        'test',
+        'review',
+        'comments',
+        'pr-2',
+        '--summary',
+      ]);
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).not.toContain('General comments');
     });
   });
@@ -59,22 +78,43 @@ describe('reviewCommand', () => {
         .mockResolvedValueOnce({ title: 'My PR' })
         .mockResolvedValueOnce([
           {
-            id: 'c1', filePath: 'src/a.ts', startLine: 10, endLine: 10,
-            body: 'Fix this', severity: 'must-fix', author: 'human', parentCommentId: null, resolved: false,
+            id: 'c1',
+            filePath: 'src/a.ts',
+            startLine: 10,
+            endLine: 10,
+            body: 'Fix this',
+            severity: 'must-fix',
+            author: 'human',
+            parentCommentId: undefined,
+            resolved: false,
           },
           {
-            id: 'c2', filePath: null, startLine: null, endLine: null,
-            body: 'General note', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: false,
+            id: 'c2',
+            filePath: undefined,
+            startLine: undefined,
+            endLine: undefined,
+            body: 'General note',
+            severity: 'suggestion',
+            author: 'human',
+            parentCommentId: undefined,
+            resolved: false,
           },
           {
-            id: 'c3', filePath: 'src/a.ts', startLine: 10, endLine: 10,
-            body: 'Fixed it', severity: 'suggestion', author: 'agent', parentCommentId: 'c1', resolved: false,
+            id: 'c3',
+            filePath: 'src/a.ts',
+            startLine: 10,
+            endLine: 10,
+            body: 'Fixed it',
+            severity: 'suggestion',
+            author: 'agent',
+            parentCommentId: 'c1',
+            resolved: false,
           },
         ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
 
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('All comments');
       expect(output).toContain('[MUST FIX]');
       expect(output).toContain('Line 10');
@@ -85,17 +125,22 @@ describe('reviewCommand', () => {
     });
 
     it('formats multi-line comment locations', async () => {
-      client.get
-        .mockResolvedValueOnce({ title: 'PR' })
-        .mockResolvedValueOnce([
-          {
-            id: 'c1', filePath: 'src/b.ts', startLine: 5, endLine: 10,
-            body: 'Refactor this range', severity: 'request', author: 'human', parentCommentId: null, resolved: false,
-          },
-        ]);
+      client.get.mockResolvedValueOnce({ title: 'PR' }).mockResolvedValueOnce([
+        {
+          id: 'c1',
+          filePath: 'src/b.ts',
+          startLine: 5,
+          endLine: 10,
+          body: 'Refactor this range',
+          severity: 'request',
+          author: 'human',
+          parentCommentId: undefined,
+          resolved: false,
+        },
+      ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Lines 5-10');
       expect(output).toContain('[REQUEST]');
     });
@@ -105,10 +150,20 @@ describe('reviewCommand', () => {
         .mockResolvedValueOnce({ title: 'PR' })
         .mockResolvedValueOnce([]);
 
-      await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1', '--file', 'src/a.ts']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'review',
+        'comments',
+        'pr-1',
+        '--file',
+        'src/a.ts',
+      ]);
 
-      expect(client.get).toHaveBeenCalledWith('/api/prs/pr-1/comments?filePath=src%2Fa.ts');
-      const output = logSpy.mock.calls[0][0] as string;
+      expect(client.get).toHaveBeenCalledWith(
+        '/api/prs/pr-1/comments?filePath=src%2Fa.ts',
+      );
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Comments for: src/a.ts');
     });
 
@@ -117,40 +172,60 @@ describe('reviewCommand', () => {
         .mockResolvedValueOnce({ title: 'PR' })
         .mockResolvedValueOnce([]);
 
-      await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1', '--severity', 'must-fix']);
+      await program.parseAsync([
+        'node',
+        'test',
+        'review',
+        'comments',
+        'pr-1',
+        '--severity',
+        'must-fix',
+      ]);
 
-      expect(client.get).toHaveBeenCalledWith('/api/prs/pr-1/comments?severity=must-fix');
-      const output = logSpy.mock.calls[0][0] as string;
+      expect(client.get).toHaveBeenCalledWith(
+        '/api/prs/pr-1/comments?severity=must-fix',
+      );
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('must-fix comments');
     });
 
     it('skips resolved comments in output', async () => {
-      client.get
-        .mockResolvedValueOnce({ title: 'PR' })
-        .mockResolvedValueOnce([
-          {
-            id: 'c1', filePath: 'src/a.ts', startLine: 1, endLine: 1,
-            body: 'Resolved comment', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: true,
-          },
-        ]);
+      client.get.mockResolvedValueOnce({ title: 'PR' }).mockResolvedValueOnce([
+        {
+          id: 'c1',
+          filePath: 'src/a.ts',
+          startLine: 1,
+          endLine: 1,
+          body: 'Resolved comment',
+          severity: 'suggestion',
+          author: 'human',
+          parentCommentId: undefined,
+          resolved: true,
+        },
+      ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).not.toContain('Resolved comment');
     });
 
-    it('handles comments with null endLine', async () => {
-      client.get
-        .mockResolvedValueOnce({ title: 'PR' })
-        .mockResolvedValueOnce([
-          {
-            id: 'c1', filePath: 'src/a.ts', startLine: 5, endLine: null,
-            body: 'Single line', severity: 'suggestion', author: 'human', parentCommentId: null, resolved: false,
-          },
-        ]);
+    it('handles comments with undefined endLine', async () => {
+      client.get.mockResolvedValueOnce({ title: 'PR' }).mockResolvedValueOnce([
+        {
+          id: 'c1',
+          filePath: 'src/a.ts',
+          startLine: 5,
+          endLine: undefined,
+          body: 'Single line',
+          severity: 'suggestion',
+          author: 'human',
+          parentCommentId: undefined,
+          resolved: false,
+        },
+      ]);
 
       await program.parseAsync(['node', 'test', 'review', 'comments', 'pr-1']);
-      const output = logSpy.mock.calls[0][0] as string;
+      const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('Line 5');
     });
   });

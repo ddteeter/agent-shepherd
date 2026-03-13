@@ -7,7 +7,7 @@ export interface SessionLog {
 
 export interface SessionLogProvider {
   name: string;
-  findSessions(opts: {
+  findSessions(options: {
     projectPath: string;
     branch: string;
   }): Promise<SessionLog[]>;

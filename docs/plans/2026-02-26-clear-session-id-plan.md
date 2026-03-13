@@ -13,6 +13,7 @@
 ### Task 1: Backend — Accept `clearSession` in review endpoint
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/pull-requests.ts:128-198`
 
 **Step 1: Update the request body destructuring and add session clearing logic**
@@ -26,19 +27,22 @@ const { action } = request.body as { action: 'approve' | 'request-changes' };
 to:
 
 ```typescript
-const { action, clearSession } = request.body as { action: 'approve' | 'request-changes'; clearSession?: boolean };
+const { action, clearSession } = request.body as {
+  action: 'approve' | 'request-changes';
+  clearSession?: boolean;
+};
 ```
 
 Then inside the `request-changes` branch (after line 181, before the broadcast), add:
 
 ```typescript
-      // Clear agent session ID if reviewer wants a fresh session
-      if (clearSession) {
-        db.update(schema.pullRequests)
-          .set({ agentSessionId: null, updatedAt: now })
-          .where(eq(schema.pullRequests.id, id))
-          .run();
-      }
+// Clear agent session ID if reviewer wants a fresh session
+if (clearSession) {
+  db.update(schema.pullRequests)
+    .set({ agentSessionId: null, updatedAt: now })
+    .where(eq(schema.pullRequests.id, id))
+    .run();
+}
 ```
 
 **Step 2: Verify backend compiles**
@@ -58,6 +62,7 @@ git commit -m "feat: accept clearSession flag in review endpoint"
 ### Task 2: Frontend API — Pass `clearSession` to review request
 
 **Files:**
+
 - Modify: `packages/frontend/src/api.ts:33-34`
 
 **Step 1: Update the review method signature and body**
@@ -88,6 +93,7 @@ git commit -m "feat: pass clearSession option in review API call"
 ### Task 3: Frontend ReviewBar — Add "Start fresh session" checkbox
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/ReviewBar.tsx`
 
 **Step 1: Add state and update the component**
@@ -102,23 +108,46 @@ interface ReviewBarProps {
   prStatus: string;
   commentCount: number;
   hasAgentSession: boolean;
-  onReview: (action: 'approve' | 'request-changes', opts?: { clearSession?: boolean }) => void;
+  onReview: (
+    action: 'approve' | 'request-changes',
+    opts?: { clearSession?: boolean },
+  ) => void;
 }
 
-export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, onReview }: ReviewBarProps) {
+export function ReviewBar({
+  prId,
+  prStatus,
+  commentCount,
+  hasAgentSession,
+  onReview,
+}: ReviewBarProps) {
   const [clearSession, setClearSession] = useState(false);
 
   if (prStatus !== 'open') {
     return (
-      <div className="px-6 py-3 border-t text-sm text-center" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
+      <div
+        className="px-6 py-3 border-t text-sm text-center"
+        style={{
+          borderColor: 'var(--color-border)',
+          backgroundColor: 'var(--color-bg-secondary)',
+        }}
+      >
         PR is {prStatus}
       </div>
     );
   }
 
   return (
-    <div className="px-6 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary)' }}>
-      <span className="text-sm opacity-70">{commentCount} comment{commentCount !== 1 ? 's' : ''}</span>
+    <div
+      className="px-6 py-3 border-t flex items-center justify-between"
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary)',
+      }}
+    >
+      <span className="text-sm opacity-70">
+        {commentCount} comment{commentCount !== 1 ? 's' : ''}
+      </span>
       <div className="flex items-center gap-3">
         {hasAgentSession && (
           <label className="flex items-center gap-1.5 text-sm cursor-pointer opacity-70 hover:opacity-100">
@@ -133,14 +162,25 @@ export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, onRev
         <button
           onClick={() => onReview('approve')}
           className="btn-approve px-4 py-1.5 text-sm rounded font-medium"
-          style={{ backgroundColor: 'var(--color-btn-approve-bg)', color: 'var(--color-btn-approve-fg)' }}
+          style={{
+            backgroundColor: 'var(--color-btn-approve-bg)',
+            color: 'var(--color-btn-approve-fg)',
+          }}
         >
           Approve
         </button>
         <button
-          onClick={() => onReview('request-changes', clearSession ? { clearSession: true } : undefined)}
+          onClick={() =>
+            onReview(
+              'request-changes',
+              clearSession ? { clearSession: true } : undefined,
+            )
+          }
           className="btn-danger px-4 py-1.5 text-sm rounded font-medium"
-          style={{ backgroundColor: 'var(--color-btn-danger-bg)', color: 'var(--color-btn-danger-fg)' }}
+          style={{
+            backgroundColor: 'var(--color-btn-danger-bg)',
+            color: 'var(--color-btn-danger-fg)',
+          }}
         >
           Request Changes
         </button>
@@ -162,6 +202,7 @@ git commit -m "feat: add 'Start fresh session' checkbox to ReviewBar"
 ### Task 4: Frontend PRReview — Thread props and update handler
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx:186-192` and `342-347`
 
 **Step 1: Update handleReview to accept and forward options**
@@ -169,24 +210,27 @@ git commit -m "feat: add 'Start fresh session' checkbox to ReviewBar"
 Change lines 186-192 from:
 
 ```typescript
-  const handleReview = async (action: 'approve' | 'request-changes') => {
-    if (!prId) return;
-    await api.prs.review(prId, action);
-    // Refresh PR to get updated status
-    const updatedPr = await api.prs.get(prId);
-    setPr(updatedPr);
-  };
+const handleReview = async (action: 'approve' | 'request-changes') => {
+  if (!prId) return;
+  await api.prs.review(prId, action);
+  // Refresh PR to get updated status
+  const updatedPr = await api.prs.get(prId);
+  setPr(updatedPr);
+};
 ```
 
 to:
 
 ```typescript
-  const handleReview = async (action: 'approve' | 'request-changes', opts?: { clearSession?: boolean }) => {
-    if (!prId) return;
-    await api.prs.review(prId, action, opts);
-    const updatedPr = await api.prs.get(prId);
-    setPr(updatedPr);
-  };
+const handleReview = async (
+  action: 'approve' | 'request-changes',
+  opts?: { clearSession?: boolean },
+) => {
+  if (!prId) return;
+  await api.prs.review(prId, action, opts);
+  const updatedPr = await api.prs.get(prId);
+  setPr(updatedPr);
+};
 ```
 
 **Step 2: Pass `hasAgentSession` prop to ReviewBar**
@@ -194,24 +238,24 @@ to:
 Change the ReviewBar JSX from:
 
 ```tsx
-      <ReviewBar
-        prId={prId || ''}
-        prStatus={pr.status}
-        commentCount={topLevelComments.length}
-        onReview={handleReview}
-      />
+<ReviewBar
+  prId={prId || ''}
+  prStatus={pr.status}
+  commentCount={topLevelComments.length}
+  onReview={handleReview}
+/>
 ```
 
 to:
 
 ```tsx
-      <ReviewBar
-        prId={prId || ''}
-        prStatus={pr.status}
-        commentCount={topLevelComments.length}
-        hasAgentSession={!!pr.agentSessionId}
-        onReview={handleReview}
-      />
+<ReviewBar
+  prId={prId || ''}
+  prStatus={pr.status}
+  commentCount={topLevelComments.length}
+  hasAgentSession={!!pr.agentSessionId}
+  onReview={handleReview}
+/>
 ```
 
 **Step 3: Verify frontend compiles**

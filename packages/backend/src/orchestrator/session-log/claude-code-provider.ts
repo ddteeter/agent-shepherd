@@ -1,33 +1,39 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import path from 'node:path';
 import type { SessionLog, SessionLogProvider } from './provider.js';
+
+interface SessionFileLine {
+  sessionId?: string;
+  gitBranch?: string;
+  timestamp?: string;
+}
 
 export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
   readonly name = 'claude-code';
-  private readonly homeDir: string;
+  private readonly homeDirectory: string;
 
-  constructor(opts?: { homeDir?: string }) {
-    this.homeDir = opts?.homeDir ?? process.env.HOME ?? '';
+  constructor(options?: { homeDir?: string }) {
+    this.homeDirectory = options?.homeDir ?? process.env.HOME ?? '';
   }
 
   projectDirKey(projectPath: string): string {
-    return projectPath.replace(/\//g, '-');
+    return projectPath.replaceAll('/', '-');
   }
 
-  async findSessions(opts: {
+  async findSessions(options: {
     projectPath: string;
     branch: string;
   }): Promise<SessionLog[]> {
-    const projectDir = join(
-      this.homeDir,
+    const projectDirectory = path.join(
+      this.homeDirectory,
       '.claude',
       'projects',
-      this.projectDirKey(opts.projectPath),
+      this.projectDirKey(options.projectPath),
     );
 
     let entries: string[];
     try {
-      entries = await readdir(projectDir);
+      entries = await readdir(projectDirectory);
     } catch {
       return [];
     }
@@ -36,20 +42,20 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
     const results: SessionLog[] = [];
 
     for (const file of jsonlFiles) {
-      const filePath = join(projectDir, file);
-      const session = await this.parseSessionFile(filePath, opts.branch);
+      const filePath = path.join(projectDirectory, file);
+      const session = await this.parseSessionFile(filePath, options.branch);
       if (session) {
         results.push(session);
       }
     }
 
-    // Sort by most recent first (using file mtime)
-    const withStats = await Promise.all(
-      results.map(async (session) => {
-        const fileStat = await stat(session.filePath);
-        return { session, mtime: fileStat.mtimeMs };
-      }),
-    );
+    const withStats: { session: SessionLog; mtime: number }[] =
+      await Promise.all(
+        results.map(async (session) => {
+          const fileStat = await stat(session.filePath);
+          return { session, mtime: fileStat.mtimeMs };
+        }),
+      );
 
     withStats.sort((a, b) => b.mtime - a.mtime);
     return withStats.map((w) => w.session);
@@ -58,9 +64,9 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
   private async parseSessionFile(
     filePath: string,
     branch: string,
-  ): Promise<SessionLog | null> {
+  ): Promise<SessionLog | undefined> {
     try {
-      const content = await readFile(filePath, 'utf-8');
+      const content = await readFile(filePath, 'utf8');
       const lines = content.split('\n').filter(Boolean).slice(0, 20);
 
       let sessionId: string | undefined;
@@ -69,7 +75,7 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
 
       for (const line of lines) {
         try {
-          const parsed = JSON.parse(line);
+          const parsed = JSON.parse(line) as SessionFileLine;
           if (parsed.sessionId && !sessionId) {
             sessionId = parsed.sessionId;
           }
@@ -85,7 +91,7 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
       }
 
       if (!sessionId || gitBranch !== branch) {
-        return null;
+        return undefined;
       }
 
       return {
@@ -95,7 +101,7 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
         branch: gitBranch,
       };
     } catch {
-      return null;
+      return undefined;
     }
   }
 }

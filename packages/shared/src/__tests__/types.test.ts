@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type {
   Project,
-  PullRequest,
-  ReviewCycle,
-  Comment,
-  DiffSnapshot,
   PRStatus,
   ReviewCycleStatus,
   CommentSeverity,
-  CommentAuthor,
   BatchCommentPayload,
 } from '../types.js';
 
@@ -49,11 +44,15 @@ describe('Shared Types', () => {
   it('can construct a valid BatchCommentPayload', () => {
     const payload: BatchCommentPayload = {
       comments: [
-        { filePath: 'src/index.ts', startLine: 1, endLine: 1, body: 'test', severity: 'suggestion' },
+        {
+          filePath: 'src/index.ts',
+          startLine: 1,
+          endLine: 1,
+          body: 'test',
+          severity: 'suggestion',
+        },
       ],
-      replies: [
-        { parentCommentId: 'abc', body: 'reply' },
-      ],
+      replies: [{ parentCommentId: 'abc', body: 'reply' }],
     };
     expect(payload.comments).toHaveLength(1);
     expect(payload.replies).toHaveLength(1);

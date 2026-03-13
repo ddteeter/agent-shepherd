@@ -15,6 +15,7 @@
 ### Task 1: Install dependencies
 
 **Files:**
+
 - Modify: `package.json` (root)
 
 **Step 1: Install ESLint + TypeScript ESLint + plugins**
@@ -40,6 +41,7 @@ npm install -D husky lint-staged
 ```bash
 npm ls eslint typescript-eslint eslint-plugin-unicorn eslint-config-prettier prettier husky lint-staged
 ```
+
 Expected: all listed without errors
 
 **Step 5: Commit**
@@ -54,6 +56,7 @@ git commit -m "chore: install eslint, prettier, husky, lint-staged dependencies"
 ### Task 2: Create ESLint flat config
 
 **Files:**
+
 - Create: `eslint.config.js`
 
 **Step 1: Create `eslint.config.js` at the repo root**
@@ -123,6 +126,7 @@ export default tseslint.config(
 ```bash
 npx eslint . 2>&1 | head -100
 ```
+
 Expected: violations listed (we'll fix these in Task 5)
 
 **Step 3: Commit**
@@ -137,6 +141,7 @@ git commit -m "chore: add ESLint flat config with strict TypeScript and unicorn 
 ### Task 3: Create Prettier config
 
 **Files:**
+
 - Create: `.prettierrc`
 - Create: `.prettierignore`
 
@@ -164,6 +169,7 @@ package-lock.json
 ```bash
 npx prettier --check . 2>&1 | tail -20
 ```
+
 Expected: list of files that need formatting
 
 **Step 4: Commit**
@@ -178,6 +184,7 @@ git commit -m "chore: add Prettier config"
 ### Task 4: Add scripts and lint-staged config
 
 **Files:**
+
 - Modify: `package.json` (root)
 
 **Step 1: Add scripts to root `package.json`**
@@ -225,6 +232,7 @@ git commit -m "chore: add lint/format scripts and lint-staged config"
 ### Task 5: Set up husky pre-commit hook
 
 **Files:**
+
 - Create: `.husky/pre-commit`
 
 **Step 1: Initialize husky**
@@ -232,6 +240,7 @@ git commit -m "chore: add lint/format scripts and lint-staged config"
 ```bash
 npx husky init
 ```
+
 Expected: creates `.husky/` directory with a `pre-commit` file
 
 **Step 2: Set pre-commit hook content**
@@ -247,6 +256,7 @@ npx lint-staged
 ```bash
 ls -la .husky/pre-commit
 ```
+
 Expected: `-rwxr-xr-x` permissions
 
 **Step 4: Commit**
@@ -261,6 +271,7 @@ git commit -m "chore: add husky pre-commit hook with lint-staged"
 ### Task 6: Format the entire codebase with Prettier
 
 **Files:**
+
 - Modify: all `.ts`, `.tsx`, `.json`, `.md`, `.css`, `.html` files
 
 **Step 1: Run Prettier on the whole repo**
@@ -274,6 +285,7 @@ npx prettier --write .
 ```bash
 npx prettier --check .
 ```
+
 Expected: "All matched files use Prettier code style!"
 
 **Step 3: Commit**
@@ -316,6 +328,7 @@ For each violation category, decide: fix it or disable the rule in `eslint.confi
 ```bash
 npx eslint .
 ```
+
 Expected: clean output, exit code 0
 
 **Step 5: Verify tests still pass**
@@ -323,6 +336,7 @@ Expected: clean output, exit code 0
 ```bash
 npm run test
 ```
+
 Expected: all tests pass
 
 **Step 6: Verify build still works**
@@ -330,6 +344,7 @@ Expected: all tests pass
 ```bash
 npm run build
 ```
+
 Expected: clean build, no TypeScript errors
 
 **Step 7: Commit**
@@ -344,6 +359,7 @@ git commit -m "fix: resolve all ESLint violations"
 ### Task 8: Update CLAUDE.md and verify
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 **Step 1: Add lint/format commands to CLAUDE.md**
@@ -366,6 +382,7 @@ Add a note that pre-commit hooks run ESLint + Prettier automatically via lint-st
 ```bash
 npm run build && npm run test && npm run lint && npm run format:check
 ```
+
 Expected: all pass
 
 **Step 4: Test the pre-commit hook**

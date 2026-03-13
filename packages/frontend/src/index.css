@@ -1,9 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 :root,
-[data-theme="light"] {
+[data-theme='light'] {
   --color-bg: #ffffff;
   --color-bg-secondary: #f6f8fa;
   --color-text: #1f2328;
@@ -34,7 +34,7 @@
   --color-list-active-fg: #1f2328;
 }
 
-[data-theme="dark"] {
+[data-theme='dark'] {
   --color-bg: #0d1117;
   --color-bg-secondary: #161b22;
   --color-text: #e6edf3;
@@ -66,8 +66,14 @@
 }
 
 /* File tree hover state */
-.file-tree-item:hover { background-color: var(--color-list-hover-bg); }
+.file-tree-item:hover {
+  background-color: var(--color-list-hover-bg);
+}
 
 /* Review button hover states */
-.btn-approve:hover { background-color: var(--color-btn-approve-hover) !important; }
-.btn-danger:hover  { background-color: var(--color-btn-danger-hover) !important; }
+.btn-approve:hover {
+  background-color: var(--color-btn-approve-hover) !important;
+}
+.btn-danger:hover {
+  background-color: var(--color-btn-danger-hover) !important;
+}

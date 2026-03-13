@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   generateSessionToken,
   writeSessionToken,
@@ -10,14 +10,16 @@ import {
 } from '../session-token.js';
 
 describe('session-token', () => {
-  let tempDir: string;
+  let temporaryDirectory: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'shepherd-token-test-'));
+    temporaryDirectory = mkdtempSync(
+      path.join(tmpdir(), 'shepherd-token-test-'),
+    );
   });
 
   afterEach(() => {
-    rmSync(tempDir, { recursive: true, force: true });
+    rmSync(temporaryDirectory, { recursive: true, force: true });
   });
 
   it('generates a 64-char hex token', () => {
@@ -32,18 +34,22 @@ describe('session-token', () => {
   });
 
   it('writes and reads a token', () => {
-    writeSessionToken(tempDir, 'test-token-123');
-    const result = readSessionToken(tempDir);
+    writeSessionToken(temporaryDirectory, 'test-token-123');
+    const result = readSessionToken(temporaryDirectory);
     expect(result).toBe('test-token-123');
   });
 
   it('deletes a token file', () => {
-    writeSessionToken(tempDir, 'to-delete');
-    deleteSessionToken(tempDir);
-    expect(existsSync(join(tempDir, 'session-token'))).toBe(false);
+    writeSessionToken(temporaryDirectory, 'to-delete');
+    deleteSessionToken(temporaryDirectory);
+    expect(existsSync(path.join(temporaryDirectory, 'session-token'))).toBe(
+      false,
+    );
   });
 
   it('delete ignores missing file', () => {
-    expect(() => deleteSessionToken(tempDir)).not.toThrow();
+    expect(() => {
+      deleteSessionToken(temporaryDirectory);
+    }).not.toThrow();
   });
 });

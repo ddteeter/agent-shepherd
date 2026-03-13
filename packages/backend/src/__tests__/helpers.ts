@@ -1,7 +1,20 @@
-import type { FastifyInstance, InjectOptions } from 'fastify';
+import type { InjectOptions } from 'fastify';
+import type { LightMyRequestResponse } from 'fastify';
 import { buildServer, type ServerOptions } from '../server.js';
 
 export const TEST_TOKEN = 'test-session-token-for-testing';
+
+export function jsonBody(
+  response: LightMyRequestResponse,
+): Record<string, unknown> {
+  return response.json();
+}
+
+export function jsonArrayBody(
+  response: LightMyRequestResponse,
+): Record<string, unknown>[] {
+  return response.json();
+}
 
 export async function createTestServer(overrides?: Partial<ServerOptions>) {
   const server = await buildServer({
@@ -11,11 +24,11 @@ export async function createTestServer(overrides?: Partial<ServerOptions>) {
     ...overrides,
   });
 
-  const inject = (opts: InjectOptions) =>
+  const inject = (options: InjectOptions) =>
     server.inject({
-      ...opts,
+      ...options,
       headers: {
-        ...opts.headers,
+        ...options.headers,
         'x-session-token': TEST_TOKEN,
       },
     });

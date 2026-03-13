@@ -13,6 +13,7 @@
 ### Task 1: Update shared types
 
 **Files:**
+
 - Modify: `packages/shared/src/types.ts:112-139`
 
 **Step 1: Write the type changes**
@@ -60,6 +61,7 @@ git commit -m "feat(shared): add confidence and appliedPath to insight types"
 ### Task 2: Update frontend types and InsightCard component
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/InsightsTab.tsx:5-9, 63-84`
 
 **Step 1: Write the failing test**
@@ -93,10 +95,25 @@ interface RecurringPatternItem {
 Replace `InsightCard` component (lines 63-84). Add a colored pill badge next to the title and replace the `applied` boolean display with `appliedPath`:
 
 ```tsx
-const confidenceColors: Record<InsightConfidence, { bg: string; text: string; label: string }> = {
-  high: { bg: 'rgba(46,160,67,0.15)', text: 'var(--color-success, #3fb950)', label: 'High' },
-  medium: { bg: 'rgba(210,153,34,0.15)', text: 'var(--color-warning, #d29922)', label: 'Medium' },
-  low: { bg: 'rgba(130,130,130,0.15)', text: 'var(--color-text)', label: 'Low' },
+const confidenceColors: Record<
+  InsightConfidence,
+  { bg: string; text: string; label: string }
+> = {
+  high: {
+    bg: 'rgba(46,160,67,0.15)',
+    text: 'var(--color-success, #3fb950)',
+    label: 'High',
+  },
+  medium: {
+    bg: 'rgba(210,153,34,0.15)',
+    text: 'var(--color-warning, #d29922)',
+    label: 'Medium',
+  },
+  low: {
+    bg: 'rgba(130,130,130,0.15)',
+    text: 'var(--color-text)',
+    label: 'Low',
+  },
 };
 
 function InsightCard({ item }: { item: InsightItem }) {
@@ -104,7 +121,10 @@ function InsightCard({ item }: { item: InsightItem }) {
   return (
     <div
       className="p-3 rounded border text-sm"
-      style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, rgba(130,130,130,0.05))' }}
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary, rgba(130,130,130,0.05))',
+      }}
     >
       <div className="flex items-center gap-2">
         <span className="font-medium">{item.title}</span>
@@ -119,7 +139,10 @@ function InsightCard({ item }: { item: InsightItem }) {
       {item.appliedPath && (
         <span
           className="inline-block mt-2 text-xs px-2 py-0.5 rounded"
-          style={{ backgroundColor: 'rgba(46,160,67,0.15)', color: 'var(--color-success, #3fb950)' }}
+          style={{
+            backgroundColor: 'rgba(46,160,67,0.15)',
+            color: 'var(--color-success, #3fb950)',
+          }}
         >
           Applied to <code>{item.appliedPath}</code>
         </span>
@@ -146,6 +169,7 @@ git commit -m "feat(frontend): add confidence badges and appliedPath display to 
 ### Task 3: Add data migration for existing insights
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/insights.ts:10-27`
 
 **Step 1: Write the failing test**
@@ -155,7 +179,9 @@ Create test at `packages/backend/src/routes/__tests__/insights-migration.test.ts
 ```typescript
 import { describe, it, expect } from 'vitest';
 
-function migrateInsightCategories(categories: Record<string, unknown[]>): Record<string, unknown[]> {
+function migrateInsightCategories(
+  categories: Record<string, unknown[]>,
+): Record<string, unknown[]> {
   // Migration: convert applied: true -> appliedPath: "CLAUDE.md", remove applied field
   const migrate = (items: any[]) =>
     items.map(({ applied, ...rest }) => ({
@@ -167,7 +193,9 @@ function migrateInsightCategories(categories: Record<string, unknown[]>): Record
     claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
     skillRecommendations: migrate(categories.skillRecommendations ?? []),
     promptEngineering: migrate(categories.promptEngineering ?? []),
-    agentBehaviorObservations: migrate(categories.agentBehaviorObservations ?? []),
+    agentBehaviorObservations: migrate(
+      categories.agentBehaviorObservations ?? [],
+    ),
     recurringPatterns: migrate(categories.recurringPatterns ?? []),
   };
 }
@@ -214,7 +242,12 @@ describe('migrateInsightCategories', () => {
   it('passes through items without applied field unchanged', () => {
     const input = {
       claudeMdRecommendations: [
-        { title: 'Test', description: 'Desc', confidence: 'high', appliedPath: '.claude/rules/test.md' },
+        {
+          title: 'Test',
+          description: 'Desc',
+          confidence: 'high',
+          appliedPath: '.claude/rules/test.md',
+        },
       ],
       skillRecommendations: [],
       promptEngineering: [],
@@ -247,7 +280,9 @@ Add the `migrateInsightCategories` function and apply it in the GET handler when
 In `packages/backend/src/routes/insights.ts`, add before the route registration:
 
 ```typescript
-function migrateInsightCategories(categories: Record<string, unknown[]>): Record<string, unknown[]> {
+function migrateInsightCategories(
+  categories: Record<string, unknown[]>,
+): Record<string, unknown[]> {
   const migrate = (items: any[]) =>
     items.map(({ applied, ...rest }) => ({
       ...rest,
@@ -258,7 +293,9 @@ function migrateInsightCategories(categories: Record<string, unknown[]>): Record
     claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
     skillRecommendations: migrate(categories.skillRecommendations ?? []),
     promptEngineering: migrate(categories.promptEngineering ?? []),
-    agentBehaviorObservations: migrate(categories.agentBehaviorObservations ?? []),
+    agentBehaviorObservations: migrate(
+      categories.agentBehaviorObservations ?? [],
+    ),
     recurringPatterns: migrate(categories.recurringPatterns ?? []),
   };
 }
@@ -303,13 +340,14 @@ git commit -m "feat(backend): add migration from applied boolean to appliedPath"
 ### Task 4: Update workflow-analyzer skill with CLAUDE.md best practices
 
 **Files:**
+
 - Modify: `skills/agent-shepherd-workflow-analyzer/SKILL.md:54-63, 101-131`
 
 **Step 1: Add CLAUDE.md best practices section**
 
 After the existing "1. CLAUDE.md Recommendations" section (around line 63), add a new subsection with curated guidance. Insert after line 63:
 
-```markdown
+````markdown
 #### CLAUDE.md Best Practices
 
 <!-- Source: https://code.claude.com/docs/en/memory#claudemd-files -->
@@ -317,13 +355,14 @@ After the existing "1. CLAUDE.md Recommendations" section (around line 63), add 
 
 When recommending CLAUDE.md additions, choose the right location:
 
-| Situation | Location | Example |
-|---|---|---|
-| Simple universal rule | Add directly to `CLAUDE.md` | "Use 2-space indentation" |
-| Detailed topic guide | Create file + `@path/to/file` import in CLAUDE.md | API design patterns doc |
-| Rule scoped to file types | `.claude/rules/name.md` with `paths` frontmatter | Rules for `src/api/**/*.ts` |
+| Situation                 | Location                                          | Example                     |
+| ------------------------- | ------------------------------------------------- | --------------------------- |
+| Simple universal rule     | Add directly to `CLAUDE.md`                       | "Use 2-space indentation"   |
+| Detailed topic guide      | Create file + `@path/to/file` import in CLAUDE.md | API design patterns doc     |
+| Rule scoped to file types | `.claude/rules/name.md` with `paths` frontmatter  | Rules for `src/api/**/*.ts` |
 
 Key principles:
+
 - Keep CLAUDE.md under 200 lines. Move details to separate files via `@imports` or `.claude/rules/`.
 - Be specific and concrete — verifiable instructions, not vague guidance.
 - Avoid conflicting instructions across files. Check existing CLAUDE.md and rules before adding.
@@ -331,17 +370,19 @@ Key principles:
 - Think of CLAUDE.md as a "lookup matrix" — an index pointing agents to the right context for a given situation, not a dumping ground for all instructions.
 
 Example `.claude/rules/` file with path scoping:
+
 ```yaml
 ---
 paths:
-  - "src/api/**/*.ts"
+  - 'src/api/**/*.ts'
 ---
-
 # API Rules
 - All endpoints must validate input
 - Use standard error response format
 ```
-```
+````
+
+````
 
 **Step 2: Add confidence level definitions**
 
@@ -363,33 +404,57 @@ For CLAUDE.md and skill recommendations: only commit file changes when confidenc
 Submit via CLI:
 ```bash
 echo '<json>' | agent-shepherd insights update <pr-id> --stdin
-```
+````
 
 JSON structure:
+
 ```json
 {
   "categories": {
     "claudeMdRecommendations": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "high", "appliedPath": "CLAUDE.md" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "high",
+        "appliedPath": "CLAUDE.md"
+      }
     ],
     "skillRecommendations": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "medium" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "medium"
+      }
     ],
     "promptEngineering": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "high" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "high"
+      }
     ],
     "agentBehaviorObservations": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "medium" }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "medium"
+      }
     ],
     "recurringPatterns": [
-      { "title": "Short title", "description": "Detailed explanation", "confidence": "high", "prIds": ["pr-id-1"] }
+      {
+        "title": "Short title",
+        "description": "Detailed explanation",
+        "confidence": "high",
+        "prIds": ["pr-id-1"]
+      }
     ]
   }
 }
 ```
 
 Set `appliedPath` to the file path you modified (e.g., `"CLAUDE.md"`, `".claude/rules/api-rules.md"`) when you've committed changes. Omit `appliedPath` for recommendations you haven't implemented.
-```
+
+````
 
 **Step 3: Update the "applied" references in Principles section**
 
@@ -400,13 +465,14 @@ At line 131, update the old `applied: true` reference to use the new format.
 ```bash
 git add skills/agent-shepherd-workflow-analyzer/SKILL.md
 git commit -m "feat(skill): add CLAUDE.md best practices and confidence levels to workflow-analyzer"
-```
+````
 
 ---
 
 ### Task 5: Add cycle deduplication context to prompt builder
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/insights/prompt-builder.ts:1-55`
 - Test: `packages/backend/src/orchestrator/insights/__tests__/prompt-builder.test.ts`
 
@@ -497,6 +563,7 @@ git commit -m "feat(backend): add cycle deduplication context to insights prompt
 ### Task 6: Pass previousUpdatedAt from insights analyzer
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/insights/insights-analyzer.ts`
 - Test: `packages/backend/src/orchestrator/insights/__tests__/insights-analyzer.test.ts`
 
@@ -560,6 +627,7 @@ git commit -m "feat(backend): pass previousUpdatedAt to insights prompt builder"
 ### Task 7: Update prompt builder "Important Notes" for confidence thresholds
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/insights/prompt-builder.ts:49-52`
 
 **Step 1: Update the Important Notes section**

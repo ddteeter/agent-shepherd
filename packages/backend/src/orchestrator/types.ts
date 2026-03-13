@@ -7,7 +7,11 @@ export interface AgentActivityEntry {
 
 export interface AgentAdapter {
   name: string;
-  startSession(opts: { projectPath: string; prompt: string; additionalDirs?: string[] }): Promise<AgentSession>;
+  startSession(options: {
+    projectPath: string;
+    prompt: string;
+    additionalDirs?: string[];
+  }): Promise<AgentSession>;
 }
 
 export interface AgentSession {

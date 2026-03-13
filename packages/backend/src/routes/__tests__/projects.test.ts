@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import {
+  createTestServer,
+  jsonBody,
+  jsonArrayBody,
+} from '../../__tests__/helpers.js';
 
 describe('Projects API', () => {
   let server: FastifyInstance;
@@ -21,7 +25,7 @@ describe('Projects API', () => {
       payload: { name: 'my-app', path: '/tmp/my-app', baseBranch: 'main' },
     });
     expect(response.statusCode).toBe(201);
-    const body = response.json();
+    const body = jsonBody(response);
     expect(body.name).toBe('my-app');
     expect(body.path).toBe('/tmp/my-app');
     expect(body.id).toBeDefined();
@@ -44,7 +48,7 @@ describe('Projects API', () => {
       url: '/api/projects',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toHaveLength(2);
+    expect(jsonArrayBody(response)).toHaveLength(2);
   });
 
   it('GET /api/projects/:id returns a project', async () => {
@@ -53,14 +57,14 @@ describe('Projects API', () => {
       url: '/api/projects',
       payload: { name: 'proj', path: '/tmp/p' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
     const response = await inject({
       method: 'GET',
-      url: `/api/projects/${id}`,
+      url: `/api/projects/${id as string}`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().name).toBe('proj');
+    expect(jsonBody(response).name).toBe('proj');
   });
 
   it('GET /api/projects/:id returns 404 for missing project', async () => {
@@ -77,18 +81,18 @@ describe('Projects API', () => {
       url: '/api/projects',
       payload: { name: 'proj', path: '/tmp/p' },
     });
-    const { id } = create.json();
+    const { id } = jsonBody(create);
 
-    const del = await inject({
+    const deleteResponse = await inject({
       method: 'DELETE',
-      url: `/api/projects/${id}`,
+      url: `/api/projects/${id as string}`,
     });
-    expect(del.statusCode).toBe(204);
+    expect(deleteResponse.statusCode).toBe(204);
 
-    const get = await inject({
+    const getResponse = await inject({
       method: 'GET',
-      url: `/api/projects/${id}`,
+      url: `/api/projects/${id as string}`,
     });
-    expect(get.statusCode).toBe(404);
+    expect(getResponse.statusCode).toBe(404);
   });
 });

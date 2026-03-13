@@ -1,24 +1,17 @@
-export interface CommentSummary {
-  total: number;
-  bySeverity: Record<string, number>;
-  files: Array<{ path: string; count: number; bySeverity: Record<string, number> }>;
-  generalCount: number;
-}
+import type { CommentSummary } from '@agent-shepherd/shared';
 
 interface PromptInput {
   prId: string;
   prTitle: string;
-  agentContext: string | null;
+  agentContext: string | undefined;
   commentSummary: CommentSummary;
 }
 
 export function buildReviewPrompt(input: PromptInput): string {
   const { prId, prTitle, agentContext, commentSummary } = input;
-  const sections: string[] = [];
-
-  sections.push(`# Code Review Feedback for PR: ${prTitle}\n`);
-
-  sections.push(`## IMPORTANT: Read This First
+  const sections: string[] = [
+    `# Code Review Feedback for PR: ${prTitle}\n`,
+    `## IMPORTANT: Read This First
 
 You are responding to review feedback on a pull request. The comment summary below tells you how many comments exist and which files they affect. You will fetch the actual comment details incrementally using the CLI commands described in the workflow.
 
@@ -39,14 +32,14 @@ DO:
 5. Commit your changes
 6. Submit via \`agent-shepherd ready ${prId}\`
 
-Start working on the code changes immediately.\n`);
-
-  sections.push(`## PR Details\n\nPR ID: ${prId}\n`);
+Start working on the code changes immediately.\n`,
+    `## PR Details\n\nPR ID: ${prId}\n`,
+  ];
 
   if (agentContext) {
     try {
-      const ctx = JSON.parse(agentContext);
-      sections.push(`## Context\n${JSON.stringify(ctx, null, 2)}\n`);
+      const context: unknown = JSON.parse(agentContext);
+      sections.push(`## Context\n${JSON.stringify(context, undefined, 2)}\n`);
     } catch {
       sections.push(`## Context\n${agentContext}\n`);
     }
@@ -55,25 +48,27 @@ Start working on the code changes immediately.\n`);
   // Comment Summary section
   if (commentSummary.total > 0) {
     const severityParts = Object.entries(commentSummary.bySeverity)
-      .map(([sev, count]) => `${count} ${sev}`)
+      .map(([sev, count]) => `${String(count)} ${sev}`)
       .join(', ');
 
     const fileCount = commentSummary.files.length;
     sections.push(`## Comment Summary
 
-${commentSummary.total} comment${commentSummary.total !== 1 ? 's' : ''} (${severityParts}) across ${fileCount} file${fileCount !== 1 ? 's' : ''}
+${String(commentSummary.total)} comment${commentSummary.total === 1 ? '' : 's'} (${severityParts}) across ${String(fileCount)} file${fileCount === 1 ? '' : 's'}
 `);
 
     if (commentSummary.generalCount > 0) {
-      sections.push(`General comments: ${commentSummary.generalCount}\n`);
+      sections.push(
+        `General comments: ${String(commentSummary.generalCount)}\n`,
+      );
     }
 
     if (commentSummary.files.length > 0) {
-      const fileLines = commentSummary.files.map((f, i) => {
+      const fileLines = commentSummary.files.map((f, index) => {
         const fileSeverityParts = Object.entries(f.bySeverity)
-          .map(([sev, count]) => `${count} ${sev}`)
+          .map(([sev, count]) => `${String(count)} ${sev}`)
           .join(', ');
-        return `${i + 1}. ${f.path} (${f.count} comment${f.count !== 1 ? 's' : ''}: ${fileSeverityParts})`;
+        return `${String(index + 1)}. ${f.path} (${String(f.count)} comment${f.count === 1 ? '' : 's'}: ${fileSeverityParts})`;
       });
       sections.push(`### Files (in diff order)\n${fileLines.join('\n')}\n`);
     }

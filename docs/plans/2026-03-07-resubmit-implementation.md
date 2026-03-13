@@ -13,6 +13,7 @@
 ### Task 1: Add `superseded` to shared types
 
 **Files:**
+
 - Modify: `packages/shared/src/types.ts:3-10`
 
 **Step 1: Write the failing test**
@@ -68,6 +69,7 @@ git commit -m "feat(shared): add superseded status and context field to ReviewCy
 ### Task 2: Add `context` column to `review_cycles` DB schema
 
 **Files:**
+
 - Modify: `packages/backend/src/db/schema.ts:26-34`
 
 **Step 1: Add column to schema**
@@ -77,7 +79,9 @@ In `packages/backend/src/db/schema.ts`, add `context` to the `reviewCycles` tabl
 ```typescript
 export const reviewCycles = sqliteTable('review_cycles', {
   id: text('id').primaryKey(),
-  prId: text('pr_id').notNull().references(() => pullRequests.id),
+  prId: text('pr_id')
+    .notNull()
+    .references(() => pullRequests.id),
   cycleNumber: integer('cycle_number').notNull(),
   status: text('status').notNull().default('pending_review'),
   reviewedAt: text('reviewed_at'),
@@ -109,6 +113,7 @@ git commit -m "feat(backend): add context column to review_cycles table"
 ### Task 3: Add `POST /api/prs/:id/resubmit` endpoint — test first
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/__tests__/pull-requests.test.ts`
 - Modify: `packages/backend/src/routes/pull-requests.ts`
 
@@ -133,7 +138,9 @@ it('POST /api/prs/:id/resubmit supersedes current cycle and creates new one', as
   expect(response.statusCode).toBe(200);
   expect(response.json().cycleNumber).toBe(2);
   expect(response.json().status).toBe('pending_review');
-  expect(response.json().context).toBe('Fixed the auth flow manually in Claude Code');
+  expect(response.json().context).toBe(
+    'Fixed the auth flow manually in Claude Code',
+  );
 
   // Check cycles — cycle 1 should be superseded
   const cycles = await inject({
@@ -288,7 +295,10 @@ fastify.post('/api/prs/:id/resubmit', async (request, reply) => {
         })
         .run();
     } catch {
-      fastify.log.warn({ prId: id }, 'Failed to store diff snapshot for resubmit cycle');
+      fastify.log.warn(
+        { prId: id },
+        'Failed to store diff snapshot for resubmit cycle',
+      );
     }
   }
 
@@ -299,12 +309,19 @@ fastify.post('/api/prs/:id/resubmit', async (request, reply) => {
     .run();
 
   const broadcast = (fastify as any).broadcast;
-  if (broadcast) broadcast('pr:ready-for-review', { prId: id, cycleNumber: newCycle.cycleNumber });
+  if (broadcast)
+    broadcast('pr:ready-for-review', {
+      prId: id,
+      cycleNumber: newCycle.cycleNumber,
+    });
 
-  const notificationService: NotificationService | undefined =
-    (fastify as any).notificationService;
+  const notificationService: NotificationService | undefined = (fastify as any)
+    .notificationService;
   if (notificationService) {
-    notificationService.notifyPRReadyForReview(pr.title, project?.name ?? 'Unknown');
+    notificationService.notifyPRReadyForReview(
+      pr.title,
+      project?.name ?? 'Unknown',
+    );
   }
 
   return newCycle;
@@ -333,6 +350,7 @@ git commit -m "feat(backend): add POST /api/prs/:id/resubmit endpoint"
 ### Task 4: Add `resubmit` CLI command
 
 **Files:**
+
 - Create: `packages/cli/src/commands/resubmit.ts`
 - Modify: `packages/cli/src/index.ts` (or wherever commands are registered)
 
@@ -353,12 +371,19 @@ export function resubmitCommand(program: Command, client: ApiClient) {
   program
     .command('resubmit <pr-id>')
     .description('Resubmit a PR after making changes outside the review flow')
-    .requiredOption('-c, --context-file <path>', 'Path to context file describing what changed')
+    .requiredOption(
+      '-c, --context-file <path>',
+      'Path to context file describing what changed',
+    )
     .action(async (prId: string, opts: { contextFile: string }) => {
       const context = await readFile(opts.contextFile, 'utf-8');
 
-      const result = await client.post(`/api/prs/${prId}/resubmit`, { context });
-      console.log(`PR resubmitted for review (cycle ${(result as any).cycleNumber})`);
+      const result = await client.post(`/api/prs/${prId}/resubmit`, {
+        context,
+      });
+      console.log(
+        `PR resubmitted for review (cycle ${(result as any).cycleNumber})`,
+      );
     });
 }
 ```
@@ -395,6 +420,7 @@ git commit -m "feat(cli): add resubmit command"
 ### Task 5: Frontend — handle `superseded` status in cycle selector
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx:449-483`
 
 **Step 1: Add superseded label to cycle options**
@@ -402,16 +428,17 @@ git commit -m "feat(cli): add resubmit command"
 In `PRReview.tsx`, update the cycle option rendering (around line 453-458) to show superseded status:
 
 ```tsx
-{cyclesWithSnapshots
-  .sort((a, b) => a.cycleNumber - b.cycleNumber)
-  .map((cycle) => (
-    <option key={cycle.id} value={String(cycle.cycleNumber)}>
-      Cycle {cycle.cycleNumber}
-      {cycle.status === 'approved' ? ' (approved)' : ''}
-      {cycle.status === 'changes_requested' ? ' (changes requested)' : ''}
-      {cycle.status === 'superseded' ? ' (superseded)' : ''}
-    </option>
-  ))
+{
+  cyclesWithSnapshots
+    .sort((a, b) => a.cycleNumber - b.cycleNumber)
+    .map((cycle) => (
+      <option key={cycle.id} value={String(cycle.cycleNumber)}>
+        Cycle {cycle.cycleNumber}
+        {cycle.status === 'approved' ? ' (approved)' : ''}
+        {cycle.status === 'changes_requested' ? ' (changes requested)' : ''}
+        {cycle.status === 'superseded' ? ' (superseded)' : ''}
+      </option>
+    ));
 }
 ```
 
@@ -420,60 +447,65 @@ In `PRReview.tsx`, update the cycle option rendering (around line 453-458) to sh
 Update the inter-cycle diff section (around lines 460-481). Replace the logic that only shows sequential inter-cycle diffs with logic that also offers "since last reviewed" diffs:
 
 ```tsx
-{cyclesWithSnapshots.length >= 2 && (
-  <>
-    <option disabled>───────────</option>
-    {(() => {
-      const sorted = cyclesWithSnapshots
-        .sort((a, b) => a.cycleNumber - b.cycleNumber);
-      const options: React.ReactNode[] = [];
-
-      // Sequential inter-cycle diffs
-      sorted.slice(1).forEach((cycle) => {
-        const prevCycle = sorted.find(
-          (c) => c.cycleNumber === cycle.cycleNumber - 1
+{
+  cyclesWithSnapshots.length >= 2 && (
+    <>
+      <option disabled>───────────</option>
+      {(() => {
+        const sorted = cyclesWithSnapshots.sort(
+          (a, b) => a.cycleNumber - b.cycleNumber,
         );
-        if (!prevCycle) return;
-        options.push(
-          <option
-            key={`inter-${prevCycle.cycleNumber}-${cycle.cycleNumber}`}
-            value={`inter:${prevCycle.cycleNumber}:${cycle.cycleNumber}`}
-          >
-            Changes: Cycle {prevCycle.cycleNumber} → {cycle.cycleNumber}
-          </option>
-        );
-      });
+        const options: React.ReactNode[] = [];
 
-      // "Since last reviewed" diffs (skip superseded cycles)
-      const reviewedCycles = sorted.filter(
-        (c) => c.status !== 'superseded' && c.status !== 'pending_review'
-      );
-      const latestCycle = sorted[sorted.length - 1];
-      if (reviewedCycles.length > 0 && latestCycle) {
-        const lastReviewed = reviewedCycles[reviewedCycles.length - 1];
-        // Only add if it's different from a sequential diff
-        if (lastReviewed.cycleNumber !== latestCycle.cycleNumber - 1) {
+        // Sequential inter-cycle diffs
+        sorted.slice(1).forEach((cycle) => {
+          const prevCycle = sorted.find(
+            (c) => c.cycleNumber === cycle.cycleNumber - 1,
+          );
+          if (!prevCycle) return;
           options.push(
             <option
-              key={`reviewed-${lastReviewed.cycleNumber}-${latestCycle.cycleNumber}`}
-              value={`inter:${lastReviewed.cycleNumber}:${latestCycle.cycleNumber}`}
+              key={`inter-${prevCycle.cycleNumber}-${cycle.cycleNumber}`}
+              value={`inter:${prevCycle.cycleNumber}:${cycle.cycleNumber}`}
             >
-              Changes: Since last review (Cycle {lastReviewed.cycleNumber} → {latestCycle.cycleNumber})
-            </option>
+              Changes: Cycle {prevCycle.cycleNumber} → {cycle.cycleNumber}
+            </option>,
           );
-        }
-      }
+        });
 
-      return options;
-    })()}
-  </>
-)}
+        // "Since last reviewed" diffs (skip superseded cycles)
+        const reviewedCycles = sorted.filter(
+          (c) => c.status !== 'superseded' && c.status !== 'pending_review',
+        );
+        const latestCycle = sorted[sorted.length - 1];
+        if (reviewedCycles.length > 0 && latestCycle) {
+          const lastReviewed = reviewedCycles[reviewedCycles.length - 1];
+          // Only add if it's different from a sequential diff
+          if (lastReviewed.cycleNumber !== latestCycle.cycleNumber - 1) {
+            options.push(
+              <option
+                key={`reviewed-${lastReviewed.cycleNumber}-${latestCycle.cycleNumber}`}
+                value={`inter:${lastReviewed.cycleNumber}:${latestCycle.cycleNumber}`}
+              >
+                Changes: Since last review (Cycle {lastReviewed.cycleNumber} →{' '}
+                {latestCycle.cycleNumber})
+              </option>,
+            );
+          }
+        }
+
+        return options;
+      })()}
+    </>
+  );
+}
 ```
 
 **Step 3: Verify in browser**
 
 Run: `npm run dev`
 Navigate to a PR. Verify:
+
 - Superseded cycles show "(superseded)" label
 - Inter-cycle diffs include "Since last review" option when superseded cycles exist
 - All existing functionality still works
@@ -490,6 +522,7 @@ git commit -m "feat(frontend): handle superseded cycles in cycle selector"
 ### Task 6: Frontend — show resubmit context on cycle
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 
 **Step 1: Update the ReviewCycle interface in PRReview.tsx**
@@ -514,19 +547,22 @@ interface ReviewCycle {
 Add a banner below the cycle selector (or in the diff header area) that shows the resubmit context when the selected cycle has one. Find the snapshot indicator area (around line 510-520) and add context display nearby:
 
 ```tsx
-{selectedCycleData?.context && (
-  <span
-    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs"
-    style={{
-      backgroundColor: 'rgba(59, 130, 246, 0.15)',
-      color: 'var(--color-text)',
-    }}
-  >
-    Resubmit context: {selectedCycleData.context.length > 200
-      ? selectedCycleData.context.slice(0, 200) + '...'
-      : selectedCycleData.context}
-  </span>
-)}
+{
+  selectedCycleData?.context && (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs"
+      style={{
+        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+        color: 'var(--color-text)',
+      }}
+    >
+      Resubmit context:{' '}
+      {selectedCycleData.context.length > 200
+        ? selectedCycleData.context.slice(0, 200) + '...'
+        : selectedCycleData.context}
+    </span>
+  );
+}
 ```
 
 You'll need to compute `selectedCycleData` from the cycles array based on `selectedCycle`:
@@ -556,6 +592,7 @@ git commit -m "feat(frontend): display resubmit context on cycle"
 ### Task 7: Create `agent-shepherd:resubmit-pr` skill
 
 **Files:**
+
 - Create: `skills/agent-shepherd-resubmit-pr/SKILL.md`
 
 **Step 1: Create skill directory**
@@ -566,7 +603,7 @@ Run: `mkdir -p skills/agent-shepherd-resubmit-pr`
 
 Create `skills/agent-shepherd-resubmit-pr/SKILL.md`:
 
-```markdown
+````markdown
 ---
 name: agent-shepherd:resubmit-pr
 description: Use when resubmitting a PR for review after making changes outside the Agent Shepherd review flow. Guides context generation and the agent-shepherd resubmit workflow.
@@ -595,6 +632,7 @@ git status
 git add <files...>
 git commit -m "description of changes"
 ```
+````
 
 ### 2. Find the PR ID
 
@@ -610,6 +648,7 @@ agent-shepherd list-projects
 Create a file (e.g., `resubmit-context.json`) that describes what changed and why. Analyze the diff and recent commits to build this context.
 
 To understand what changed since the last cycle, review:
+
 - `git log --oneline` for recent commits
 - `git diff` against the base branch
 - Any relevant discussion or decisions that led to the changes
@@ -638,6 +677,7 @@ agent-shepherd resubmit <pr-id> --context-file resubmit-context.json
 ```
 
 This will:
+
 - Mark the current cycle as `superseded`
 - Create a new cycle with a fresh diff snapshot
 - Store the context for the reviewer
@@ -657,7 +697,8 @@ agent-shepherd status <pr-id>
 ```
 
 Confirm the new cycle was created and the PR is ready for review.
-```
+
+````
 
 **Step 3: Link the skill**
 
@@ -673,13 +714,14 @@ Expected: Symlink pointing to the new skill directory
 ```bash
 git add skills/agent-shepherd-resubmit-pr/
 git commit -m "feat(skill): add agent-shepherd:resubmit-pr skill"
-```
+````
 
 ---
 
 ### Task 8: Update README and CLAUDE.md
 
 **Files:**
+
 - Modify: `README.md` (already partially updated during design — verify and finalize)
 - Modify: `CLAUDE.md` (add resubmit to CLI usage if documented there)
 
@@ -688,7 +730,7 @@ git commit -m "feat(skill): add agent-shepherd:resubmit-pr skill"
 Read `README.md` and verify the "Outside of Agent Shepherd Changes" section is accurate given the implementation. Update the CLI Usage table to include `resubmit`:
 
 ```markdown
-agent-shepherd resubmit <prId> -c <context>  # Resubmit PR with new cycle
+agent-shepherd resubmit <prId> -c <context> # Resubmit PR with new cycle
 ```
 
 **Step 2: Update skill table in README**

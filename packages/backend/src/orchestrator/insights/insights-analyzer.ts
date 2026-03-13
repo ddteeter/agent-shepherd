@@ -1,58 +1,70 @@
 import { eq } from 'drizzle-orm';
-import { join } from 'node:path';
+import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { rm } from 'node:fs/promises';
 import type { AgentRunner } from '../agent-runner.js';
 import type { SessionLogProvider } from '../session-log/provider.js';
 import { buildInsightsPrompt } from './prompt-builder.js';
 import { formatTranscript } from './transcript-formatter.js';
+import type { AppDatabase } from '../../db/index.js';
+import type * as schemaModule from '../../db/schema.js';
 
 interface InsightsAnalyzerDeps {
-  db: any;
-  schema: any;
+  db: AppDatabase;
+  schema: typeof schemaModule;
   agentRunner: AgentRunner;
   sessionLogProvider: SessionLogProvider;
 }
 
 export class InsightsAnalyzer {
-  private db: any;
-  private schema: any;
+  private database: AppDatabase;
+  private schema: typeof schemaModule;
   private agentRunner: AgentRunner;
   private sessionLogProvider: SessionLogProvider;
 
   constructor(deps: InsightsAnalyzerDeps) {
-    this.db = deps.db;
+    this.database = deps.db;
     this.schema = deps.schema;
     this.agentRunner = deps.agentRunner;
     this.sessionLogProvider = deps.sessionLogProvider;
   }
 
   async run(prId: string): Promise<void> {
-    const pr = this.db.select().from(this.schema.pullRequests)
-      .where(eq(this.schema.pullRequests.id, prId)).get();
+    const pr = this.database
+      .select()
+      .from(this.schema.pullRequests)
+      .where(eq(this.schema.pullRequests.id, prId))
+      .get();
     if (!pr) throw new Error(`PR not found: ${prId}`);
 
-    const project = this.db.select().from(this.schema.projects)
-      .where(eq(this.schema.projects.id, pr.projectId)).get();
+    const project = this.database
+      .select()
+      .from(this.schema.projects)
+      .where(eq(this.schema.projects.id, pr.projectId))
+      .get();
     if (!project) throw new Error(`Project not found: ${pr.projectId}`);
 
-    // Discover session logs for this branch
     const sessions = await this.sessionLogProvider.findSessions({
       projectPath: project.path,
       branch: pr.sourceBranch,
     });
 
-    // Format transcripts into readable markdown in a temp directory
-    const outputDir = join(tmpdir(), 'agent-shepherd', 'transcripts', prId);
+    const outputDirectory = path.join(
+      tmpdir(),
+      'agent-shepherd',
+      'transcripts',
+      prId,
+    );
     const transcriptPaths = await Promise.all(
-      sessions.map(s => formatTranscript(s, outputDir)),
+      sessions.map((session) => formatTranscript(session, outputDirectory)),
     );
 
-    // Check for existing insights to enable incremental analysis
-    const existingInsights = this.db.select().from(this.schema.insights)
-      .where(eq(this.schema.insights.prId, prId)).get();
+    const existingInsights = this.database
+      .select()
+      .from(this.schema.insights)
+      .where(eq(this.schema.insights.prId, prId))
+      .get();
 
-    // Build prompt
     const prompt = buildInsightsPrompt({
       prId,
       prTitle: pr.title,
@@ -64,7 +76,9 @@ export class InsightsAnalyzer {
 
     const effectivePath = pr.workingDirectory ?? project.path;
     const cleanupTranscripts = () =>
-      rm(outputDir, { recursive: true, force: true }).catch(() => {});
+      rm(outputDirectory, { recursive: true, force: true }).catch(() => {
+        /* cleanup failure is non-critical */
+      });
 
     try {
       await this.agentRunner.run(
@@ -73,21 +87,29 @@ export class InsightsAnalyzer {
           projectPath: effectivePath,
           prompt,
           source: 'insights',
-          additionalDirs: transcriptPaths.length > 0 ? [outputDir] : undefined,
+          additionalDirs:
+            transcriptPaths.length > 0 ? [outputDirectory] : undefined,
         },
         {
           onComplete: () => {
-            cleanupTranscripts();
+            void cleanupTranscripts();
           },
           onError: (error) => {
-            cleanupTranscripts();
-            console.error(`Insights analyzer error for PR ${prId}:`, error.message);
+            void cleanupTranscripts();
+            console.error(
+              `Insights analyzer error for PR ${prId}:`,
+              error.message,
+            );
           },
         },
       );
-    } catch (error) {
+    } catch (error: unknown) {
       await cleanupTranscripts();
-      console.error(`Insights analyzer failed to start for PR ${prId}:`, (error as Error).message);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(
+        `Insights analyzer failed to start for PR ${prId}:`,
+        message,
+      );
     }
   }
 }

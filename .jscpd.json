@@ -1,0 +1,16 @@
+{
+  "threshold": 5,
+  "minTokens": 75,
+  "minLines": 5,
+  "mode": "strict",
+  "reporters": ["console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/drizzle/**",
+    "**/__tests__/**",
+    "**/vitest.config.*"
+  ],
+  "gitignore": true
+}

@@ -15,7 +15,9 @@ import { resubmitCommand } from './commands/resubmit.js';
 import { fileGroupsCommand } from './commands/file-groups.js';
 
 const program = new Command();
-const client = new ApiClient(process.env.SHEPHERD_URL || 'http://localhost:3847');
+const client = new ApiClient(
+  process.env.SHEPHERD_URL ?? 'http://localhost:3847',
+);
 
 program
   .name('agent-shepherd')

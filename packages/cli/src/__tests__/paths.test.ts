@@ -14,17 +14,17 @@ describe('paths', () => {
     expect(paths.FRONTEND_DIST).toContain('packages/frontend/dist');
   });
 
-  it('isDevMode returns true when .git exists', async () => {
-    const { existsSync } = await import('fs');
+  it('isDevelopmentMode returns true when .git exists', async () => {
+    const { existsSync } = await import('node:fs');
     vi.mocked(existsSync).mockReturnValue(true);
-    const { isDevMode } = await import('../paths.js');
-    expect(isDevMode()).toBe(true);
+    const { isDevelopmentMode } = await import('../paths.js');
+    expect(isDevelopmentMode()).toBe(true);
   });
 
-  it('isDevMode returns false when .git does not exist', async () => {
-    const { existsSync } = await import('fs');
+  it('isDevelopmentMode returns false when .git does not exist', async () => {
+    const { existsSync } = await import('node:fs');
     vi.mocked(existsSync).mockReturnValue(false);
-    const { isDevMode } = await import('../paths.js');
-    expect(isDevMode()).toBe(false);
+    const { isDevelopmentMode } = await import('../paths.js');
+    expect(isDevelopmentMode()).toBe(false);
   });
 });

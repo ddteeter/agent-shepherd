@@ -1,21 +1,24 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ClaudeCodeSessionLogProvider } from '../claude-code-provider.js';
 
 describe('ClaudeCodeSessionLogProvider', () => {
-  let tempHome: string;
+  let temporaryHome: string;
   let provider: ClaudeCodeSessionLogProvider;
 
   beforeEach(() => {
-    tempHome = join(tmpdir(), `claude-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-    mkdirSync(tempHome, { recursive: true });
-    provider = new ClaudeCodeSessionLogProvider({ homeDir: tempHome });
+    temporaryHome = path.join(
+      tmpdir(),
+      `claude-test-${String(Date.now())}-${Math.random().toString(36).slice(2)}`,
+    );
+    mkdirSync(temporaryHome, { recursive: true });
+    provider = new ClaudeCodeSessionLogProvider({ homeDir: temporaryHome });
   });
 
   afterEach(() => {
-    rmSync(tempHome, { recursive: true, force: true });
+    rmSync(temporaryHome, { recursive: true, force: true });
   });
 
   function createSessionFile(
@@ -23,14 +26,19 @@ describe('ClaudeCodeSessionLogProvider', () => {
     fileName: string,
     lines: Record<string, unknown>[],
   ): void {
-    const projectDirKey = projectPath.replace(/\//g, '-');
-    const dir = join(tempHome, '.claude', 'projects', projectDirKey);
-    mkdirSync(dir, { recursive: true });
+    const projectDirectoryKey = projectPath.replaceAll('/', '-');
+    const directory = path.join(
+      temporaryHome,
+      '.claude',
+      'projects',
+      projectDirectoryKey,
+    );
+    mkdirSync(directory, { recursive: true });
     const content = lines.map((l) => JSON.stringify(l)).join('\n') + '\n';
-    writeFileSync(join(dir, fileName), content);
+    writeFileSync(path.join(directory, fileName), content);
   }
 
-  describe('projectDirKey', () => {
+  describe('projectDirectoryKey', () => {
     it('replaces slashes with dashes', () => {
       expect(provider.projectDirKey('/tmp/myproject')).toBe('-tmp-myproject');
       expect(provider.projectDirKey('/Users/dev/projects/foo')).toBe(
@@ -44,18 +52,48 @@ describe('ClaudeCodeSessionLogProvider', () => {
       const projectPath = '/tmp/myproject';
 
       createSessionFile(projectPath, 'session-a.jsonl', [
-        { type: 'system', sessionId: 'sess-1', gitBranch: 'feat/x', timestamp: '2026-01-01T00:00:00Z' },
-        { type: 'user', message: { role: 'user', content: 'hello' }, sessionId: 'sess-1', gitBranch: 'feat/x' },
+        {
+          type: 'system',
+          sessionId: 'sess-1',
+          gitBranch: 'feat/x',
+          timestamp: '2026-01-01T00:00:00Z',
+        },
+        {
+          type: 'user',
+          message: { role: 'user', content: 'hello' },
+          sessionId: 'sess-1',
+          gitBranch: 'feat/x',
+        },
       ]);
 
       createSessionFile(projectPath, 'session-b.jsonl', [
-        { type: 'system', sessionId: 'sess-2', gitBranch: 'feat/y', timestamp: '2026-01-02T00:00:00Z' },
-        { type: 'user', message: { role: 'user', content: 'world' }, sessionId: 'sess-2', gitBranch: 'feat/y' },
+        {
+          type: 'system',
+          sessionId: 'sess-2',
+          gitBranch: 'feat/y',
+          timestamp: '2026-01-02T00:00:00Z',
+        },
+        {
+          type: 'user',
+          message: { role: 'user', content: 'world' },
+          sessionId: 'sess-2',
+          gitBranch: 'feat/y',
+        },
       ]);
 
       createSessionFile(projectPath, 'session-c.jsonl', [
-        { type: 'system', sessionId: 'sess-3', gitBranch: 'feat/x', timestamp: '2026-01-03T00:00:00Z' },
-        { type: 'user', message: { role: 'user', content: 'again' }, sessionId: 'sess-3', gitBranch: 'feat/x' },
+        {
+          type: 'system',
+          sessionId: 'sess-3',
+          gitBranch: 'feat/x',
+          timestamp: '2026-01-03T00:00:00Z',
+        },
+        {
+          type: 'user',
+          message: { role: 'user', content: 'again' },
+          sessionId: 'sess-3',
+          gitBranch: 'feat/x',
+        },
       ]);
 
       const sessions = await provider.findSessions({
@@ -64,9 +102,10 @@ describe('ClaudeCodeSessionLogProvider', () => {
       });
 
       expect(sessions).toHaveLength(2);
-      expect(sessions.map((s) => s.sessionId).sort()).toEqual(['sess-1', 'sess-3']);
+      const sessionIds = sessions.map((s) => s.sessionId);
+      sessionIds.sort((a, b) => a.localeCompare(b));
+      expect(sessionIds).toEqual(['sess-1', 'sess-3']);
       expect(sessions.every((s) => s.branch === 'feat/x')).toBe(true);
-      // Each session should have a filePath
       for (const s of sessions) {
         expect(s.filePath).toContain('.jsonl');
       }
@@ -76,7 +115,12 @@ describe('ClaudeCodeSessionLogProvider', () => {
       const projectPath = '/tmp/myproject';
 
       createSessionFile(projectPath, 'session-a.jsonl', [
-        { type: 'system', sessionId: 'sess-1', gitBranch: 'main', timestamp: '2026-01-01T00:00:00Z' },
+        {
+          type: 'system',
+          sessionId: 'sess-1',
+          gitBranch: 'main',
+          timestamp: '2026-01-01T00:00:00Z',
+        },
       ]);
 
       const sessions = await provider.findSessions({
@@ -99,17 +143,24 @@ describe('ClaudeCodeSessionLogProvider', () => {
     it('returns sessions sorted by most recent first', async () => {
       const projectPath = '/tmp/myproject';
 
-      // Create first file (older)
       createSessionFile(projectPath, 'old-session.jsonl', [
-        { type: 'system', sessionId: 'sess-old', gitBranch: 'feat/x', timestamp: '2026-01-01T00:00:00Z' },
+        {
+          type: 'system',
+          sessionId: 'sess-old',
+          gitBranch: 'feat/x',
+          timestamp: '2026-01-01T00:00:00Z',
+        },
       ]);
 
-      // Small delay to ensure different mtimes
       await new Promise((r) => setTimeout(r, 50));
 
-      // Create second file (newer)
       createSessionFile(projectPath, 'new-session.jsonl', [
-        { type: 'system', sessionId: 'sess-new', gitBranch: 'feat/x', timestamp: '2026-01-02T00:00:00Z' },
+        {
+          type: 'system',
+          sessionId: 'sess-new',
+          gitBranch: 'feat/x',
+          timestamp: '2026-01-02T00:00:00Z',
+        },
       ]);
 
       const sessions = await provider.findSessions({
@@ -118,7 +169,6 @@ describe('ClaudeCodeSessionLogProvider', () => {
       });
 
       expect(sessions).toHaveLength(2);
-      // Most recent first
       expect(sessions[0].sessionId).toBe('sess-new');
       expect(sessions[1].sessionId).toBe('sess-old');
     });

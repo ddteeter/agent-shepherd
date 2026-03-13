@@ -13,6 +13,7 @@
 ### Task 1: Add query param filtering to the comments API
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/comments.ts:85-99` (GET endpoint)
 - Test: `packages/backend/src/routes/__tests__/comments.test.ts`
 
@@ -25,15 +26,32 @@ it('GET /api/prs/:id/comments filters by filePath', async () => {
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'fix auth', severity: 'must-fix', author: 'human' },
+    payload: {
+      filePath: 'src/auth.ts',
+      startLine: 1,
+      endLine: 1,
+      body: 'fix auth',
+      severity: 'must-fix',
+      author: 'human',
+    },
   });
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/db.ts', startLine: 5, endLine: 5, body: 'fix db', severity: 'suggestion', author: 'human' },
+    payload: {
+      filePath: 'src/db.ts',
+      startLine: 5,
+      endLine: 5,
+      body: 'fix db',
+      severity: 'suggestion',
+      author: 'human',
+    },
   });
 
-  const filtered = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?filePath=src/auth.ts` });
+  const filtered = await inject({
+    method: 'GET',
+    url: `/api/prs/${prId}/comments?filePath=src/auth.ts`,
+  });
   expect(filtered.json()).toHaveLength(1);
   expect(filtered.json()[0].body).toBe('fix auth');
 });
@@ -42,15 +60,32 @@ it('GET /api/prs/:id/comments filters by severity', async () => {
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'must fix this', severity: 'must-fix', author: 'human' },
+    payload: {
+      filePath: 'src/a.ts',
+      startLine: 1,
+      endLine: 1,
+      body: 'must fix this',
+      severity: 'must-fix',
+      author: 'human',
+    },
   });
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/b.ts', startLine: 1, endLine: 1, body: 'suggestion', severity: 'suggestion', author: 'human' },
+    payload: {
+      filePath: 'src/b.ts',
+      startLine: 1,
+      endLine: 1,
+      body: 'suggestion',
+      severity: 'suggestion',
+      author: 'human',
+    },
   });
 
-  const filtered = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?severity=must-fix` });
+  const filtered = await inject({
+    method: 'GET',
+    url: `/api/prs/${prId}/comments?severity=must-fix`,
+  });
   expect(filtered.json()).toHaveLength(1);
   expect(filtered.json()[0].severity).toBe('must-fix');
 });
@@ -68,7 +103,10 @@ In `packages/backend/src/routes/comments.ts`, update the GET handler (lines 85-9
 ```typescript
 fastify.get('/api/prs/:prId/comments', async (request) => {
   const { prId } = request.params as { prId: string };
-  const { filePath, severity } = request.query as { filePath?: string; severity?: string };
+  const { filePath, severity } = request.query as {
+    filePath?: string;
+    severity?: string;
+  };
 
   const cycles = db
     .select()
@@ -79,7 +117,11 @@ fastify.get('/api/prs/:prId/comments', async (request) => {
   const cycleIds = cycles.map((c: any) => c.id);
   if (cycleIds.length === 0) return [];
 
-  let comments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+  let comments = db
+    .select()
+    .from(schema.comments)
+    .where(inArray(schema.comments.reviewCycleId, cycleIds))
+    .all();
 
   if (filePath) {
     comments = comments.filter((c: any) => c.filePath === filePath);
@@ -109,6 +151,7 @@ git commit -m "feat: add filePath and severity query param filtering to comments
 ### Task 2: Add summary mode to the comments API
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/comments.ts:85-99` (GET endpoint)
 - Modify: `packages/backend/src/routes/diff.ts:208-219` (export `extractFilesFromDiff`)
 - Test: `packages/backend/src/routes/__tests__/comments.test.ts`
@@ -122,33 +165,71 @@ it('GET /api/prs/:id/comments?summary=true returns comment stats', async () => {
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'fix1', severity: 'must-fix', author: 'human' },
+    payload: {
+      filePath: 'src/auth.ts',
+      startLine: 1,
+      endLine: 1,
+      body: 'fix1',
+      severity: 'must-fix',
+      author: 'human',
+    },
   });
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/auth.ts', startLine: 10, endLine: 10, body: 'fix2', severity: 'request', author: 'human' },
+    payload: {
+      filePath: 'src/auth.ts',
+      startLine: 10,
+      endLine: 10,
+      body: 'fix2',
+      severity: 'request',
+      author: 'human',
+    },
   });
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/db.ts', startLine: 5, endLine: 5, body: 'suggestion1', severity: 'suggestion', author: 'human' },
+    payload: {
+      filePath: 'src/db.ts',
+      startLine: 5,
+      endLine: 5,
+      body: 'suggestion1',
+      severity: 'suggestion',
+      author: 'human',
+    },
   });
   // Add a general (no-file) comment
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { body: 'Overall feedback', severity: 'suggestion', author: 'human' },
+    payload: {
+      body: 'Overall feedback',
+      severity: 'suggestion',
+      author: 'human',
+    },
   });
   // Add a reply (should not count as top-level)
-  const parentId = (await inject({ method: 'GET', url: `/api/prs/${prId}/comments` })).json()[0].id;
+  const parentId = (
+    await inject({ method: 'GET', url: `/api/prs/${prId}/comments` })
+  ).json()[0].id;
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/auth.ts', startLine: 1, endLine: 1, body: 'reply', severity: 'suggestion', author: 'agent', parentCommentId: parentId },
+    payload: {
+      filePath: 'src/auth.ts',
+      startLine: 1,
+      endLine: 1,
+      body: 'reply',
+      severity: 'suggestion',
+      author: 'agent',
+      parentCommentId: parentId,
+    },
   });
 
-  const response = await inject({ method: 'GET', url: `/api/prs/${prId}/comments?summary=true` });
+  const response = await inject({
+    method: 'GET',
+    url: `/api/prs/${prId}/comments?summary=true`,
+  });
   const summary = response.json();
   expect(summary.total).toBe(4); // 4 top-level, reply excluded
   expect(summary.bySeverity['must-fix']).toBe(1);
@@ -186,16 +267,25 @@ Update the GET handler in `packages/backend/src/routes/comments.ts` to check for
 
 ```typescript
 // Inside the GET handler, after fetching comments:
-const { filePath, severity, summary } = request.query as { filePath?: string; severity?: string; summary?: string };
+const { filePath, severity, summary } = request.query as {
+  filePath?: string;
+  severity?: string;
+  summary?: string;
+};
 
 // ... existing filtering code ...
 
 if (summary === 'true') {
   // Filter to unresolved top-level comments only
-  const topLevel = comments.filter((c: any) => !c.parentCommentId && !c.resolved);
+  const topLevel = comments.filter(
+    (c: any) => !c.parentCommentId && !c.resolved,
+  );
 
   const bySeverity: Record<string, number> = {};
-  const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+  const fileMap = new Map<
+    string,
+    { count: number; bySeverity: Record<string, number> }
+  >();
   let generalCount = 0;
 
   for (const c of topLevel) {
@@ -212,9 +302,17 @@ if (summary === 'true') {
 
   // Try to get diff file ordering from latest cycle's snapshot
   let diffFileOrder: string[] | null = null;
-  const latestCycle = cycles.reduce((best: any, c: any) => c.cycleNumber > (best?.cycleNumber ?? 0) ? c : best, null);
+  const latestCycle = cycles.reduce(
+    (best: any, c: any) =>
+      c.cycleNumber > (best?.cycleNumber ?? 0) ? c : best,
+    null,
+  );
   if (latestCycle) {
-    const snapshot = db.select().from(schema.diffSnapshots).where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id)).get();
+    const snapshot = db
+      .select()
+      .from(schema.diffSnapshots)
+      .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
+      .get();
     if (snapshot) {
       diffFileOrder = extractFilesFromDiff(snapshot.diffData);
     }
@@ -263,6 +361,7 @@ git commit -m "feat: add summary mode to comments API with diff file ordering"
 ### Task 3: Create the `shepherd review` CLI command
 
 **Files:**
+
 - Create: `packages/cli/src/commands/review.ts`
 - Modify: `packages/cli/src/index.ts:1-30` (register new command)
 
@@ -277,7 +376,11 @@ import { ApiClient } from '../api-client.js';
 interface CommentSummary {
   total: number;
   bySeverity: Record<string, number>;
-  files: Array<{ path: string; count: number; bySeverity: Record<string, number> }>;
+  files: Array<{
+    path: string;
+    count: number;
+    bySeverity: Record<string, number>;
+  }>;
   generalCount: number;
 }
 
@@ -311,7 +414,9 @@ function formatSummary(summary: CommentSummary, prTitle: string): string {
     lines.push(`## Files (in diff order)`);
     for (let i = 0; i < summary.files.length; i++) {
       const f = summary.files[i];
-      const sevParts = Object.entries(f.bySeverity).map(([s, c]) => `${c} ${s}`).join(', ');
+      const sevParts = Object.entries(f.bySeverity)
+        .map(([s, c]) => `${c} ${s}`)
+        .join(', ');
       lines.push(`${i + 1}. ${f.path} (${f.count} comments: ${sevParts})`);
     }
   }
@@ -321,12 +426,12 @@ function formatSummary(summary: CommentSummary, prTitle: string): string {
 
 function formatComments(comments: Comment[], heading: string): string {
   // Separate top-level from replies
-  const topLevel = comments.filter(c => !c.parentCommentId && !c.resolved);
-  const replies = comments.filter(c => c.parentCommentId);
+  const topLevel = comments.filter((c) => !c.parentCommentId && !c.resolved);
+  const replies = comments.filter((c) => c.parentCommentId);
 
   // Sort top-level: general first, then by line number
-  const general = topLevel.filter(c => !c.filePath);
-  const withFile = topLevel.filter(c => c.filePath);
+  const general = topLevel.filter((c) => !c.filePath);
+  const withFile = topLevel.filter((c) => c.filePath);
   withFile.sort((a, b) => (a.startLine ?? 0) - (b.startLine ?? 0));
 
   const ordered = [...general, ...withFile];
@@ -334,16 +439,20 @@ function formatComments(comments: Comment[], heading: string): string {
   lines.push(`# ${heading}\n`);
 
   for (const c of ordered) {
-    const sevLabel = c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
+    const sevLabel =
+      c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
     let location = '';
     if (c.startLine != null) {
-      location = c.startLine === c.endLine ? ` Line ${c.startLine}` : ` Lines ${c.startLine}-${c.endLine}`;
+      location =
+        c.startLine === c.endLine
+          ? ` Line ${c.startLine}`
+          : ` Lines ${c.startLine}-${c.endLine}`;
     }
     lines.push(`[${sevLabel}]${location} (comment ID: ${c.id})`);
     lines.push(`> ${c.body}`);
 
     // Find thread replies for this comment
-    const thread = replies.filter(r => r.parentCommentId === c.id);
+    const thread = replies.filter((r) => r.parentCommentId === c.id);
     if (thread.length > 0) {
       lines.push('Thread:');
       for (const r of thread) {
@@ -366,34 +475,46 @@ export function reviewCommand(program: Command, client: ApiClient) {
     .description('Fetch review comments for a PR')
     .option('--summary', 'Show comment counts and file list only')
     .option('--file <path>', 'Filter to comments on a specific file')
-    .option('--severity <level>', 'Filter by severity (must-fix, request, suggestion)')
+    .option(
+      '--severity <level>',
+      'Filter by severity (must-fix, request, suggestion)',
+    )
     .option('--all', 'Fetch all comments')
-    .action(async (opts: { summary?: boolean; file?: string; severity?: string; all?: boolean }) => {
-      const prId = review.args[0];
-      const pr = await client.get<{ title: string }>(`/api/prs/${prId}`);
+    .action(
+      async (opts: {
+        summary?: boolean;
+        file?: string;
+        severity?: string;
+        all?: boolean;
+      }) => {
+        const prId = review.args[0];
+        const pr = await client.get<{ title: string }>(`/api/prs/${prId}`);
 
-      if (opts.summary) {
-        const summary = await client.get<CommentSummary>(`/api/prs/${prId}/comments?summary=true`);
-        console.log(formatSummary(summary, pr.title));
-        return;
-      }
+        if (opts.summary) {
+          const summary = await client.get<CommentSummary>(
+            `/api/prs/${prId}/comments?summary=true`,
+          );
+          console.log(formatSummary(summary, pr.title));
+          return;
+        }
 
-      // Build query params
-      const params = new URLSearchParams();
-      if (opts.file) params.set('filePath', opts.file);
-      if (opts.severity) params.set('severity', opts.severity);
-      const qs = params.toString();
-      const url = `/api/prs/${prId}/comments${qs ? `?${qs}` : ''}`;
+        // Build query params
+        const params = new URLSearchParams();
+        if (opts.file) params.set('filePath', opts.file);
+        if (opts.severity) params.set('severity', opts.severity);
+        const qs = params.toString();
+        const url = `/api/prs/${prId}/comments${qs ? `?${qs}` : ''}`;
 
-      const comments = await client.get<Comment[]>(url);
-      const heading = opts.file
-        ? `Comments for: ${opts.file}`
-        : opts.severity
-          ? `${opts.severity} comments`
-          : `All comments`;
+        const comments = await client.get<Comment[]>(url);
+        const heading = opts.file
+          ? `Comments for: ${opts.file}`
+          : opts.severity
+            ? `${opts.severity} comments`
+            : `All comments`;
 
-      console.log(formatComments(comments, heading));
-    });
+        console.log(formatComments(comments, heading));
+      },
+    );
 }
 ```
 
@@ -424,6 +545,7 @@ git commit -m "feat: add shepherd review <pr-id> comments CLI command"
 ### Task 4: Refactor prompt builder for pull-based model
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/prompt-builder.ts`
 - Test: `packages/backend/src/orchestrator/__tests__/prompt-builder.test.ts`
 
@@ -445,7 +567,11 @@ describe('PromptBuilder', () => {
         total: 5,
         bySeverity: { 'must-fix': 2, request: 2, suggestion: 1 },
         files: [
-          { path: 'src/auth.ts', count: 3, bySeverity: { 'must-fix': 2, request: 1 } },
+          {
+            path: 'src/auth.ts',
+            count: 3,
+            bySeverity: { 'must-fix': 2, request: 1 },
+          },
           { path: 'src/db.ts', count: 1, bySeverity: { suggestion: 1 } },
         ],
         generalCount: 1,
@@ -484,7 +610,12 @@ describe('PromptBuilder', () => {
       prId: 'test-pr-id',
       prTitle: 'PR',
       agentContext: null,
-      commentSummary: { total: 3, bySeverity: { request: 3 }, files: [{ path: 'src/a.ts', count: 3, bySeverity: { request: 3 } }], generalCount: 0 },
+      commentSummary: {
+        total: 3,
+        bySeverity: { request: 3 },
+        files: [{ path: 'src/a.ts', count: 3, bySeverity: { request: 3 } }],
+        generalCount: 0,
+      },
     });
 
     expect(prompt).toContain('shepherd review');
@@ -501,7 +632,9 @@ describe('PromptBuilder', () => {
       commentSummary: {
         total: 1,
         bySeverity: { 'must-fix': 1 },
-        files: [{ path: 'src/auth.ts', count: 1, bySeverity: { 'must-fix': 1 } }],
+        files: [
+          { path: 'src/auth.ts', count: 1, bySeverity: { 'must-fix': 1 } },
+        ],
         generalCount: 0,
       },
     });
@@ -523,6 +656,7 @@ Expected: FAIL (interface changed from `comments` to `commentSummary`)
 Replace `packages/backend/src/orchestrator/prompt-builder.ts` with the new implementation. Keep all the existing skill documentation (severity rules, reply format, common mistakes) but replace the comments section with a summary and update the workflow to describe the pull-based approach.
 
 Key changes:
+
 - `PromptInput.comments: ReviewComment[]` becomes `PromptInput.commentSummary: CommentSummary`
 - Remove `ReviewComment` interface, the `formatThread` function, and the entire `## Comments` section builder
 - Add `CommentSummary` interface and a `## Comment Summary` section
@@ -536,7 +670,11 @@ The `CommentSummary` interface:
 export interface CommentSummary {
   total: number;
   bySeverity: Record<string, number>;
-  files: Array<{ path: string; count: number; bySeverity: Record<string, number> }>;
+  files: Array<{
+    path: string;
+    count: number;
+    bySeverity: Record<string, number>;
+  }>;
   generalCount: number;
 }
 ```
@@ -556,6 +694,7 @@ General comments: 1
 ```
 
 The updated workflow section should describe:
+
 1. `shepherd review <pr-id> comments --summary` to confirm what's outstanding
 2. Work top-to-bottom through files as listed in the summary
 3. For each file: fetch comments with `--file`, read the file, make changes, reply immediately via `shepherd batch`
@@ -580,6 +719,7 @@ git commit -m "feat: refactor prompt builder for pull-based comment fetching"
 ### Task 5: Update orchestrator to generate comment summary
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/index.ts:49-88` (`handleRequestChanges`)
 - Test: `packages/backend/src/orchestrator/__tests__/orchestrator.test.ts`
 
@@ -595,22 +735,49 @@ it('includes comment summary in the prompt', async () => {
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/index.ts', startLine: 10, endLine: 10, body: 'Fix the null check', severity: 'must-fix', author: 'human' },
+    payload: {
+      filePath: 'src/index.ts',
+      startLine: 10,
+      endLine: 10,
+      body: 'Fix the null check',
+      severity: 'must-fix',
+      author: 'human',
+    },
   });
   await inject({
     method: 'POST',
     url: `/api/prs/${prId}/comments`,
-    payload: { filePath: 'src/auth.ts', startLine: 5, endLine: 5, body: 'Add validation', severity: 'request', author: 'human' },
+    payload: {
+      filePath: 'src/auth.ts',
+      startLine: 5,
+      endLine: 5,
+      body: 'Add validation',
+      severity: 'request',
+      author: 'human',
+    },
   });
 
   // Build summary the way the orchestrator would
-  const allCycles = db.select().from(schema.reviewCycles).where(eq(schema.reviewCycles.prId, prId)).all();
+  const allCycles = db
+    .select()
+    .from(schema.reviewCycles)
+    .where(eq(schema.reviewCycles.prId, prId))
+    .all();
   const cycleIds = allCycles.map((c: any) => c.id);
-  const allComments = db.select().from(schema.comments).where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
-  const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+  const allComments = db
+    .select()
+    .from(schema.comments)
+    .where(inArray(schema.comments.reviewCycleId, cycleIds))
+    .all();
+  const topLevel = allComments.filter(
+    (c: any) => !c.parentCommentId && !c.resolved,
+  );
 
   const bySeverity: Record<string, number> = {};
-  const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+  const fileMap = new Map<
+    string,
+    { count: number; bySeverity: Record<string, number> }
+  >();
   let generalCount = 0;
   for (const c of topLevel) {
     bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
@@ -658,17 +825,28 @@ In `packages/backend/src/orchestrator/index.ts`, lines 59-87: replace the code t
 
 ```typescript
 // Replace lines 59-87 with:
-const allCycles = this.db.select().from(this.schema.reviewCycles)
-  .where(eq(this.schema.reviewCycles.prId, prId)).all();
+const allCycles = this.db
+  .select()
+  .from(this.schema.reviewCycles)
+  .where(eq(this.schema.reviewCycles.prId, prId))
+  .all();
 const cycleIds = allCycles.map((c: any) => c.id);
 
-const allComments = this.db.select().from(this.schema.comments)
-  .where(inArray(this.schema.comments.reviewCycleId, cycleIds)).all();
+const allComments = this.db
+  .select()
+  .from(this.schema.comments)
+  .where(inArray(this.schema.comments.reviewCycleId, cycleIds))
+  .all();
 
-const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+const topLevel = allComments.filter(
+  (c: any) => !c.parentCommentId && !c.resolved,
+);
 
 const bySeverity: Record<string, number> = {};
-const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+const fileMap = new Map<
+  string,
+  { count: number; bySeverity: Record<string, number> }
+>();
 let generalCount = 0;
 
 for (const c of topLevel) {
@@ -717,6 +895,7 @@ git commit -m "feat: orchestrator generates comment summary instead of full comm
 ### Task 6: Run full test suite and fix any breakage
 
 **Files:**
+
 - Potentially any files modified in Tasks 1-5
 
 **Step 1: Run the full test suite**
@@ -753,6 +932,7 @@ Run: `npm run dev`
 **Step 2: Create a test project and PR with comments via the API or UI**
 
 Use the web UI or curl to:
+
 1. Create a project
 2. Submit a PR
 3. Add a few comments across different files with different severities

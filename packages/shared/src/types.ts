@@ -64,7 +64,7 @@ export interface DiffSnapshot {
   id: string;
   reviewCycleId: string;
   diffData: string;
-  fileGroups: FileGroup[] | null;
+  fileGroups?: FileGroup[];
 }
 
 export interface FileGroup {
@@ -74,18 +74,18 @@ export interface FileGroup {
 }
 
 export interface BatchCommentPayload {
-  comments: Array<{
+  comments: {
     filePath?: string | null;
     startLine?: number | null;
     endLine?: number | null;
     body: string;
     severity?: CommentSeverity;
-  }>;
-  replies?: Array<{
+  }[];
+  replies?: {
     parentCommentId: string;
     body: string;
     severity?: CommentSeverity;
-  }>;
+  }[];
 }
 
 export interface CreateProjectInput {
@@ -102,6 +102,13 @@ export interface CreatePRInput {
   baseBranch?: string;
   agentContext?: string;
   workingDirectory?: string;
+}
+
+export interface CommentSummary {
+  total: number;
+  bySeverity: Record<string, number>;
+  files: { path: string; count: number; bySeverity: Record<string, number> }[];
+  generalCount: number;
 }
 
 export interface CreateCommentInput {

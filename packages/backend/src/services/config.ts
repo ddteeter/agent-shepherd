@@ -1,57 +1,44 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import yaml from 'js-yaml';
 import { eq } from 'drizzle-orm';
+import type { AppDatabase } from '../db/index.js';
 import { schema } from '../db/index.js';
 
 export type ConfigRecord = Record<string, unknown>;
 
+function readYamlConfig(filePath: string): ConfigRecord {
+  try {
+    const content = readFileSync(filePath, 'utf8');
+    const parsed = yaml.load(content);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as ConfigRecord;
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 export class ConfigService {
   constructor(
-    private db: any,
+    private database: AppDatabase,
     private globalConfigPath: string,
   ) {}
 
-  /**
-   * Read the global config file (~/.agent-shepherd/config.yml).
-   * Returns empty object if the file doesn't exist or can't be parsed.
-   */
   readGlobalFileConfig(): ConfigRecord {
-    try {
-      const content = readFileSync(this.globalConfigPath, 'utf-8');
-      const parsed = yaml.load(content);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as ConfigRecord;
-      }
-      return {};
-    } catch {
-      return {};
-    }
+    return readYamlConfig(this.globalConfigPath);
   }
 
-  /**
-   * Read the per-project config file (.agent-shepherd.yml in repo root).
-   * Returns empty object if the file doesn't exist or can't be parsed.
-   */
   readProjectFileConfig(projectPath: string): ConfigRecord {
-    try {
-      const filePath = join(projectPath, '.agent-shepherd.yml');
-      const content = readFileSync(filePath, 'utf-8');
-      const parsed = yaml.load(content);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return parsed as ConfigRecord;
-      }
-      return {};
-    } catch {
-      return {};
-    }
+    return readYamlConfig(path.join(projectPath, '.agent-shepherd.yml'));
   }
 
   /**
    * Get all global config entries from the DB as a key-value object.
    */
   getGlobalDbConfig(): ConfigRecord {
-    const rows = this.db.select().from(schema.globalConfig).all();
+    const rows = this.database.select().from(schema.globalConfig).all();
     const result: ConfigRecord = {};
     for (const row of rows) {
       result[row.key] = row.value;
@@ -63,7 +50,7 @@ export class ConfigService {
    * Get all project-specific config entries from the DB.
    */
   getProjectDbConfig(projectId: string): ConfigRecord {
-    const rows = this.db
+    const rows = this.database
       .select()
       .from(schema.projectConfig)
       .where(eq(schema.projectConfig.projectId, projectId))
@@ -79,7 +66,7 @@ export class ConfigService {
    * Set (upsert) a global config key in the DB.
    */
   setGlobalDbConfig(key: string, value: string): void {
-    this.db
+    this.database
       .insert(schema.globalConfig)
       .values({ key, value })
       .onConflictDoUpdate({
@@ -93,7 +80,7 @@ export class ConfigService {
    * Set (upsert) a project config key in the DB.
    */
   setProjectDbConfig(projectId: string, key: string, value: string): void {
-    this.db
+    this.database
       .insert(schema.projectConfig)
       .values({ projectId, key, value })
       .onConflictDoUpdate({
@@ -109,8 +96,8 @@ export class ConfigService {
    */
   getMergedGlobalConfig(): ConfigRecord {
     const fileConfig = this.readGlobalFileConfig();
-    const dbConfig = this.getGlobalDbConfig();
-    return { ...fileConfig, ...dbConfig };
+    const databaseConfig = this.getGlobalDbConfig();
+    return { ...fileConfig, ...databaseConfig };
   }
 
   /**
@@ -120,7 +107,11 @@ export class ConfigService {
   getMergedProjectConfig(projectId: string, projectPath: string): ConfigRecord {
     const globalFileConfig = this.readGlobalFileConfig();
     const projectFileConfig = this.readProjectFileConfig(projectPath);
-    const projectDbConfig = this.getProjectDbConfig(projectId);
-    return { ...globalFileConfig, ...projectFileConfig, ...projectDbConfig };
+    const projectDatabaseConfig = this.getProjectDbConfig(projectId);
+    return {
+      ...globalFileConfig,
+      ...projectFileConfig,
+      ...projectDatabaseConfig,
+    };
   }
 }

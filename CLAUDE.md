@@ -13,20 +13,20 @@ Human-in-the-loop PR review app for AI coding agents. Monorepo with four npm wor
 
 ## Key Paths
 
-| Purpose | Path |
-|---|---|
-| DB schema (Drizzle) | `packages/backend/src/db/schema.ts` |
-| API routes | `packages/backend/src/routes/*.ts` |
-| Agent orchestrator | `packages/backend/src/orchestrator/` |
-| Prompt builder | `packages/backend/src/orchestrator/prompt-builder.ts` |
+| Purpose             | Path                                                       |
+| ------------------- | ---------------------------------------------------------- |
+| DB schema (Drizzle) | `packages/backend/src/db/schema.ts`                        |
+| API routes          | `packages/backend/src/routes/*.ts`                         |
+| Agent orchestrator  | `packages/backend/src/orchestrator/`                       |
+| Prompt builder      | `packages/backend/src/orchestrator/prompt-builder.ts`      |
 | Claude Code adapter | `packages/backend/src/orchestrator/claude-code-adapter.ts` |
-| Git service | `packages/backend/src/services/git.ts` |
-| Shared types | `packages/shared/src/types.ts` |
-| React pages | `packages/frontend/src/pages/` |
-| React components | `packages/frontend/src/components/` |
-| API client | `packages/frontend/src/api.ts` |
-| CLI commands | `packages/cli/src/commands/` |
-| Design docs | `docs/plans/` |
+| Git service         | `packages/backend/src/services/git.ts`                     |
+| Shared types        | `packages/shared/src/types.ts`                             |
+| React pages         | `packages/frontend/src/pages/`                             |
+| React components    | `packages/frontend/src/components/`                        |
+| API client          | `packages/frontend/src/api.ts`                             |
+| CLI commands        | `packages/cli/src/commands/`                               |
+| Design docs         | `docs/plans/`                                              |
 
 ## Commands
 
@@ -37,6 +37,10 @@ npm run dev --workspace=packages/frontend    # Frontend only (port 5173)
 npm run build                                # Build all packages
 npm run test                                 # Run tests (Vitest)
 npm run test:coverage                        # Run tests with coverage (80% threshold enforced)
+npm run lint                                 # Run ESLint
+npm run lint:fix                             # Run ESLint with auto-fix
+npm run format                               # Format all files with Prettier
+npm run format:check                         # Check formatting without writing
 ```
 
 ## Test Coverage Requirements
@@ -53,6 +57,7 @@ npm run test:coverage                        # Run tests with coverage (80% thre
 SQLite via better-sqlite3 + Drizzle ORM. Tables: `projects`, `pull_requests`, `review_cycles`, `comments`, `diff_snapshots`, `global_config`, `project_config`. Schema defined in `packages/backend/src/db/schema.ts`.
 
 When generating migrations, always use `--name` to give them a logical name:
+
 ```bash
 npx drizzle-kit generate --name <descriptive_name>
 # Example: npx drizzle-kit generate --name add_user_preferences
@@ -70,6 +75,7 @@ npx drizzle-kit generate --name <descriptive_name>
 ## API Structure
 
 REST under `/api/`. Key routes:
+
 - Projects: CRUD at `/api/projects`
 - PRs: `/api/projects/:projectId/prs` and `/api/prs/:id`
 - Reviews: `POST /api/prs/:id/review` (approve/request-changes)
@@ -93,10 +99,13 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 - When a skill exists for an agent task, prompts should reference the skill by name rather than duplicating its content. Do not repeat skill instructions in prompt builders -- the skill is the single source of truth. If something needs to change about agent behavior, change the skill, not the prompt.
 - **Always use the full name `agent-shepherd`** in all generated content -- CLI references, config paths, skill names, documentation, and code. Never abbreviate to `shepherd` alone. The CLI command is `agent-shepherd`, the config directory is `.agent-shepherd`, and the npm package scope is `@agent-shepherd`.
 - **Build must be clean before completing work.** Always run `npm run build` and verify zero TypeScript errors across all packages before considering a feature done. Do not rely on tests alone -- tests can pass while `tsc` reports type errors.
+- **ESLint and Prettier are enforced via pre-commit hook** (husky + lint-staged). Staged `.ts`/`.tsx` files are auto-linted and formatted on commit. Run `npm run lint` to check the whole repo. Do not introduce `any` types, use `null` (prefer `undefined`), or add eslint-disable comments.
+- **File naming convention:** all TypeScript/TSX source files use kebab-case (e.g., `diff-viewer.tsx`, `use-highlighter.ts`). React component files are NOT PascalCase.
 
 ## Agent Orchestrator
 
 The orchestrator (`packages/backend/src/orchestrator/`) manages the AI agent lifecycle:
+
 - `prompt-builder.ts` constructs structured prompts from review comments (grouped by file, includes severity and threading)
 - `claude-code-adapter.ts` spawns Claude Code CLI as subprocess (always starts a new session)
 - `AgentAdapter` interface allows future adapters (Cursor, Aider, etc.)

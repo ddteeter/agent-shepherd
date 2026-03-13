@@ -1,6 +1,10 @@
 import { Command } from 'commander';
-import { readFile } from 'fs/promises';
+import { readFile } from 'node:fs/promises';
 import { ApiClient } from '../api-client.js';
+
+interface BatchResult {
+  created: number;
+}
 
 export function batchCommand(program: Command, client: ApiClient) {
   program
@@ -8,23 +12,29 @@ export function batchCommand(program: Command, client: ApiClient) {
     .description('Batch submit comments and replies')
     .option('-f, --file <path>', 'Path to JSON file with batch payload')
     .option('--stdin', 'Read batch payload from stdin')
-    .action(async (prId: string, opts: { file?: string; stdin?: boolean }) => {
-      let payload: string;
+    .action(
+      async (prId: string, options: { file?: string; stdin?: boolean }) => {
+        let payload: string;
 
-      if (opts.file) {
-        payload = await readFile(opts.file, 'utf-8');
-      } else if (opts.stdin) {
-        const chunks: Buffer[] = [];
-        for await (const chunk of process.stdin) {
-          chunks.push(chunk);
+        if (options.file) {
+          payload = await readFile(options.file, 'utf8');
+        } else if (options.stdin) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of process.stdin) {
+            chunks.push(chunk as Buffer);
+          }
+          payload = Buffer.concat(chunks).toString('utf8');
+        } else {
+          console.error('Must specify --file or --stdin');
+          process.exitCode = 1;
+          return;
         }
-        payload = Buffer.concat(chunks).toString('utf-8');
-      } else {
-        console.error('Must specify --file or --stdin');
-        process.exit(1);
-      }
 
-      const result = await client.post(`/api/prs/${prId}/comments/batch`, JSON.parse(payload));
-      console.log(`Batch submitted: ${(result as any).created} items created`);
-    });
+        const result = await client.post<BatchResult>(
+          `/api/prs/${prId}/comments/batch`,
+          JSON.parse(payload) as unknown,
+        );
+        console.log(`Batch submitted: ${String(result.created)} items created`);
+      },
+    );
 }

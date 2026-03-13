@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'fs/promises';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { GitService } from '../git.js';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 
 describe('GitService', () => {
   let repoPath: string;
   let gitService: GitService;
 
   beforeEach(async () => {
-    repoPath = await mkdtemp(join(tmpdir(), 'shepherd-test-'));
+    repoPath = await mkdtemp(path.join(tmpdir(), 'shepherd-test-'));
     gitService = new GitService(repoPath);
 
     execSync('git init', { cwd: repoPath });
     execSync('git checkout -b main', { cwd: repoPath, stdio: 'pipe' });
     execSync('git config user.email "test@test.com"', { cwd: repoPath });
     execSync('git config user.name "Test"', { cwd: repoPath });
-    await writeFile(join(repoPath, 'file.txt'), 'hello\n');
+    await writeFile(path.join(repoPath, 'file.txt'), 'hello\n');
     execSync('git add . && git commit -m "initial"', { cwd: repoPath });
   });
 
@@ -32,7 +32,7 @@ describe('GitService', () => {
 
   it('gets diff between branches', async () => {
     execSync('git checkout -b feat/test', { cwd: repoPath });
-    await writeFile(join(repoPath, 'file.txt'), 'hello\nworld\n');
+    await writeFile(path.join(repoPath, 'file.txt'), 'hello\nworld\n');
     execSync('git add . && git commit -m "add world"', { cwd: repoPath });
 
     const diff = await gitService.getDiff('main', 'feat/test');
@@ -41,7 +41,7 @@ describe('GitService', () => {
 
   it('lists changed files', async () => {
     execSync('git checkout -b feat/test2', { cwd: repoPath });
-    await writeFile(join(repoPath, 'new-file.txt'), 'new\n');
+    await writeFile(path.join(repoPath, 'new-file.txt'), 'new\n');
     execSync('git add . && git commit -m "add file"', { cwd: repoPath });
 
     const files = await gitService.getChangedFiles('main', 'feat/test2');
@@ -55,7 +55,7 @@ describe('GitService', () => {
 
   it('gets diff between two commits', async () => {
     execSync('git checkout -b feat/inter', { cwd: repoPath });
-    await writeFile(join(repoPath, 'file.txt'), 'hello\nworld\n');
+    await writeFile(path.join(repoPath, 'file.txt'), 'hello\nworld\n');
     execSync('git add . && git commit -m "add world"', { cwd: repoPath });
 
     const sha1 = await gitService.getHeadSha('main');

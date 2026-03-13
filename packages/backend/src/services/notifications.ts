@@ -11,8 +11,8 @@ export class NotificationService {
         title: 'Agent Shepherd',
         message: `PR ready for review: ${prTitle}\nProject: ${projectName}`,
       });
-    } catch (err) {
-      console.warn('Failed to send OS notification:', err);
+    } catch (error: unknown) {
+      console.warn('Failed to send OS notification:', error);
     }
   }
 }

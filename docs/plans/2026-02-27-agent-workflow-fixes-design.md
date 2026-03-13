@@ -17,8 +17,11 @@ Three critical bugs in the agent review workflow that break multi-cycle reviews:
 The orchestrator (`packages/backend/src/orchestrator/index.ts:76`) queries comments scoped to only the current review cycle:
 
 ```typescript
-const allComments = this.db.select().from(this.schema.comments)
-  .where(eq(this.schema.comments.reviewCycleId, currentCycle.id)).all();
+const allComments = this.db
+  .select()
+  .from(this.schema.comments)
+  .where(eq(this.schema.comments.reviewCycleId, currentCycle.id))
+  .all();
 ```
 
 When the human reviews cycle N+1 and replies to comments from cycle N, those replies are stored on cycle N+1 with `parentCommentId` set. The orchestrator finds only these replies (filtered out as non-top-level), while the parent comments from cycle N are excluded entirely. Result: empty prompt.
@@ -55,7 +58,7 @@ export type ReviewCycleStatus =
   | 'pending_review'
   | 'changes_requested'
   | 'agent_working'
-  | 'agent_completed'  // NEW
+  | 'agent_completed' // NEW
   | 'agent_error'
   | 'approved';
 ```
@@ -125,13 +128,13 @@ async getDiffBetweenCommits(sha1: string, sha2: string): Promise<string>
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `packages/shared/src/types.ts` | Add `agent_completed` to `ReviewCycleStatus` |
-| `packages/backend/src/db/schema.ts` | Add `commitSha` to `reviewCycles` |
-| `packages/backend/src/orchestrator/index.ts` | Fix comment query (all cycles, unresolved); update `onComplete` to set status |
-| `packages/backend/src/routes/pull-requests.ts` | Capture commit SHA on cycle creation |
-| `packages/backend/src/routes/diff.ts` | Add `from`/`to` inter-cycle diff support |
-| `packages/backend/src/services/git.ts` | Add `getHeadSha()` and `getDiffBetweenCommits()` |
-| `packages/frontend/src/pages/PRReview.tsx` | Add inter-cycle diff option in cycle selector |
-| Migration file | Add `commit_sha` column |
+| File                                           | Changes                                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| `packages/shared/src/types.ts`                 | Add `agent_completed` to `ReviewCycleStatus`                                  |
+| `packages/backend/src/db/schema.ts`            | Add `commitSha` to `reviewCycles`                                             |
+| `packages/backend/src/orchestrator/index.ts`   | Fix comment query (all cycles, unresolved); update `onComplete` to set status |
+| `packages/backend/src/routes/pull-requests.ts` | Capture commit SHA on cycle creation                                          |
+| `packages/backend/src/routes/diff.ts`          | Add `from`/`to` inter-cycle diff support                                      |
+| `packages/backend/src/services/git.ts`         | Add `getHeadSha()` and `getDiffBetweenCommits()`                              |
+| `packages/frontend/src/pages/PRReview.tsx`     | Add inter-cycle diff option in cycle selector                                 |
+| Migration file                                 | Add `commit_sha` column                                                       |

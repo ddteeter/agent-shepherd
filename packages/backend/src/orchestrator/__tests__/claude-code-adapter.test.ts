@@ -1,25 +1,64 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EventEmitter } from 'events';
 
-// Mock child_process.spawn before importing the adapter
-const mockSpawn = vi.fn();
+interface MockWritable {
+  end: ReturnType<typeof vi.fn>;
+}
+
+interface MockReadable {
+  on(event: string, listener: (...arguments_: unknown[]) => void): void;
+  emit(event: string, ...arguments_: unknown[]): boolean;
+}
+
+interface MockProcess {
+  stdin: MockWritable;
+  stdout: MockReadable;
+  stderr: MockReadable;
+  pid: number | undefined;
+  kill: ReturnType<typeof vi.fn>;
+  on(event: string, listener: (...arguments_: unknown[]) => void): void;
+  emit(event: string, ...arguments_: unknown[]): boolean;
+}
+
+const mockSpawn = vi.fn<(...arguments_: unknown[]) => MockProcess>();
 vi.mock('child_process', () => ({
-  spawn: (...args: any[]) => mockSpawn(...args),
+  spawn: (...arguments_: unknown[]) => mockSpawn(...arguments_),
 }));
 
 const { ClaudeCodeAdapter } = await import('../claude-code-adapter.js');
 
-function createMockProcess() {
-  const stdin = { end: vi.fn() };
-  const stdout = new EventEmitter();
-  const stderr = new EventEmitter();
-  const proc = new EventEmitter() as any;
-  proc.stdin = stdin;
-  proc.stdout = stdout;
-  proc.stderr = stderr;
-  proc.pid = 12345;
-  proc.kill = vi.fn();
-  return proc;
+function createEmitter(): MockReadable & {
+  on: ReturnType<typeof vi.fn>;
+  emit: (...arguments_: [string, ...unknown[]]) => boolean;
+} {
+  const listeners = new Map<string, ((...arguments_: unknown[]) => void)[]>();
+  return {
+    on: vi.fn((event: string, listener: (...arguments_: unknown[]) => void) => {
+      const list = listeners.get(event) ?? [];
+      list.push(listener);
+      listeners.set(event, list);
+    }),
+    emit(event: string, ...arguments_: unknown[]) {
+      const list = listeners.get(event) ?? [];
+      for (const listener of list) listener(...arguments_);
+      return list.length > 0;
+    },
+  };
+}
+
+function createMockProcess(): MockProcess {
+  const stdin: MockWritable = { end: vi.fn() };
+  const stdout = createEmitter();
+  const stderr = createEmitter();
+  const procEmitter = createEmitter();
+  return {
+    stdin,
+    stdout,
+    stderr,
+    pid: 12_345 as number | undefined,
+    kill: vi.fn(),
+    on: procEmitter.on,
+    emit: procEmitter.emit.bind(procEmitter),
+  };
 }
 
 describe('ClaudeCodeAdapter', () => {
@@ -46,7 +85,12 @@ describe('ClaudeCodeAdapter', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'claude',
-        expect.arrayContaining(['--output-format', 'stream-json', '--verbose', '-p']),
+        expect.arrayContaining([
+          '--output-format',
+          'stream-json',
+          '--verbose',
+          '-p',
+        ]),
         expect.objectContaining({ cwd: '/tmp/project' }),
       );
       expect(proc.stdin.end).toHaveBeenCalledWith('Fix the bug');
@@ -63,15 +107,15 @@ describe('ClaudeCodeAdapter', () => {
         additionalDirs: ['/tmp/other', '/tmp/third'],
       });
 
-      const args = mockSpawn.mock.calls[0][1] as string[];
-      expect(args).toContain('--add-dir');
-      const addDirIndices = args.reduce((acc: number[], val, idx) => {
-        if (val === '--add-dir') acc.push(idx);
-        return acc;
-      }, []);
-      expect(addDirIndices).toHaveLength(2);
-      expect(args[addDirIndices[0] + 1]).toBe('/tmp/other');
-      expect(args[addDirIndices[1] + 1]).toBe('/tmp/third');
+      const spawnArguments = mockSpawn.mock.calls[0][1] as string[];
+      expect(spawnArguments).toContain('--add-dir');
+      const addDirectoryIndices: number[] = [];
+      for (const [index, value] of spawnArguments.entries()) {
+        if (value === '--add-dir') addDirectoryIndices.push(index);
+      }
+      expect(addDirectoryIndices).toHaveLength(2);
+      expect(spawnArguments[addDirectoryIndices[0] + 1]).toBe('/tmp/other');
+      expect(spawnArguments[addDirectoryIndices[1] + 1]).toBe('/tmp/third');
     });
   });
 
@@ -88,11 +132,15 @@ describe('ClaudeCodeAdapter', () => {
       const onComplete = vi.fn();
       session.onComplete(onComplete);
 
-      // Emit a non-end_turn assistant message
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: { stop_reason: 'tool_use', content: [] },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: { stop_reason: 'tool_use', content: [] },
+          }) + '\n',
+        ),
+      );
 
       proc.emit('exit', 0);
       expect(onComplete).toHaveBeenCalled();
@@ -114,8 +162,9 @@ describe('ClaudeCodeAdapter', () => {
       proc.emit('exit', 1);
 
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain('Claude Code exited with code 1');
-      expect(onError.mock.calls[0][0].message).toContain('some error');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toContain('Claude Code exited with code 1');
+      expect(errorArgument.message).toContain('some error');
     });
 
     it('calls onError with end_turn message when stop_reason is end_turn', async () => {
@@ -130,19 +179,24 @@ describe('ClaudeCodeAdapter', () => {
       const onError = vi.fn();
       session.onError(onError);
 
-      // Emit an end_turn stop reason with text content
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          stop_reason: 'end_turn',
-          content: [{ type: 'text', text: 'I am done' }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              stop_reason: 'end_turn',
+              content: [{ type: 'text', text: 'I am done' }],
+            },
+          }) + '\n',
+        ),
+      );
 
       proc.emit('exit', 0);
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain('end_turn');
-      expect(onError.mock.calls[0][0].message).toContain('I am done');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toContain('end_turn');
+      expect(errorArgument.message).toContain('I am done');
     });
 
     it('calls onError when process emits error event', async () => {
@@ -159,7 +213,8 @@ describe('ClaudeCodeAdapter', () => {
 
       proc.emit('error', new Error('spawn failed'));
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toBe('spawn failed');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toBe('spawn failed');
     });
 
     it('emits tool_use entries via onOutput', async () => {
@@ -174,19 +229,30 @@ describe('ClaudeCodeAdapter', () => {
       const onOutput = vi.fn();
       session.onOutput(onOutput);
 
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [
-            { type: 'tool_use', name: 'Read', input: { file_path: 'src/index.ts' } },
-          ],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [
+                {
+                  type: 'tool_use',
+                  name: 'Read',
+                  input: { file_path: 'src/index.ts' },
+                },
+              ],
+            },
+          }) + '\n',
+        ),
+      );
 
-      expect(onOutput).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'Read',
-        summary: 'Reading src/index.ts',
-      }));
+      expect(onOutput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'Read',
+          summary: 'Reading src/index.ts',
+        }),
+      );
     });
 
     it('handles session ID from init message', async () => {
@@ -198,11 +264,16 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'system',
-        subtype: 'init',
-        session_id: 'sess-abc-123',
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'system',
+            subtype: 'init',
+            session_id: 'sess-abc-123',
+          }) + '\n',
+        ),
+      );
 
       expect(session.id).toBe('sess-abc-123');
     });
@@ -234,7 +305,8 @@ describe('ClaudeCodeAdapter', () => {
 
       proc.emit('exit', 2);
       expect(onError).toHaveBeenCalledWith(expect.any(Error));
-      expect(onError.mock.calls[0][0].message).toContain('no output captured');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).toContain('no output captured');
     });
 
     it('ignores unparseable stdout lines', async () => {
@@ -281,15 +353,20 @@ describe('ClaudeCodeAdapter', () => {
       const onError = vi.fn();
       session.onError(onError);
 
-      // Set stop_reason to end_turn but no text content
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: { stop_reason: 'end_turn', content: [] },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: { stop_reason: 'end_turn', content: [] },
+          }) + '\n',
+        ),
+      );
 
       proc.emit('exit', 0);
       expect(onError).toHaveBeenCalled();
-      expect(onError.mock.calls[0][0].message).not.toContain('Last message');
+      const errorArgument = onError.mock.calls[0][0] as Error;
+      expect(errorArgument.message).not.toContain('Last message');
     });
 
     it('handles pid as undefined', async () => {
@@ -316,80 +393,135 @@ describe('ClaudeCodeAdapter', () => {
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string }> = [];
+      const outputs: { type: string; summary: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       const tools = [
-        { name: 'Read', input: { file_path: 'a.ts' }, expected: 'Reading a.ts' },
-        { name: 'Edit', input: { file_path: 'b.ts' }, expected: 'Editing b.ts' },
-        { name: 'Write', input: { file_path: 'c.ts' }, expected: 'Writing c.ts' },
-        { name: 'Bash', input: { command: 'npm test' }, expected: 'Running npm test' },
-        { name: 'Grep', input: { pattern: 'foo' }, expected: 'Searching for foo' },
-        { name: 'Glob', input: { pattern: '*.ts' }, expected: 'Finding files matching *.ts' },
+        {
+          name: 'Read',
+          input: { file_path: 'a.ts' },
+          expected: 'Reading a.ts',
+        },
+        {
+          name: 'Edit',
+          input: { file_path: 'b.ts' },
+          expected: 'Editing b.ts',
+        },
+        {
+          name: 'Write',
+          input: { file_path: 'c.ts' },
+          expected: 'Writing c.ts',
+        },
+        {
+          name: 'Bash',
+          input: { command: 'npm test' },
+          expected: 'Running npm test',
+        },
+        {
+          name: 'Grep',
+          input: { pattern: 'foo' },
+          expected: 'Searching for foo',
+        },
+        {
+          name: 'Glob',
+          input: { pattern: '*.ts' },
+          expected: 'Finding files matching *.ts',
+        },
         { name: 'Task', input: {}, expected: 'Dispatching sub-agent' },
         { name: 'Unknown', input: {}, expected: 'Using Unknown' },
         { name: 'Read', input: {}, expected: 'Reading file' },
-        { name: 'Bash', input: { command: 'a'.repeat(100) }, expected: `Running ${'a'.repeat(60)}...` },
+        {
+          name: 'Bash',
+          input: { command: 'a'.repeat(100) },
+          expected: `Running ${'a'.repeat(60)}...`,
+        },
       ];
 
       for (const tool of tools) {
-        proc.stdout.emit('data', Buffer.from(JSON.stringify({
-          type: 'assistant',
-          message: {
-            content: [{ type: 'tool_use', name: tool.name, input: tool.input }],
-          },
-        }) + '\n'));
+        proc.stdout.emit(
+          'data',
+          Buffer.from(
+            JSON.stringify({
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'tool_use', name: tool.name, input: tool.input },
+                ],
+              },
+            }) + '\n',
+          ),
+        );
       }
 
       expect(outputs).toHaveLength(tools.length);
-      tools.forEach((tool, i) => {
-        expect(outputs[i].summary).toBe(tool.expected);
-      });
+      for (const [index, tool] of tools.entries()) {
+        expect(outputs[index].summary).toBe(tool.expected);
+      }
     });
   });
 
   describe('devMode', () => {
     it('emits text blocks and tool details in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
-      // Emit a text block
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [{ type: 'text', text: 'Thinking about the problem...' }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [
+                { type: 'text', text: 'Thinking about the problem...' },
+              ],
+            },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(1);
       expect(outputs[0].type).toBe('text');
       expect(outputs[0].detail).toBe('Thinking about the problem...');
 
-      // Emit a tool_use block (should include detail in devMode)
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'x.ts' } }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [
+                {
+                  type: 'tool_use',
+                  name: 'Read',
+                  input: { file_path: 'x.ts' },
+                },
+              ],
+            },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(2);
       expect(outputs[1].detail).toContain('file_path');
 
-      // Emit a result message (devMode only)
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'result',
-        result: 'some result text',
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'result',
+            result: 'some result text',
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(3);
       expect(outputs[2].type).toBe('tool_result');
@@ -397,47 +529,57 @@ describe('ClaudeCodeAdapter', () => {
     });
 
     it('handles result as object in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'result',
-        result: { key: 'value' },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'result',
+            result: { key: 'value' },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs).toHaveLength(1);
       expect(outputs[0].type).toBe('tool_result');
     });
 
     it('truncates long text in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       const longText = 'x'.repeat(200);
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'assistant',
-        message: {
-          content: [{ type: 'text', text: longText }],
-        },
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'assistant',
+            message: {
+              content: [{ type: 'text', text: longText }],
+            },
+          }) + '\n',
+        ),
+      );
 
       expect(outputs[0].summary.length).toBeLessThan(longText.length);
       expect(outputs[0].summary).toContain('...');
@@ -445,23 +587,28 @@ describe('ClaudeCodeAdapter', () => {
     });
 
     it('truncates long result in dev mode', async () => {
-      const devAdapter = new ClaudeCodeAdapter({ devMode: true });
+      const developmentAdapter = new ClaudeCodeAdapter({ devMode: true });
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const session = await devAdapter.startSession({
+      const session = await developmentAdapter.startSession({
         projectPath: '/tmp/project',
         prompt: 'test',
       });
 
-      const outputs: Array<{ type: string; summary: string; detail?: string }> = [];
+      const outputs: { type: string; summary: string; detail?: string }[] = [];
       session.onOutput((entry) => outputs.push(entry));
 
       const longResult = 'y'.repeat(200);
-      proc.stdout.emit('data', Buffer.from(JSON.stringify({
-        type: 'result',
-        result: longResult,
-      }) + '\n'));
+      proc.stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'result',
+            result: longResult,
+          }) + '\n',
+        ),
+      );
 
       expect(outputs[0].summary).toContain('...');
     });
@@ -483,11 +630,12 @@ describe('ClaudeCodeAdapter', () => {
       const fullLine = JSON.stringify({
         type: 'assistant',
         message: {
-          content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'test.ts' } }],
+          content: [
+            { type: 'tool_use', name: 'Read', input: { file_path: 'test.ts' } },
+          ],
         },
       });
 
-      // Split in middle
       const half = Math.floor(fullLine.length / 2);
       proc.stdout.emit('data', Buffer.from(fullLine.slice(0, half)));
       expect(onOutput).not.toHaveBeenCalled();

@@ -13,6 +13,7 @@
 ### Task 1: Add `insights` table to database schema
 
 **Files:**
+
 - Modify: `packages/backend/src/db/schema.ts`
 - Modify: `packages/shared/src/types.ts`
 
@@ -23,11 +24,15 @@ Add to `packages/backend/src/db/schema.ts` after the `projectConfig` table:
 ```typescript
 export const insights = sqliteTable('insights', {
   id: text('id').primaryKey(),
-  prId: text('pr_id').notNull().references(() => pullRequests.id),
+  prId: text('pr_id')
+    .notNull()
+    .references(() => pullRequests.id),
   categories: text('categories').notNull().default('{}'),
   branchRef: text('branch_ref'),
   worktreePath: text('worktree_path'),
-  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 ```
 
@@ -88,6 +93,7 @@ git commit -m "feat: add insights table schema and shared types"
 ### Task 2: Add insights API routes
 
 **Files:**
+
 - Create: `packages/backend/src/routes/insights.ts`
 - Modify: `packages/backend/src/server.ts`
 
@@ -128,14 +134,23 @@ describe('Insights routes', () => {
   });
 
   it('GET returns null when no insights exist', async () => {
-    const res = await inject({ method: 'GET', url: `/api/prs/${prId}/insights` });
+    const res = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/insights`,
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toBeNull();
   });
 
   it('PUT creates insights on first call (upsert)', async () => {
     const categories = {
-      claudeMdRecommendations: [{ title: 'Add test conventions', description: 'Specify vitest', applied: false }],
+      claudeMdRecommendations: [
+        {
+          title: 'Add test conventions',
+          description: 'Specify vitest',
+          applied: false,
+        },
+      ],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
@@ -159,12 +174,22 @@ describe('Insights routes', () => {
     await inject({
       method: 'PUT',
       url: `/api/prs/${prId}/insights`,
-      payload: { categories: { claudeMdRecommendations: [], skillRecommendations: [], promptEngineering: [], agentBehaviorObservations: [], recurringPatterns: [] } },
+      payload: {
+        categories: {
+          claudeMdRecommendations: [],
+          skillRecommendations: [],
+          promptEngineering: [],
+          agentBehaviorObservations: [],
+          recurringPatterns: [],
+        },
+      },
     });
 
     // Update
     const updated = {
-      claudeMdRecommendations: [{ title: 'New rule', description: 'Details', applied: false }],
+      claudeMdRecommendations: [
+        { title: 'New rule', description: 'Details', applied: false },
+      ],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
@@ -183,7 +208,9 @@ describe('Insights routes', () => {
     const categories = {
       claudeMdRecommendations: [],
       skillRecommendations: [],
-      promptEngineering: [{ title: 'Be more specific', description: 'Details' }],
+      promptEngineering: [
+        { title: 'Be more specific', description: 'Details' },
+      ],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };
@@ -193,7 +220,10 @@ describe('Insights routes', () => {
       payload: { categories },
     });
 
-    const res = await inject({ method: 'GET', url: `/api/prs/${prId}/insights` });
+    const res = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/insights`,
+    });
     expect(res.statusCode).toBe(200);
     expect(res.json().categories.promptEngineering).toHaveLength(1);
   });
@@ -221,8 +251,11 @@ export async function insightsRoutes(fastify: FastifyInstance) {
   // GET /api/prs/:prId/insights
   fastify.get('/api/prs/:prId/insights', async (request) => {
     const { prId } = request.params as { prId: string };
-    const row = db.select().from(schema.insights)
-      .where(eq(schema.insights.prId, prId)).get();
+    const row = db
+      .select()
+      .from(schema.insights)
+      .where(eq(schema.insights.prId, prId))
+      .get();
     if (!row) return null;
     return { ...row, categories: JSON.parse(row.categories) };
   });
@@ -237,8 +270,11 @@ export async function insightsRoutes(fastify: FastifyInstance) {
     };
 
     const now = new Date().toISOString();
-    const existing = db.select().from(schema.insights)
-      .where(eq(schema.insights.prId, prId)).get();
+    const existing = db
+      .select()
+      .from(schema.insights)
+      .where(eq(schema.insights.prId, prId))
+      .get();
 
     if (existing) {
       db.update(schema.insights)
@@ -263,8 +299,11 @@ export async function insightsRoutes(fastify: FastifyInstance) {
         .run();
     }
 
-    const row = db.select().from(schema.insights)
-      .where(eq(schema.insights.prId, prId)).get();
+    const row = db
+      .select()
+      .from(schema.insights)
+      .where(eq(schema.insights.prId, prId))
+      .get();
     return { ...row, categories: JSON.parse(row.categories) };
   });
 }
@@ -297,6 +336,7 @@ git commit -m "feat: add insights API routes with upsert semantics"
 ### Task 3: Add comment history API route
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/comments.ts`
 
 **Step 1: Write the test**
@@ -320,12 +360,20 @@ describe('Comment history route', () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { body: 'Comment on PR 1', severity: 'request', author: 'human' },
+      payload: {
+        body: 'Comment on PR 1',
+        severity: 'request',
+        author: 'human',
+      },
     });
     await inject({
       method: 'POST',
       url: `/api/prs/${prId2}/comments`,
-      payload: { body: 'Comment on PR 2', severity: 'must-fix', author: 'human' },
+      payload: {
+        body: 'Comment on PR 2',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
 
     const res = await inject({
@@ -356,20 +404,29 @@ fastify.get('/api/projects/:projectId/comments/history', async (request) => {
   const { projectId } = request.params as { projectId: string };
 
   // Get all PRs for this project
-  const prs = db.select().from(schema.pullRequests)
-    .where(eq(schema.pullRequests.projectId, projectId)).all();
+  const prs = db
+    .select()
+    .from(schema.pullRequests)
+    .where(eq(schema.pullRequests.projectId, projectId))
+    .all();
   const prIds = prs.map((p: any) => p.id);
   if (prIds.length === 0) return [];
 
   // Get all cycles for these PRs
-  const cycles = db.select().from(schema.reviewCycles)
-    .where(inArray(schema.reviewCycles.prId, prIds)).all();
+  const cycles = db
+    .select()
+    .from(schema.reviewCycles)
+    .where(inArray(schema.reviewCycles.prId, prIds))
+    .all();
   const cycleIds = cycles.map((c: any) => c.id);
   if (cycleIds.length === 0) return [];
 
   // Get all comments
-  const comments = db.select().from(schema.comments)
-    .where(inArray(schema.comments.reviewCycleId, cycleIds)).all();
+  const comments = db
+    .select()
+    .from(schema.comments)
+    .where(inArray(schema.comments.reviewCycleId, cycleIds))
+    .all();
 
   // Enrich with prId by mapping cycleId -> prId
   const cycleToPr = new Map(cycles.map((c: any) => [c.id, c.prId]));
@@ -397,6 +454,7 @@ git commit -m "feat: add cross-PR comment history API route"
 ### Task 4: Add insights CLI commands
 
 **Files:**
+
 - Create: `packages/cli/src/commands/insights.ts`
 - Modify: `packages/cli/src/index.ts`
 
@@ -440,15 +498,22 @@ export function insightsCommand(program: Command, client: ApiClient) {
         chunks.push(chunk);
       }
       const payload = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-      const result = await client.put<any>(`/api/prs/${prId}/insights`, payload);
-      console.log(`Insights updated for PR ${prId} (${Object.keys(result.categories).length} categories)`);
+      const result = await client.put<any>(
+        `/api/prs/${prId}/insights`,
+        payload,
+      );
+      console.log(
+        `Insights updated for PR ${prId} (${Object.keys(result.categories).length} categories)`,
+      );
     });
 
   insights
     .command('history <project-id>')
     .description('Get all comments across PRs for a project')
     .action(async (projectId: string) => {
-      const comments = await client.get<any[]>(`/api/projects/${projectId}/comments/history`);
+      const comments = await client.get<any[]>(
+        `/api/projects/${projectId}/comments/history`,
+      );
       console.log(JSON.stringify(comments, null, 2));
     });
 }
@@ -481,6 +546,7 @@ git commit -m "feat: add shepherd insights CLI commands (get, update, history)"
 ### Task 5: Extract AgentRunner from Orchestrator
 
 **Files:**
+
 - Create: `packages/backend/src/orchestrator/agent-runner.ts`
 - Modify: `packages/backend/src/orchestrator/types.ts`
 
@@ -491,14 +557,24 @@ Create `packages/backend/src/orchestrator/__tests__/agent-runner.test.ts`:
 ```typescript
 import { describe, it, expect, vi } from 'vitest';
 import { AgentRunner } from '../agent-runner.js';
-import type { AgentAdapter, AgentSession, AgentActivityEntry } from '../types.js';
+import type {
+  AgentAdapter,
+  AgentSession,
+  AgentActivityEntry,
+} from '../types.js';
 
 function createMockAdapter(session: Partial<AgentSession> = {}): AgentAdapter {
   const mockSession: AgentSession = {
     id: 'test-session',
-    onComplete: vi.fn((cb) => { (mockSession as any)._completeCb = cb; }),
-    onError: vi.fn((cb) => { (mockSession as any)._errorCb = cb; }),
-    onOutput: vi.fn((cb) => { (mockSession as any)._outputCb = cb; }),
+    onComplete: vi.fn((cb) => {
+      (mockSession as any)._completeCb = cb;
+    }),
+    onError: vi.fn((cb) => {
+      (mockSession as any)._errorCb = cb;
+    }),
+    onOutput: vi.fn((cb) => {
+      (mockSession as any)._outputCb = cb;
+    }),
     kill: vi.fn(async () => {}),
     ...session,
   };
@@ -518,11 +594,19 @@ describe('AgentRunner', () => {
     const onError = vi.fn();
 
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp/test', prompt: 'test', source: 'code-fix' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp/test',
+        prompt: 'test',
+        source: 'code-fix',
+      },
       { onComplete, onError },
     );
 
-    expect(adapter.startSession).toHaveBeenCalledWith({ projectPath: '/tmp/test', prompt: 'test' });
+    expect(adapter.startSession).toHaveBeenCalledWith({
+      projectPath: '/tmp/test',
+      prompt: 'test',
+    });
     expect(runner.hasActiveSession('pr-1', 'code-fix')).toBe(true);
   });
 
@@ -531,11 +615,21 @@ describe('AgentRunner', () => {
     const runner = new AgentRunner({ adapter, broadcast: vi.fn() });
 
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp/test', prompt: 'fix', source: 'code-fix' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp/test',
+        prompt: 'fix',
+        source: 'code-fix',
+      },
       { onComplete: vi.fn(), onError: vi.fn() },
     );
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp/test2', prompt: 'analyze', source: 'insights' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp/test2',
+        prompt: 'analyze',
+        source: 'insights',
+      },
       { onComplete: vi.fn(), onError: vi.fn() },
     );
 
@@ -549,17 +643,30 @@ describe('AgentRunner', () => {
     const runner = new AgentRunner({ adapter, broadcast });
 
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp/test', prompt: 'test', source: 'insights' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp/test',
+        prompt: 'test',
+        source: 'insights',
+      },
       { onComplete: vi.fn(), onError: vi.fn() },
     );
 
     // Simulate output
     const session = await adapter.startSession({ projectPath: '', prompt: '' });
     const outputCb = (session.onOutput as any).mock.calls[0][0];
-    const entry: AgentActivityEntry = { timestamp: 'now', type: 'text', summary: 'hello' };
+    const entry: AgentActivityEntry = {
+      timestamp: 'now',
+      type: 'text',
+      summary: 'hello',
+    };
     outputCb(entry);
 
-    expect(broadcast).toHaveBeenCalledWith('agent:output', { prId: 'pr-1', source: 'insights', entry });
+    expect(broadcast).toHaveBeenCalledWith('agent:output', {
+      prId: 'pr-1',
+      source: 'insights',
+      entry,
+    });
   });
 
   it('cancel kills session and removes from tracking', async () => {
@@ -567,7 +674,12 @@ describe('AgentRunner', () => {
     const runner = new AgentRunner({ adapter, broadcast: vi.fn() });
 
     await runner.run(
-      { prId: 'pr-1', projectPath: '/tmp/test', prompt: 'test', source: 'code-fix' },
+      {
+        prId: 'pr-1',
+        projectPath: '/tmp/test',
+        prompt: 'test',
+        source: 'code-fix',
+      },
       { onComplete: vi.fn(), onError: vi.fn() },
     );
 
@@ -608,7 +720,13 @@ Create `packages/backend/src/orchestrator/agent-runner.ts`:
 
 ```typescript
 import { existsSync } from 'fs';
-import type { AgentAdapter, AgentSession, AgentRunConfig, AgentRunCallbacks, AgentSource } from './types.js';
+import type {
+  AgentAdapter,
+  AgentSession,
+  AgentRunConfig,
+  AgentRunCallbacks,
+  AgentSource,
+} from './types.js';
 
 interface AgentRunnerDeps {
   adapter: AgentAdapter;
@@ -633,14 +751,17 @@ export class AgentRunner {
     return this.activeSessions.has(this.sessionKey(prId, source));
   }
 
-  async run(config: AgentRunConfig, callbacks: AgentRunCallbacks): Promise<void> {
+  async run(
+    config: AgentRunConfig,
+    callbacks: AgentRunCallbacks,
+  ): Promise<void> {
     const { prId, projectPath, prompt, source } = config;
     const key = this.sessionKey(prId, source);
 
     if (!existsSync(projectPath)) {
       throw new Error(
         `Working directory does not exist: ${projectPath}\n` +
-        'The worktree may have been removed. Recreate it and try again.'
+          'The worktree may have been removed. Recreate it and try again.',
       );
     }
 
@@ -695,6 +816,7 @@ git commit -m "feat: extract AgentRunner with source-keyed session tracking"
 ### Task 6: Extract FeedbackIntegrator from Orchestrator
 
 **Files:**
+
 - Create: `packages/backend/src/orchestrator/review/feedback-integrator.ts`
 - Move: `packages/backend/src/orchestrator/prompt-builder.ts` → `packages/backend/src/orchestrator/review/prompt-builder.ts`
 - Move: `packages/backend/src/orchestrator/__tests__/prompt-builder.test.ts` → `packages/backend/src/orchestrator/review/__tests__/prompt-builder.test.ts`
@@ -745,36 +867,54 @@ export class FeedbackIntegrator {
   }
 
   private setCycleStatus(cycleId: string, status: string) {
-    this.db.update(this.schema.reviewCycles)
+    this.db
+      .update(this.schema.reviewCycles)
       .set({ status })
       .where(eq(this.schema.reviewCycles.id, cycleId))
       .run();
   }
 
   async run(prId: string): Promise<void> {
-    const pr = this.db.select().from(this.schema.pullRequests)
-      .where(eq(this.schema.pullRequests.id, prId)).get();
+    const pr = this.db
+      .select()
+      .from(this.schema.pullRequests)
+      .where(eq(this.schema.pullRequests.id, prId))
+      .get();
     if (!pr) throw new Error(`PR not found: ${prId}`);
 
-    const project = this.db.select().from(this.schema.projects)
-      .where(eq(this.schema.projects.id, pr.projectId)).get();
+    const project = this.db
+      .select()
+      .from(this.schema.projects)
+      .where(eq(this.schema.projects.id, pr.projectId))
+      .get();
     if (!project) throw new Error(`Project not found: ${pr.projectId}`);
 
     const currentCycle = this.getLatestCycle(prId);
     if (!currentCycle) throw new Error(`No review cycle found for PR: ${prId}`);
 
     // Build comment summary
-    const allCycles = this.db.select().from(this.schema.reviewCycles)
-      .where(eq(this.schema.reviewCycles.prId, prId)).all();
+    const allCycles = this.db
+      .select()
+      .from(this.schema.reviewCycles)
+      .where(eq(this.schema.reviewCycles.prId, prId))
+      .all();
     const cycleIds = allCycles.map((c: any) => c.id);
 
-    const allComments = this.db.select().from(this.schema.comments)
-      .where(inArray(this.schema.comments.reviewCycleId, cycleIds)).all();
+    const allComments = this.db
+      .select()
+      .from(this.schema.comments)
+      .where(inArray(this.schema.comments.reviewCycleId, cycleIds))
+      .all();
 
-    const topLevel = allComments.filter((c: any) => !c.parentCommentId && !c.resolved);
+    const topLevel = allComments.filter(
+      (c: any) => !c.parentCommentId && !c.resolved,
+    );
 
     const bySeverity: Record<string, number> = {};
-    const fileMap = new Map<string, { count: number; bySeverity: Record<string, number> }>();
+    const fileMap = new Map<
+      string,
+      { count: number; bySeverity: Record<string, number> }
+    >();
     let generalCount = 0;
 
     for (const c of topLevel) {
@@ -796,7 +936,10 @@ export class FeedbackIntegrator {
       commentSummary: {
         total: topLevel.length,
         bySeverity,
-        files: [...fileMap.entries()].map(([path, data]) => ({ path, ...data })),
+        files: [...fileMap.entries()].map(([path, data]) => ({
+          path,
+          ...data,
+        })),
         generalCount,
       },
     });
@@ -814,7 +957,10 @@ export class FeedbackIntegrator {
             if (latestCycle && latestCycle.status === 'agent_working') {
               this.setCycleStatus(latestCycle.id, 'agent_completed');
             }
-            this.notificationService.notifyPRReadyForReview(pr.title, project.name);
+            this.notificationService.notifyPRReadyForReview(
+              pr.title,
+              project.name,
+            );
           },
           onError: (error) => {
             this.setCycleStatus(currentCycle.id, 'agent_error');
@@ -846,6 +992,7 @@ git commit -m "feat: extract FeedbackIntegrator from Orchestrator"
 ### Task 7: Create SessionLogProvider interface and Claude Code implementation
 
 **Files:**
+
 - Create: `packages/backend/src/orchestrator/session-log/provider.ts`
 - Create: `packages/backend/src/orchestrator/session-log/claude-code-provider.ts`
 - Create: `packages/backend/src/orchestrator/session-log/__tests__/claude-code-provider.test.ts`
@@ -903,19 +1050,35 @@ describe('ClaudeCodeSessionLogProvider', () => {
 
     // Session on matching branch
     const session1 = [
-      JSON.stringify({ type: 'system', sessionId: 'sess-1', gitBranch: 'feat/x' }),
-      JSON.stringify({ type: 'user', message: { role: 'user', content: 'hello' }, sessionId: 'sess-1', gitBranch: 'feat/x' }),
+      JSON.stringify({
+        type: 'system',
+        sessionId: 'sess-1',
+        gitBranch: 'feat/x',
+      }),
+      JSON.stringify({
+        type: 'user',
+        message: { role: 'user', content: 'hello' },
+        sessionId: 'sess-1',
+        gitBranch: 'feat/x',
+      }),
     ].join('\n');
     writeFileSync(join(sessionsDir, 'sess-1.jsonl'), session1);
 
     // Session on different branch
     const session2 = [
-      JSON.stringify({ type: 'system', sessionId: 'sess-2', gitBranch: 'feat/y' }),
+      JSON.stringify({
+        type: 'system',
+        sessionId: 'sess-2',
+        gitBranch: 'feat/y',
+      }),
     ].join('\n');
     writeFileSync(join(sessionsDir, 'sess-2.jsonl'), session2);
 
     const provider = new ClaudeCodeSessionLogProvider(tempDir);
-    const results = await provider.findSessions({ projectPath: '/tmp/myproject', branch: 'feat/x' });
+    const results = await provider.findSessions({
+      projectPath: '/tmp/myproject',
+      branch: 'feat/x',
+    });
 
     expect(results).toHaveLength(1);
     expect(results[0].sessionId).toBe('sess-1');
@@ -928,13 +1091,19 @@ describe('ClaudeCodeSessionLogProvider', () => {
     mkdirSync(sessionsDir, { recursive: true });
 
     const provider = new ClaudeCodeSessionLogProvider(tempDir);
-    const results = await provider.findSessions({ projectPath: '/tmp/myproject', branch: 'feat/z' });
+    const results = await provider.findSessions({
+      projectPath: '/tmp/myproject',
+      branch: 'feat/z',
+    });
     expect(results).toHaveLength(0);
   });
 
   it('returns empty array when project directory does not exist', async () => {
     const provider = new ClaudeCodeSessionLogProvider(tempDir);
-    const results = await provider.findSessions({ projectPath: '/nonexistent/path', branch: 'main' });
+    const results = await provider.findSessions({
+      projectPath: '/nonexistent/path',
+      branch: 'main',
+    });
     expect(results).toHaveLength(0);
   });
 });
@@ -967,20 +1136,23 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
     return projectPath.replace(/\//g, '-');
   }
 
-  async findSessions(opts: { projectPath: string; branch: string }): Promise<SessionLog[]> {
+  async findSessions(opts: {
+    projectPath: string;
+    branch: string;
+  }): Promise<SessionLog[]> {
     const projectKey = this.projectDirKey(opts.projectPath);
     const sessionsDir = join(this.homeDir, '.claude', 'projects', projectKey);
 
     if (!existsSync(sessionsDir)) return [];
 
-    const files = readdirSync(sessionsDir).filter(f => f.endsWith('.jsonl'));
+    const files = readdirSync(sessionsDir).filter((f) => f.endsWith('.jsonl'));
     const results: SessionLog[] = [];
 
     for (const file of files) {
       const filePath = join(sessionsDir, file);
       try {
         const content = readFileSync(filePath, 'utf-8');
-        const lines = content.split('\n').filter(l => l.trim());
+        const lines = content.split('\n').filter((l) => l.trim());
 
         // Scan first ~20 lines for session metadata
         let sessionId: string | null = null;
@@ -993,7 +1165,8 @@ export class ClaudeCodeSessionLogProvider implements SessionLogProvider {
             if (msg.sessionId && !sessionId) sessionId = msg.sessionId;
             if (msg.gitBranch && !branch) branch = msg.gitBranch;
             if (msg.type === 'user' && !startedAt) {
-              startedAt = msg.timestamp ?? statSync(filePath).mtime.toISOString();
+              startedAt =
+                msg.timestamp ?? statSync(filePath).mtime.toISOString();
             }
             if (sessionId && branch) break;
           } catch {
@@ -1038,6 +1211,7 @@ git commit -m "feat: add SessionLogProvider interface with Claude Code implement
 ### Task 8: Create InsightsAnalyzer module
 
 **Files:**
+
 - Create: `packages/backend/src/orchestrator/insights/insights-analyzer.ts`
 - Create: `packages/backend/src/orchestrator/insights/prompt-builder.ts`
 - Create: `packages/backend/src/orchestrator/insights/__tests__/prompt-builder.test.ts`
@@ -1071,7 +1245,10 @@ describe('Insights PromptBuilder', () => {
       prTitle: 'PR',
       branch: 'feat/x',
       projectId: 'proj-1',
-      sessionLogPaths: ['/home/user/.claude/projects/x/sess-1.jsonl', '/home/user/.claude/projects/x/sess-2.jsonl'],
+      sessionLogPaths: [
+        '/home/user/.claude/projects/x/sess-1.jsonl',
+        '/home/user/.claude/projects/x/sess-2.jsonl',
+      ],
     });
     expect(prompt).toContain('sess-1.jsonl');
     expect(prompt).toContain('sess-2.jsonl');
@@ -1215,7 +1392,9 @@ function createMockRunner(): AgentRunner {
   } as any;
 }
 
-function createMockSessionLogProvider(sessions: any[] = []): SessionLogProvider {
+function createMockSessionLogProvider(
+  sessions: any[] = [],
+): SessionLogProvider {
   return {
     name: 'mock',
     findSessions: vi.fn(async () => sessions),
@@ -1223,7 +1402,13 @@ function createMockSessionLogProvider(sessions: any[] = []): SessionLogProvider 
 }
 
 function createMockDb() {
-  const pr = { id: 'pr-1', projectId: 'proj-1', title: 'Test PR', sourceBranch: 'feat/x', workingDirectory: '/tmp/worktree' };
+  const pr = {
+    id: 'pr-1',
+    projectId: 'proj-1',
+    title: 'Test PR',
+    sourceBranch: 'feat/x',
+    workingDirectory: '/tmp/worktree',
+  };
   const project = { id: 'proj-1', path: '/tmp/project', name: 'Test' };
 
   return {
@@ -1246,7 +1431,12 @@ describe('InsightsAnalyzer', () => {
   it('discovers session logs and spawns agent', async () => {
     const runner = createMockRunner();
     const sessionLogProvider = createMockSessionLogProvider([
-      { sessionId: 's1', filePath: '/path/to/s1.jsonl', startedAt: '2026-01-01', branch: 'feat/x' },
+      {
+        sessionId: 's1',
+        filePath: '/path/to/s1.jsonl',
+        startedAt: '2026-01-01',
+        branch: 'feat/x',
+      },
     ]);
 
     const db = createMockDb();
@@ -1312,12 +1502,18 @@ export class InsightsAnalyzer {
   }
 
   async run(prId: string): Promise<void> {
-    const pr = this.db.select().from(this.schema.pullRequests)
-      .where(eq(this.schema.pullRequests.id, prId)).get();
+    const pr = this.db
+      .select()
+      .from(this.schema.pullRequests)
+      .where(eq(this.schema.pullRequests.id, prId))
+      .get();
     if (!pr) throw new Error(`PR not found: ${prId}`);
 
-    const project = this.db.select().from(this.schema.projects)
-      .where(eq(this.schema.projects.id, pr.projectId)).get();
+    const project = this.db
+      .select()
+      .from(this.schema.projects)
+      .where(eq(this.schema.projects.id, pr.projectId))
+      .get();
     if (!project) throw new Error(`Project not found: ${pr.projectId}`);
 
     // Discover session logs for this branch
@@ -1332,7 +1528,7 @@ export class InsightsAnalyzer {
       prTitle: pr.title,
       branch: pr.sourceBranch,
       projectId: pr.projectId,
-      sessionLogPaths: sessions.map(s => s.filePath),
+      sessionLogPaths: sessions.map((s) => s.filePath),
     });
 
     // TODO: Create worktree branched off PR branch for file changes
@@ -1347,7 +1543,10 @@ export class InsightsAnalyzer {
         },
         onError: (error) => {
           // Log but don't fail the overall flow
-          console.error(`Insights analyzer error for PR ${prId}:`, error.message);
+          console.error(
+            `Insights analyzer error for PR ${prId}:`,
+            error.message,
+          );
         },
       },
     );
@@ -1372,6 +1571,7 @@ git commit -m "feat: add InsightsAnalyzer module with prompt builder"
 ### Task 9: Refactor Orchestrator to thin coordinator
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/index.ts`
 - Modify: `packages/backend/src/server.ts`
 - Modify: `packages/backend/src/orchestrator/__tests__/orchestrator.test.ts`
@@ -1414,10 +1614,13 @@ export class Orchestrator {
   private agentRunner: AgentRunner;
 
   constructor(deps: OrchestratorDeps) {
-    const adapter = deps.adapter || new ClaudeCodeAdapter({ devMode: deps.devMode });
+    const adapter =
+      deps.adapter || new ClaudeCodeAdapter({ devMode: deps.devMode });
     const broadcast = deps.broadcast || (() => {});
-    const notificationService = deps.notificationService || new NotificationService();
-    const sessionLogProvider = deps.sessionLogProvider || new ClaudeCodeSessionLogProvider();
+    const notificationService =
+      deps.notificationService || new NotificationService();
+    const sessionLogProvider =
+      deps.sessionLogProvider || new ClaudeCodeSessionLogProvider();
 
     this.agentRunner = new AgentRunner({ adapter, broadcast });
 
@@ -1475,8 +1678,11 @@ Add to `packages/backend/src/routes/pull-requests.ts`:
 fastify.post('/api/prs/:id/run-insights', async (request, reply) => {
   const { id } = request.params as { id: string };
 
-  const pr = db.select().from(schema.pullRequests)
-    .where(eq(schema.pullRequests.id, id)).get();
+  const pr = db
+    .select()
+    .from(schema.pullRequests)
+    .where(eq(schema.pullRequests.id, id))
+    .get();
   if (!pr) {
     reply.code(404).send({ error: 'Pull request not found' });
     return;
@@ -1502,8 +1708,11 @@ fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
   const { id } = request.params as { id: string };
   const { source } = request.query as { source?: string };
 
-  const pr = db.select().from(schema.pullRequests)
-    .where(eq(schema.pullRequests.id, id)).get();
+  const pr = db
+    .select()
+    .from(schema.pullRequests)
+    .where(eq(schema.pullRequests.id, id))
+    .get();
   if (!pr) {
     reply.code(404).send({ error: 'Pull request not found' });
     return;
@@ -1535,6 +1744,7 @@ git commit -m "refactor: Orchestrator as thin coordinator delegating to Feedback
 ### Task 10: Add frontend API methods for insights
 
 **Files:**
+
 - Modify: `packages/frontend/src/api.ts`
 
 **Step 1: Add insights methods to API client**
@@ -1569,6 +1779,7 @@ git commit -m "feat: add insights API methods to frontend client"
 ### Task 11: Create InsightsTab component
 
 **Files:**
+
 - Create: `packages/frontend/src/components/InsightsTab.tsx`
 
 **Step 1: Create the component**
@@ -1601,7 +1812,11 @@ interface InsightCategories {
 }
 
 interface InsightsTabProps {
-  insights: { categories: InsightCategories; branchRef: string | null; updatedAt: string } | null;
+  insights: {
+    categories: InsightCategories;
+    branchRef: string | null;
+    updatedAt: string;
+  } | null;
   hasComments: boolean;
   analyzerRunning: boolean;
   analyzerActivity: ActivityEntry[];
@@ -1609,7 +1824,11 @@ interface InsightsTabProps {
   onCancelAnalyzer: () => void;
 }
 
-function CategorySection({ title, items, renderItem }: {
+function CategorySection({
+  title,
+  items,
+  renderItem,
+}: {
   title: string;
   items: any[];
   renderItem: (item: any, i: number) => React.ReactNode;
@@ -1642,7 +1861,10 @@ function InsightCard({ item }: { item: InsightItem }) {
   return (
     <div
       className="p-3 rounded border text-sm"
-      style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-secondary, rgba(130,130,130,0.05))' }}
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary, rgba(130,130,130,0.05))',
+      }}
     >
       <div className="font-medium">{item.title}</div>
       <div className="mt-1 opacity-80">{item.description}</div>
@@ -1650,7 +1872,9 @@ function InsightCard({ item }: { item: InsightItem }) {
         <span
           className="inline-block mt-2 text-xs px-2 py-0.5 rounded"
           style={{
-            backgroundColor: item.applied ? 'rgba(46,160,67,0.15)' : 'rgba(130,130,130,0.1)',
+            backgroundColor: item.applied
+              ? 'rgba(46,160,67,0.15)'
+              : 'rgba(130,130,130,0.1)',
             color: item.applied ? 'var(--color-success)' : 'var(--color-text)',
           }}
         >
@@ -1661,18 +1885,33 @@ function InsightCard({ item }: { item: InsightItem }) {
   );
 }
 
-export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerActivity, onRunAnalyzer, onCancelAnalyzer }: InsightsTabProps) {
+export function InsightsTab({
+  insights,
+  hasComments,
+  analyzerRunning,
+  analyzerActivity,
+  onRunAnalyzer,
+  onCancelAnalyzer,
+}: InsightsTabProps) {
   // Analyzer running state
   if (analyzerRunning) {
     return (
       <div className="p-4">
         <div className="flex items-center gap-2 mb-4">
           <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-          <span className="text-sm" style={{ color: 'var(--color-warning, #d29922)' }}>Analyzer running...</span>
+          <span
+            className="text-sm"
+            style={{ color: 'var(--color-warning, #d29922)' }}
+          >
+            Analyzer running...
+          </span>
           <button
             onClick={onCancelAnalyzer}
             className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            style={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-text)',
+            }}
           >
             Cancel
           </button>
@@ -1687,9 +1926,9 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
     return (
       <div className="p-6 text-center">
         <p className="text-sm opacity-70">
-          Insights will be available after review comments are added.
-          The analyzer examines agent session transcripts and comment history
-          to recommend workflow improvements.
+          Insights will be available after review comments are added. The
+          analyzer examines agent session transcripts and comment history to
+          recommend workflow improvements.
         </p>
       </div>
     );
@@ -1704,7 +1943,10 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
           <button
             onClick={onRunAnalyzer}
             className="text-xs px-3 py-1 rounded border hover:opacity-80"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-accent)' }}
+            style={{
+              borderColor: 'var(--color-border)',
+              color: 'var(--color-accent)',
+            }}
           >
             Run Analyzer
           </button>
@@ -1714,7 +1956,8 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
       {/* No insights yet but has comments */}
       {!insights && (
         <p className="text-sm opacity-70">
-          No insights yet. Click "Run Analyzer" to analyze agent behavior and comment patterns.
+          No insights yet. Click "Run Analyzer" to analyze agent behavior and
+          comment patterns.
         </p>
       )}
 
@@ -1758,7 +2001,8 @@ export function InsightsTab({ insights, hasComments, analyzerRunning, analyzerAc
                 <InsightCard item={item} />
                 {item.prIds.length > 0 && (
                   <div className="ml-3 mt-1 text-xs opacity-60">
-                    Seen in {item.prIds.length} PR{item.prIds.length !== 1 ? 's' : ''}
+                    Seen in {item.prIds.length} PR
+                    {item.prIds.length !== 1 ? 's' : ''}
                   </div>
                 )}
               </div>
@@ -1787,6 +2031,7 @@ git commit -m "feat: add InsightsTab component with category rendering"
 ### Task 12: Integrate InsightsTab into PRReview page
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 
 **Step 1: Add insights state and tab to PRReview**
@@ -1803,7 +2048,11 @@ Add the following to `PRReview.tsx`:
 Key changes to the WebSocket handler:
 
 ```typescript
-if (msg.event === 'agent:output' && msg.data?.prId === prId && msg.data?.entry) {
+if (
+  msg.event === 'agent:output' &&
+  msg.data?.prId === prId &&
+  msg.data?.entry
+) {
   if (msg.data.source === 'insights') {
     setInsightsActivity((prev) => [...prev.slice(-49), msg.data.entry]);
   } else {
@@ -1822,14 +2071,22 @@ Add tab UI at the top of the main content area:
   <button
     onClick={() => setActiveTab('review')}
     className={`px-4 py-2 text-sm ${activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
-    style={activeTab === 'review' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
+    style={
+      activeTab === 'review'
+        ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }
+        : {}
+    }
   >
     Review
   </button>
   <button
     onClick={() => setActiveTab('insights')}
     className={`px-4 py-2 text-sm ${activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
-    style={activeTab === 'insights' ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' } : {}}
+    style={
+      activeTab === 'insights'
+        ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }
+        : {}
+    }
   >
     Insights
   </button>
@@ -1880,6 +2137,7 @@ Run: `npm run dev`
 ### Task 14: Create analyzer skill file (stub)
 
 **Files:**
+
 - Create: A skill file for the analyzer agent (location TBD based on project skill conventions)
 
 This is a stub that will be iterated on as we observe the analyzer's behavior. It contains the stable methodology that the prompt builder references.
@@ -1887,6 +2145,7 @@ This is a stub that will be iterated on as we observe the analyzer's behavior. I
 **Step 1: Create the skill**
 
 The skill file should contain:
+
 - How to read JSONL session transcripts (scan for user prompts, tool calls, errors, reasoning)
 - The 5 output categories with detailed descriptions
 - How to correlate transcript behavior with review comments

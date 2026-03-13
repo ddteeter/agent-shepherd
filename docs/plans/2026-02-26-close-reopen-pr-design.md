@@ -13,11 +13,13 @@ Two new endpoints in `packages/backend/src/routes/pull-requests.ts`:
 Sets PR status to `'closed'`.
 
 **Preconditions (all must hold):**
+
 - PR exists (404 if not)
 - Current status is `'open'` (400 if already closed or approved)
 - No active agent on latest cycle — cycle status is not `'agent_working'` (409 if agent is working)
 
 **On success:**
+
 - Updates PR status to `'closed'`
 - Broadcasts `pr:updated` WebSocket event with updated PR data
 
@@ -26,10 +28,12 @@ Sets PR status to `'closed'`.
 Sets PR status back to `'open'`.
 
 **Preconditions:**
+
 - PR exists (404 if not)
 - Current status is `'closed'` (400 if not closed)
 
 **On success:**
+
 - Updates PR status to `'open'`
 - Broadcasts `pr:updated` WebSocket event with updated PR data
 
@@ -65,12 +69,12 @@ Use existing `pr:updated` event (no new event types). Frontend already handles t
 
 ## Error Responses
 
-| Scenario | Status | Message |
-|---|---|---|
-| Close while agent working | 409 | Agent is currently working. Cancel the agent first. |
-| Close already-closed PR | 400 | PR is already closed. |
-| Close approved PR | 400 | Cannot close an approved PR. |
-| Reopen non-closed PR | 400 | PR is not closed. |
+| Scenario                  | Status | Message                                             |
+| ------------------------- | ------ | --------------------------------------------------- |
+| Close while agent working | 409    | Agent is currently working. Cancel the agent first. |
+| Close already-closed PR   | 400    | PR is already closed.                               |
+| Close approved PR         | 400    | Cannot close an approved PR.                        |
+| Reopen non-closed PR      | 400    | PR is not closed.                                   |
 
 ## Out of Scope
 

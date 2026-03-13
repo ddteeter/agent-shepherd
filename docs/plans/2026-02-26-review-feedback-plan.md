@@ -13,6 +13,7 @@
 ### Task 1: Extend ReviewCycleStatus in shared types
 
 **Files:**
+
 - Modify: `packages/shared/src/types.ts:3-8`
 
 **Step 1: Update the ReviewCycleStatus type**
@@ -59,6 +60,7 @@ git commit -m "feat: add agent_working and agent_error to ReviewCycleStatus"
 ### Task 2: Orchestrator persists agent status and tracks active sessions
 
 **Files:**
+
 - Modify: `packages/backend/src/orchestrator/index.ts`
 
 **Step 1: Add active sessions map and update handleRequestChanges to persist status**
@@ -97,33 +99,55 @@ export class Orchestrator {
     this.db = deps.db;
     this.schema = deps.schema;
     this.broadcast = deps.broadcast;
-    this.notificationService = deps.notificationService || new NotificationService();
+    this.notificationService =
+      deps.notificationService || new NotificationService();
   }
 
   private getLatestCycle(prId: string) {
-    const cycles = this.db.select().from(this.schema.reviewCycles).where(eq(this.schema.reviewCycles.prId, prId)).all();
-    return cycles.reduce((latest: any, c: any) => (!latest || c.cycleNumber > latest.cycleNumber) ? c : latest, null);
+    const cycles = this.db
+      .select()
+      .from(this.schema.reviewCycles)
+      .where(eq(this.schema.reviewCycles.prId, prId))
+      .all();
+    return cycles.reduce(
+      (latest: any, c: any) =>
+        !latest || c.cycleNumber > latest.cycleNumber ? c : latest,
+      null,
+    );
   }
 
   private setCycleStatus(cycleId: string, status: string) {
-    this.db.update(this.schema.reviewCycles)
+    this.db
+      .update(this.schema.reviewCycles)
       .set({ status })
       .where(eq(this.schema.reviewCycles.id, cycleId))
       .run();
   }
 
   async handleRequestChanges(prId: string) {
-    const pr = this.db.select().from(this.schema.pullRequests).where(eq(this.schema.pullRequests.id, prId)).get();
+    const pr = this.db
+      .select()
+      .from(this.schema.pullRequests)
+      .where(eq(this.schema.pullRequests.id, prId))
+      .get();
     if (!pr) throw new Error(`PR not found: ${prId}`);
 
-    const project = this.db.select().from(this.schema.projects).where(eq(this.schema.projects.id, pr.projectId)).get();
+    const project = this.db
+      .select()
+      .from(this.schema.projects)
+      .where(eq(this.schema.projects.id, pr.projectId))
+      .get();
     if (!project) throw new Error(`Project not found: ${pr.projectId}`);
 
     const currentCycle = this.getLatestCycle(prId);
     if (!currentCycle) throw new Error(`No review cycle found for PR: ${prId}`);
 
     // Get current cycle's comments with threads
-    const allComments = this.db.select().from(this.schema.comments).where(eq(this.schema.comments.reviewCycleId, currentCycle.id)).all();
+    const allComments = this.db
+      .select()
+      .from(this.schema.comments)
+      .where(eq(this.schema.comments.reviewCycleId, currentCycle.id))
+      .all();
 
     const topLevel = allComments.filter((c: any) => !c.parentCommentId);
     const reviewComments = topLevel.map((c: any) => ({
@@ -152,9 +176,17 @@ export class Orchestrator {
     const sessionMode = pr.agentSessionId ? 'resume' : 'new';
 
     try {
-      const session = sessionMode === 'resume' && pr.agentSessionId
-        ? await this.adapter.resumeSession({ sessionId: pr.agentSessionId, projectPath: project.path, prompt })
-        : await this.adapter.startSession({ projectPath: project.path, prompt });
+      const session =
+        sessionMode === 'resume' && pr.agentSessionId
+          ? await this.adapter.resumeSession({
+              sessionId: pr.agentSessionId,
+              projectPath: project.path,
+              prompt,
+            })
+          : await this.adapter.startSession({
+              projectPath: project.path,
+              prompt,
+            });
 
       this.activeSessions.set(prId, session);
 
@@ -172,7 +204,10 @@ export class Orchestrator {
     } catch (error) {
       this.activeSessions.delete(prId);
       this.setCycleStatus(currentCycle.id, 'agent_error');
-      this.broadcast?.('agent:error', { prId, error: (error as Error).message });
+      this.broadcast?.('agent:error', {
+        prId,
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -210,6 +245,7 @@ git commit -m "feat: orchestrator persists agent status and tracks active sessio
 ### Task 3: Add cancel-agent endpoint
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/pull-requests.ts`
 
 **Step 1: Add the cancel-agent route**
@@ -217,28 +253,28 @@ git commit -m "feat: orchestrator persists agent status and tracks active sessio
 After the existing `POST /api/prs/:id/review` handler (after line 206), add:
 
 ```typescript
-  // POST /api/prs/:id/cancel-agent — Cancel a running agent
-  fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
-    const { id } = request.params as { id: string };
+// POST /api/prs/:id/cancel-agent — Cancel a running agent
+fastify.post('/api/prs/:id/cancel-agent', async (request, reply) => {
+  const { id } = request.params as { id: string };
 
-    const pr = db
-      .select()
-      .from(schema.pullRequests)
-      .where(eq(schema.pullRequests.id, id))
-      .get();
+  const pr = db
+    .select()
+    .from(schema.pullRequests)
+    .where(eq(schema.pullRequests.id, id))
+    .get();
 
-    if (!pr) {
-      reply.code(404).send({ error: 'Pull request not found' });
-      return;
-    }
+  if (!pr) {
+    reply.code(404).send({ error: 'Pull request not found' });
+    return;
+  }
 
-    const orchestrator = (fastify as any).orchestrator;
-    if (orchestrator) {
-      await orchestrator.cancelAgent(id);
-    }
+  const orchestrator = (fastify as any).orchestrator;
+  if (orchestrator) {
+    await orchestrator.cancelAgent(id);
+  }
 
-    return { status: 'cancelled' };
-  });
+  return { status: 'cancelled' };
+});
 ```
 
 **Step 2: Verify backend compiles**
@@ -258,6 +294,7 @@ git commit -m "feat: add cancel-agent endpoint"
 ### Task 4: Frontend API — Add cancelAgent method
 
 **Files:**
+
 - Modify: `packages/frontend/src/api.ts`
 
 **Step 1: Add cancelAgent to the prs namespace**
@@ -281,6 +318,7 @@ git commit -m "feat: add cancelAgent to frontend API client"
 ### Task 5: ReviewBar — Disable buttons when agent is working
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/ReviewBar.tsx`
 
 **Step 1: Add agentWorking prop and disable buttons**
@@ -294,7 +332,10 @@ interface ReviewBarProps {
   commentCount: number;
   hasAgentSession: boolean;
   agentWorking: boolean;
-  onReview: (action: 'approve' | 'request-changes', opts?: { clearSession?: boolean }) => void;
+  onReview: (
+    action: 'approve' | 'request-changes',
+    opts?: { clearSession?: boolean },
+  ) => void;
 }
 ```
 
@@ -307,27 +348,38 @@ export function ReviewBar({ prId, prStatus, commentCount, hasAgentSession, agent
 Add `disabled` and styling to both buttons. For the Approve button:
 
 ```tsx
-        <button
-          onClick={() => onReview('approve')}
-          disabled={agentWorking}
-          className="btn-approve px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ backgroundColor: 'var(--color-btn-approve-bg)', color: 'var(--color-btn-approve-fg)' }}
-        >
-          Approve
-        </button>
+<button
+  onClick={() => onReview('approve')}
+  disabled={agentWorking}
+  className="btn-approve px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+  style={{
+    backgroundColor: 'var(--color-btn-approve-bg)',
+    color: 'var(--color-btn-approve-fg)',
+  }}
+>
+  Approve
+</button>
 ```
 
 For the Request Changes button:
 
 ```tsx
-        <button
-          onClick={() => onReview('request-changes', clearSession ? { clearSession: true } : undefined)}
-          disabled={agentWorking}
-          className="btn-danger px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ backgroundColor: 'var(--color-btn-danger-bg)', color: 'var(--color-btn-danger-fg)' }}
-        >
-          Request Changes
-        </button>
+<button
+  onClick={() =>
+    onReview(
+      'request-changes',
+      clearSession ? { clearSession: true } : undefined,
+    )
+  }
+  disabled={agentWorking}
+  className="btn-danger px-4 py-1.5 text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+  style={{
+    backgroundColor: 'var(--color-btn-danger-bg)',
+    color: 'var(--color-btn-danger-fg)',
+  }}
+>
+  Request Changes
+</button>
 ```
 
 **Step 2: Commit**
@@ -342,6 +394,7 @@ git commit -m "feat: disable ReviewBar buttons when agent is working"
 ### Task 6: PRReview — Show agent status and wire up WebSocket events
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 
 This is the main integration task. Changes:
@@ -357,21 +410,21 @@ This is the main integration task. Changes:
 After the existing state declarations (around line 34), add:
 
 ```typescript
-  const [agentError, setAgentError] = useState<string | null>(null);
+const [agentError, setAgentError] = useState<string | null>(null);
 ```
 
 After `handleReview` (around line 191), add the cancel handler:
 
 ```typescript
-  const handleCancelAgent = async () => {
-    if (!prId) return;
-    try {
-      await api.prs.cancelAgent(prId);
-      await fetchCycles();
-    } catch (err) {
-      console.error('Failed to cancel agent:', err);
-    }
-  };
+const handleCancelAgent = async () => {
+  if (!prId) return;
+  try {
+    await api.prs.cancelAgent(prId);
+    await fetchCycles();
+  } catch (err) {
+    console.error('Failed to cancel agent:', err);
+  }
+};
 ```
 
 **Step 2: Update WebSocket handler**
@@ -379,43 +432,55 @@ After `handleReview` (around line 191), add the cancel handler:
 Update the `useWebSocket` callback to handle agent events and capture error messages. Change the callback from:
 
 ```typescript
-  const { connected } = useWebSocket((msg) => {
-    // Refresh comments on new comment
-    if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
-      fetchComments();
+const { connected } = useWebSocket((msg) => {
+  // Refresh comments on new comment
+  if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
+    fetchComments();
+  }
+  // Refresh PR on status change
+  if (
+    msg.event === 'review:submitted' ||
+    msg.event === 'pr:ready-for-review' ||
+    msg.event === 'pr:updated'
+  ) {
+    if (prId) {
+      api.prs.get(prId).then(setPr);
+      fetchCycles();
     }
-    // Refresh PR on status change
-    if (msg.event === 'review:submitted' || msg.event === 'pr:ready-for-review' || msg.event === 'pr:updated') {
-      if (prId) {
-        api.prs.get(prId).then(setPr);
-        fetchCycles();
-      }
-    }
-  });
+  }
+});
 ```
 
 to:
 
 ```typescript
-  const { connected } = useWebSocket((msg) => {
-    if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
-      fetchComments();
-    }
-    if (msg.event === 'review:submitted' || msg.event === 'pr:ready-for-review' || msg.event === 'pr:updated') {
-      if (prId) {
-        api.prs.get(prId).then(setPr);
-        fetchCycles();
-      }
-    }
-    if (msg.event === 'agent:working' || msg.event === 'agent:completed' || msg.event === 'agent:cancelled') {
-      setAgentError(null);
+const { connected } = useWebSocket((msg) => {
+  if (msg.event === 'comment:added' || msg.event === 'comment:updated') {
+    fetchComments();
+  }
+  if (
+    msg.event === 'review:submitted' ||
+    msg.event === 'pr:ready-for-review' ||
+    msg.event === 'pr:updated'
+  ) {
+    if (prId) {
+      api.prs.get(prId).then(setPr);
       fetchCycles();
     }
-    if (msg.event === 'agent:error') {
-      setAgentError(msg.data?.error || 'Unknown error');
-      fetchCycles();
-    }
-  });
+  }
+  if (
+    msg.event === 'agent:working' ||
+    msg.event === 'agent:completed' ||
+    msg.event === 'agent:cancelled'
+  ) {
+    setAgentError(null);
+    fetchCycles();
+  }
+  if (msg.event === 'agent:error') {
+    setAgentError(msg.data?.error || 'Unknown error');
+    fetchCycles();
+  }
+});
 ```
 
 **Step 3: Compute agent status from cycles**
@@ -423,13 +488,16 @@ to:
 After the existing `commentCounts` memo (around line 223), add:
 
 ```typescript
-  const latestCycle = useMemo(() => {
-    if (cycles.length === 0) return null;
-    return cycles.reduce((latest, c) => c.cycleNumber > latest.cycleNumber ? c : latest, cycles[0]);
-  }, [cycles]);
+const latestCycle = useMemo(() => {
+  if (cycles.length === 0) return null;
+  return cycles.reduce(
+    (latest, c) => (c.cycleNumber > latest.cycleNumber ? c : latest),
+    cycles[0],
+  );
+}, [cycles]);
 
-  const agentWorking = latestCycle?.status === 'agent_working';
-  const agentErrored = latestCycle?.status === 'agent_error';
+const agentWorking = latestCycle?.status === 'agent_working';
+const agentErrored = latestCycle?.status === 'agent_error';
 ```
 
 **Step 4: Add agent status display in the PR header**
@@ -437,27 +505,36 @@ After the existing `commentCounts` memo (around line 223), add:
 After the existing branch info div (the one with `pr.sourceBranch` → `pr.baseBranch`, around line 311), add:
 
 ```tsx
-        {agentWorking && (
-          <div className="flex items-center gap-2 text-sm mt-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-            <span style={{ color: 'var(--color-warning, #d29922)' }}>Agent working...</span>
-            <button
-              onClick={handleCancelAgent}
-              className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-        {agentErrored && (
-          <div className="flex items-center gap-2 text-sm mt-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
-            <span style={{ color: 'var(--color-danger, #cf222e)' }}>
-              Agent error{agentError ? `: ${agentError}` : ''}
-            </span>
-          </div>
-        )}
+{
+  agentWorking && (
+    <div className="flex items-center gap-2 text-sm mt-1">
+      <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+      <span style={{ color: 'var(--color-warning, #d29922)' }}>
+        Agent working...
+      </span>
+      <button
+        onClick={handleCancelAgent}
+        className="text-xs px-2 py-0.5 rounded border hover:opacity-80"
+        style={{
+          borderColor: 'var(--color-border)',
+          color: 'var(--color-text)',
+        }}
+      >
+        Cancel
+      </button>
+    </div>
+  );
+}
+{
+  agentErrored && (
+    <div className="flex items-center gap-2 text-sm mt-1">
+      <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
+      <span style={{ color: 'var(--color-danger, #cf222e)' }}>
+        Agent error{agentError ? `: ${agentError}` : ''}
+      </span>
+    </div>
+  );
+}
 ```
 
 **Step 5: Pass agentWorking to ReviewBar**
@@ -465,26 +542,26 @@ After the existing branch info div (the one with `pr.sourceBranch` → `pr.baseB
 Update the ReviewBar JSX from:
 
 ```tsx
-      <ReviewBar
-        prId={prId || ''}
-        prStatus={pr.status}
-        commentCount={topLevelComments.length}
-        hasAgentSession={!!pr.agentSessionId}
-        onReview={handleReview}
-      />
+<ReviewBar
+  prId={prId || ''}
+  prStatus={pr.status}
+  commentCount={topLevelComments.length}
+  hasAgentSession={!!pr.agentSessionId}
+  onReview={handleReview}
+/>
 ```
 
 to:
 
 ```tsx
-      <ReviewBar
-        prId={prId || ''}
-        prStatus={pr.status}
-        commentCount={topLevelComments.length}
-        hasAgentSession={!!pr.agentSessionId}
-        agentWorking={agentWorking}
-        onReview={handleReview}
-      />
+<ReviewBar
+  prId={prId || ''}
+  prStatus={pr.status}
+  commentCount={topLevelComments.length}
+  hasAgentSession={!!pr.agentSessionId}
+  agentWorking={agentWorking}
+  onReview={handleReview}
+/>
 ```
 
 **Step 6: Verify frontend compiles**

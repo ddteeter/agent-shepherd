@@ -13,6 +13,7 @@
 ### Task 1: Fix comment count to include agent replies
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx:267-275` (commentCounts memo)
 - Modify: `packages/frontend/src/pages/PRReview.tsx:469` (ReviewBar commentCount prop)
 
@@ -35,10 +36,13 @@ const commentCounts = useMemo(() => {
 **Step 2: Update ReviewBar comment count**
 
 Change line 469 from:
+
 ```typescript
 commentCount={topLevelComments.length}
 ```
+
 to:
+
 ```typescript
 commentCount={comments.length}
 ```
@@ -60,6 +64,7 @@ git commit -m "fix: include agent replies in comment counts"
 ### Task 2: Auto-unresolve parent comment when reply is added (backend)
 
 **Files:**
+
 - Modify: `packages/backend/src/routes/comments.ts` (POST single comment + POST batch)
 
 **Step 1: Write failing test**
@@ -75,6 +80,7 @@ it('should unresolve parent comment when reply is added', async () => {
 ```
 
 The test should:
+
 1. Create a project, PR, and review cycle
 2. Create a top-level comment
 3. Resolve it via PUT /api/comments/:id { resolved: true }
@@ -93,15 +99,21 @@ In `packages/backend/src/routes/comments.ts`, in the `POST /api/prs/:prId/commen
 ```typescript
 // Auto-unresolve parent if it was resolved
 if (parentCommentId) {
-  const parent = db.select().from(schema.comments)
-    .where(eq(schema.comments.id, parentCommentId)).get();
+  const parent = db
+    .select()
+    .from(schema.comments)
+    .where(eq(schema.comments.id, parentCommentId))
+    .get();
   if (parent && parent.resolved) {
     db.update(schema.comments)
       .set({ resolved: false })
       .where(eq(schema.comments.id, parentCommentId))
       .run();
-    const updatedParent = db.select().from(schema.comments)
-      .where(eq(schema.comments.id, parentCommentId)).get();
+    const updatedParent = db
+      .select()
+      .from(schema.comments)
+      .where(eq(schema.comments.id, parentCommentId))
+      .get();
     const broadcast = (fastify as any).broadcast;
     if (broadcast) broadcast('comment:updated', updatedParent);
   }
@@ -158,6 +170,7 @@ git commit -m "fix: auto-unresolve parent comment when reply is added"
 ### Task 3: Move Edit/Delete buttons inline with parent comment
 
 **Files:**
+
 - Modify: `packages/frontend/src/components/CommentThread.tsx`
 
 **Step 1: Add inline Edit/Delete to parent comment header**
@@ -165,23 +178,27 @@ git commit -m "fix: auto-unresolve parent comment when reply is added"
 In `CommentThread.tsx`, add Edit and Delete buttons to the parent comment header div (after the resolved badge, around line 80), using the same pattern as reply buttons:
 
 ```tsx
-{isEditable(comment) && editingId !== comment.id && (
-  <button
-    onClick={() => setEditingId(comment.id)}
-    className="text-xs opacity-50 hover:opacity-100"
-  >
-    Edit
-  </button>
-)}
-{isDeletable(comment) && (
-  <button
-    onClick={() => onDelete!(comment.id)}
-    className="text-xs opacity-50 hover:opacity-100"
-    style={{ color: 'var(--color-danger)' }}
-  >
-    Delete
-  </button>
-)}
+{
+  isEditable(comment) && editingId !== comment.id && (
+    <button
+      onClick={() => setEditingId(comment.id)}
+      className="text-xs opacity-50 hover:opacity-100"
+    >
+      Edit
+    </button>
+  );
+}
+{
+  isDeletable(comment) && (
+    <button
+      onClick={() => onDelete!(comment.id)}
+      className="text-xs opacity-50 hover:opacity-100"
+      style={{ color: 'var(--color-danger)' }}
+    >
+      Delete
+    </button>
+  );
+}
 ```
 
 **Step 2: Remove Edit/Delete from actions bar**
@@ -189,6 +206,7 @@ In `CommentThread.tsx`, add Edit and Delete buttons to the parent comment header
 Remove the Edit button block (lines 149-156) and Delete button block (lines 165-172) from the actions bar. Keep Reply and Resolve.
 
 The actions bar should only contain:
+
 ```tsx
 <div className="px-3 py-2 border-t flex gap-2" style={{ borderColor: 'var(--color-border)' }}>
   <button onClick={() => setShowReplyForm(!showReplyForm)} ...>Reply</button>
@@ -215,6 +233,7 @@ git commit -m "fix: move edit/delete buttons inline with parent comment header"
 ### Task 4: Add WebSocket auto-refresh to ProjectView
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/ProjectView.tsx`
 
 **Step 1: Add WebSocket listener**

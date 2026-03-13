@@ -22,13 +22,13 @@ Replace the push-all-comments model with a pull-based approach. The initial prom
 
 A new command group `review` with a `comments` subcommand. Flags:
 
-| Flag | Description |
-|------|-------------|
-| `--summary` | Output comment counts by severity + file list with per-file counts. No comment bodies. |
-| `--file <path>` | Filter to comments on a specific file path. |
-| `--severity <level>` | Filter to a specific severity: `must-fix`, `request`, or `suggestion`. |
-| `--all` | Fetch all comments (escape hatch for cross-references between files). |
-| (no flags) | Same as `--all`. |
+| Flag                 | Description                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| `--summary`          | Output comment counts by severity + file list with per-file counts. No comment bodies. |
+| `--file <path>`      | Filter to comments on a specific file path.                                            |
+| `--severity <level>` | Filter to a specific severity: `must-fix`, `request`, or `suggestion`.                 |
+| `--all`              | Fetch all comments (escape hatch for cross-references between files).                  |
+| (no flags)           | Same as `--all`.                                                                       |
 
 **Output format** — structured text, not JSON, so the agent reads it naturally:
 
@@ -66,6 +66,7 @@ Thread:
 ```
 
 **Ordering** — comments are returned top-down:
+
 1. General (no-file) comments first
 2. Files in diff order (not alphabetical)
 3. Within each file, by line number ascending
@@ -76,11 +77,11 @@ This mirrors the order the human reviewed in, so cross-references like "same iss
 
 Add optional query parameters to the existing endpoint:
 
-| Param | Type | Description |
-|-------|------|-------------|
-| `filePath` | string | Filter to comments on this file |
-| `severity` | string | Filter to this severity level |
-| `summary` | boolean | Return only counts and file list, no comment bodies |
+| Param      | Type    | Description                                         |
+| ---------- | ------- | --------------------------------------------------- |
+| `filePath` | string  | Filter to comments on this file                     |
+| `severity` | string  | Filter to this severity level                       |
+| `summary`  | boolean | Return only counts and file list, no comment bodies |
 
 The `summary=true` response shape:
 
@@ -89,8 +90,16 @@ The `summary=true` response shape:
   "total": 14,
   "bySeverity": { "must-fix": 6, "request": 5, "suggestion": 3 },
   "files": [
-    { "path": "src/routes/auth.ts", "count": 4, "bySeverity": { "must-fix": 2, "request": 1, "suggestion": 1 } },
-    { "path": "src/middleware/session.ts", "count": 3, "bySeverity": { "must-fix": 2, "request": 1 } }
+    {
+      "path": "src/routes/auth.ts",
+      "count": 4,
+      "bySeverity": { "must-fix": 2, "request": 1, "suggestion": 1 }
+    },
+    {
+      "path": "src/middleware/session.ts",
+      "count": 3,
+      "bySeverity": { "must-fix": 2, "request": 1 }
+    }
   ],
   "generalCount": 2
 }
@@ -105,14 +114,17 @@ File ordering in the summary requires knowing the diff file order. The endpoint 
 The `buildReviewPrompt` function changes to produce a slim prompt:
 
 **Keeps:**
+
 - PR title, ID, context section
 - "IMPORTANT: Read This First" section (updated for pull-based workflow)
 - Full skill documentation (severity handling, reply format, common mistakes)
 
 **Removes:**
+
 - The entire `## Comments` section with all comment bodies
 
 **Adds:**
+
 - A `## Comment Summary` section with counts by severity and file list with per-file counts (generated at prompt build time)
 - Updated workflow instructions describing the pull-based pattern
 
@@ -122,7 +134,11 @@ The `buildReviewPrompt` function changes to produce a slim prompt:
 interface CommentSummary {
   total: number;
   bySeverity: Record<string, number>;
-  files: Array<{ path: string; count: number; bySeverity: Record<string, number> }>;
+  files: Array<{
+    path: string;
+    count: number;
+    bySeverity: Record<string, number>;
+  }>;
   generalCount: number;
 }
 
@@ -130,7 +146,7 @@ interface PromptInput {
   prId: string;
   prTitle: string;
   agentContext: string | null;
-  commentSummary: CommentSummary;  // replaces comments: ReviewComment[]
+  commentSummary: CommentSummary; // replaces comments: ReviewComment[]
 }
 ```
 
@@ -182,10 +198,10 @@ No new infrastructure needed. The existing `shepherd batch` command already supp
 
 ## Component Summary
 
-| Component | Change |
-|-----------|--------|
-| `packages/cli/src/commands/review.ts` | **New** — `shepherd review <pr-id> comments` command with `--summary`, `--file`, `--severity`, `--all` flags |
-| `packages/backend/src/routes/comments.ts` | **Modified** — add `filePath`, `severity`, `summary` query params to GET endpoint |
+| Component                                             | Change                                                                                                                       |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `packages/cli/src/commands/review.ts`                 | **New** — `shepherd review <pr-id> comments` command with `--summary`, `--file`, `--severity`, `--all` flags                 |
+| `packages/backend/src/routes/comments.ts`             | **Modified** — add `filePath`, `severity`, `summary` query params to GET endpoint                                            |
 | `packages/backend/src/orchestrator/prompt-builder.ts` | **Modified** — accept `CommentSummary` instead of `ReviewComment[]`, generate slim prompt with summary + pull-based workflow |
-| `packages/backend/src/orchestrator/index.ts` | **Modified** — compute comment summary + diff file ordering instead of full comment list |
-| `packages/backend/src/routes/diff.ts` | **Minor** — export `extractFilesFromDiff` for reuse by orchestrator |
+| `packages/backend/src/orchestrator/index.ts`          | **Modified** — compute comment summary + diff file ordering instead of full comment list                                     |
+| `packages/backend/src/routes/diff.ts`                 | **Minor** — export `extractFilesFromDiff` for reuse by orchestrator                                                          |

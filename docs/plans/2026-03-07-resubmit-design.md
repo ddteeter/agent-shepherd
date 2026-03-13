@@ -45,6 +45,7 @@ Body: { context: string }
 ```
 
 Performs the same cycle creation as `agent-ready` but:
+
 - Sets previous cycle status to `superseded` instead of marking `agentCompletedAt`
 - Stores the provided context
 - Does not require the previous cycle to be in `changes_requested` or `agent_working` status
@@ -58,6 +59,7 @@ No changes needed. Comments already display across all cycles for a PR (the GET 
 Cycle snapshots work as-is — each snapshot is always the full base→source diff. A superseded cycle retains its snapshot for historical reference.
 
 **Inter-cycle diffs:** The frontend cycle selector should be aware of superseded cycles:
+
 - Default the inter-cycle comparison to "since last reviewed cycle" (skipping superseded ones) rather than "since previous cycle"
 - Both options remain available in the dropdown
 - Superseded cycles are visually distinct (e.g., grayed out, labeled) in the cycle selector
@@ -82,6 +84,7 @@ The human's role is just to say "resubmit this" — the agent handles context ge
 ### README
 
 Add an "Outside of Agent Shepherd Changes" section documenting the workflow:
+
 1. Make changes directly on the branch
 2. Tell the agent to resubmit (the agent generates context and runs the command)
 3. Review the new cycle in the UI
@@ -95,6 +98,7 @@ Add an "Outside of Agent Shepherd Changes" section documenting the workflow:
 ### Context storage (TBD)
 
 Options:
+
 1. Add a `context` text column to `review_cycles` — simple, keeps context with the cycle
 2. Store as a system-authored comment on the new cycle — visible in the comment thread
 3. Update `agentContext` on the `pull_requests` table — reuses existing field but overwrites previous context

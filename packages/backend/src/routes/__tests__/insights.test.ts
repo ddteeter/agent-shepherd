@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import {
+  createTestServer,
+  jsonBody,
+  jsonArrayBody,
+} from '../../__tests__/helpers.js';
 
 describe('Insights API', () => {
   let server: FastifyInstance;
@@ -10,19 +14,19 @@ describe('Insights API', () => {
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
-    projectId = proj.json().id;
+    projectId = jsonBody(projectResponse).id as string;
 
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    prId = pr.json().id;
+    prId = jsonBody(prResponse).id as string;
   });
 
   afterEach(async () => {
@@ -35,12 +39,18 @@ describe('Insights API', () => {
       url: `/api/prs/${prId}/insights`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toBeNull();
+    expect(jsonBody(response)).toBeNull();
   });
 
   it('PUT /api/prs/:prId/insights creates insights on first call (upsert)', async () => {
     const categories = {
-      claudeMdRecommendations: [{ title: 'Add lint rule', description: 'Enable no-unused-vars', confidence: 'high' }],
+      claudeMdRecommendations: [
+        {
+          title: 'Add lint rule',
+          description: 'Enable no-unused-vars',
+          confidence: 'high',
+        },
+      ],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
@@ -54,7 +64,7 @@ describe('Insights API', () => {
     });
     expect(response.statusCode).toBe(200);
 
-    const body = response.json();
+    const body = jsonBody(response);
     expect(body.prId).toBe(prId);
     expect(body.categories).toEqual(categories);
     expect(body.branchRef).toBe('feat/x');
@@ -65,97 +75,114 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights updates existing insights (upsert)', async () => {
     const categories1 = {
-      claudeMdRecommendations: [{ title: 'Rule A', description: 'Desc A', confidence: 'high' }],
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Desc A', confidence: 'high' },
+      ],
       skillRecommendations: [],
       promptEngineering: [],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };
     const categories2 = {
-      claudeMdRecommendations: [{ title: 'Rule B', description: 'Desc B', confidence: 'medium' }],
-      skillRecommendations: [{ title: 'Skill 1', description: 'Do this', confidence: 'low' }],
+      claudeMdRecommendations: [
+        { title: 'Rule B', description: 'Desc B', confidence: 'medium' },
+      ],
+      skillRecommendations: [
+        { title: 'Skill 1', description: 'Do this', confidence: 'low' },
+      ],
       promptEngineering: [],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };
 
-    // First PUT — create
     const first = await inject({
       method: 'PUT',
       url: `/api/prs/${prId}/insights`,
       payload: { categories: categories1 },
     });
     expect(first.statusCode).toBe(200);
-    const firstId = first.json().id;
+    const firstId = jsonBody(first).id as string;
 
-    // Second PUT — update
     const second = await inject({
       method: 'PUT',
       url: `/api/prs/${prId}/insights`,
       payload: { categories: categories2, branchRef: 'feat/y' },
     });
     expect(second.statusCode).toBe(200);
-    expect(second.json().id).toBe(firstId); // same row
-    expect(second.json().categories).toEqual(categories2);
-    expect(second.json().branchRef).toBe('feat/y');
+    const secondBody = jsonBody(second);
+    expect(secondBody.id).toBe(firstId);
+    expect(secondBody.categories).toEqual(categories2);
+    expect(secondBody.branchRef).toBe('feat/y');
   });
 
   it('GET /api/projects/:projectId/comments/history returns comments across all PRs', async () => {
-    // Create a second PR in the same project
-    const pr2 = await inject({
+    const pr2Response = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR 2', description: '', sourceBranch: 'feat/y' },
     });
-    const prId2 = pr2.json().id;
+    const prId2 = jsonBody(pr2Response).id as string;
 
-    // Add a comment to PR 1
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
-      payload: { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'Fix in PR1', severity: 'must-fix', author: 'human' },
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Fix in PR1',
+        severity: 'must-fix',
+        author: 'human',
+      },
     });
 
-    // Add a comment to PR 2
     await inject({
       method: 'POST',
       url: `/api/prs/${prId2}/comments`,
-      payload: { filePath: 'src/b.ts', startLine: 5, endLine: 5, body: 'Fix in PR2', severity: 'suggestion', author: 'human' },
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 5,
+        endLine: 5,
+        body: 'Fix in PR2',
+        severity: 'suggestion',
+        author: 'human',
+      },
     });
 
-    // Fetch comment history for the project
     const response = await inject({
       method: 'GET',
       url: `/api/projects/${projectId}/comments/history`,
     });
     expect(response.statusCode).toBe(200);
 
-    const comments = response.json();
+    const comments = jsonArrayBody(response);
     expect(comments).toHaveLength(2);
 
-    const bodies = comments.map((c: any) => c.body).sort();
+    const bodies = comments.map((c) => String(c.body));
+    bodies.sort((a, b) => a.localeCompare(b));
     expect(bodies).toEqual(['Fix in PR1', 'Fix in PR2']);
 
-    // Each comment should have a prId
-    const prIds = comments.map((c: any) => c.prId).sort();
-    expect(prIds).toEqual([prId, prId2].sort());
+    const prIds = comments.map((c) => String(c.prId));
+    prIds.sort((a, b) => a.localeCompare(b));
+    const expectedPrIds = [prId, prId2];
+    expectedPrIds.sort((a, b) => a.localeCompare(b));
+    expect(prIds).toEqual(expectedPrIds);
   });
 
   it('GET /api/projects/:projectId/comments/history returns empty array for project with no PRs', async () => {
-    // Create a fresh project with no PRs
-    const proj2 = await inject({
+    const proj2Response = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'empty-project', path: '/tmp/empty' },
     });
-    const emptyProjectId = proj2.json().id;
+    const emptyProjectId = jsonBody(proj2Response).id as string;
 
     const response = await inject({
       method: 'GET',
       url: `/api/projects/${emptyProjectId}/comments/history`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([]);
+    expect(jsonArrayBody(response)).toEqual([]);
   });
 
   it('POST /api/prs/:id/run-insights returns insights_started', async () => {
@@ -164,7 +191,7 @@ describe('Insights API', () => {
       url: `/api/prs/${prId}/run-insights`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: 'insights_started' });
+    expect(jsonBody(response)).toEqual({ status: 'insights_started' });
   });
 
   it('POST /api/prs/:id/run-insights returns 404 for non-existent PR', async () => {
@@ -181,7 +208,7 @@ describe('Insights API', () => {
       url: `/api/prs/${prId}/cancel-agent?source=insights`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: 'cancelled' });
+    expect(jsonBody(response)).toEqual({ status: 'cancelled' });
   });
 
   it('POST /api/prs/:id/cancel-agent works without source param', async () => {
@@ -190,14 +217,20 @@ describe('Insights API', () => {
       url: `/api/prs/${prId}/cancel-agent`,
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: 'cancelled' });
+    expect(jsonBody(response)).toEqual({ status: 'cancelled' });
   });
 
   it('GET /api/prs/:prId/insights returns insights after creation', async () => {
     const categories = {
       claudeMdRecommendations: [],
       skillRecommendations: [],
-      promptEngineering: [{ title: 'Better prompts', description: 'Use XML tags', confidence: 'high' }],
+      promptEngineering: [
+        {
+          title: 'Better prompts',
+          description: 'Use XML tags',
+          confidence: 'high',
+        },
+      ],
       agentBehaviorObservations: [],
       recurringPatterns: [],
     };
@@ -214,7 +247,7 @@ describe('Insights API', () => {
     });
     expect(response.statusCode).toBe(200);
 
-    const body = response.json();
+    const body = jsonBody(response);
     expect(body).not.toBeNull();
     expect(body.prId).toBe(prId);
     expect(body.categories).toEqual(categories);

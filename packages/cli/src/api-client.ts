@@ -1,26 +1,26 @@
-import { readFileSync } from 'fs';
-import { join } from 'path';
-import { homedir } from 'os';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { homedir } from 'node:os';
 
 export class ApiClient {
-  private cachedToken: string | null = null;
+  private cachedToken: string | undefined = undefined;
 
   constructor(
     private baseUrl: string,
     private tokenOverride?: string,
   ) {}
 
-  private url(path: string): string {
+  url(path: string): string {
     return `${this.baseUrl}${path}`;
   }
 
-  private getToken(): string {
+  getToken(): string {
     if (this.tokenOverride) return this.tokenOverride;
     if (this.cachedToken) return this.cachedToken;
     try {
       this.cachedToken = readFileSync(
-        join(homedir(), '.agent-shepherd', 'session-token'),
-        'utf-8',
+        path.join(homedir(), '.agent-shepherd', 'session-token'),
+        'utf8',
       ).trim();
       return this.cachedToken;
     } catch {
@@ -30,32 +30,38 @@ export class ApiClient {
     }
   }
 
-  private authHeaders(): Record<string, string> {
+  authHeaders(): Record<string, string> {
     return { 'X-Session-Token': this.getToken() };
   }
 
-  async get<T>(path: string): Promise<T> {
-    const res = await fetch(this.url(path), {
+  async get<T>(requestPath: string): Promise<T> {
+    const response = await fetch(this.url(requestPath), {
       headers: this.authHeaders(),
     });
-    if (!res.ok) throw new Error(`GET ${path}: ${res.status} ${await res.text()}`);
-    return res.json() as T;
+    if (!response.ok)
+      throw new Error(
+        `GET ${requestPath}: ${String(response.status)} ${await response.text()}`,
+      );
+    return response.json() as T;
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T>(requestPath: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = this.authHeaders();
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    const res = await fetch(this.url(path), {
+    const response = await fetch(this.url(requestPath), {
       method: 'POST',
       headers,
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    if (!res.ok) throw new Error(`POST ${path}: ${res.status} ${await res.text()}`);
-    return res.json() as T;
+    if (!response.ok)
+      throw new Error(
+        `POST ${requestPath}: ${String(response.status)} ${await response.text()}`,
+      );
+    return response.json() as T;
   }
 
-  async put<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(this.url(path), {
+  async put<T>(requestPath: string, body: unknown): Promise<T> {
+    const response = await fetch(this.url(requestPath), {
       method: 'PUT',
       headers: {
         ...this.authHeaders(),
@@ -63,7 +69,10 @@ export class ApiClient {
       },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`PUT ${path}: ${res.status} ${await res.text()}`);
-    return res.json() as T;
+    if (!response.ok)
+      throw new Error(
+        `PUT ${requestPath}: ${String(response.status)} ${await response.text()}`,
+      );
+    return response.json() as T;
   }
 }

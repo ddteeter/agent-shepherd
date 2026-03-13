@@ -15,6 +15,7 @@
 ### Task 1: Monorepo Scaffolding
 
 **Files:**
+
 - Create: `package.json` (root)
 - Create: `tsconfig.base.json`
 - Create: `packages/backend/package.json`
@@ -34,9 +35,7 @@
   "name": "agent-shepherd",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "dev": "npm run dev --workspace=packages/backend & npm run dev --workspace=packages/frontend",
     "build": "npm run build --workspaces",
@@ -75,6 +74,7 @@
 **Step 3: Create shared package**
 
 `packages/shared/package.json`:
+
 ```json
 {
   "name": "@agent-shepherd/shared",
@@ -92,6 +92,7 @@
 ```
 
 `packages/shared/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -104,11 +105,13 @@
 ```
 
 `packages/shared/src/index.ts`:
+
 ```typescript
 export * from './types.js';
 ```
 
 `packages/shared/src/types.ts`:
+
 ```typescript
 // Shared types - populated in Task 3
 ```
@@ -116,6 +119,7 @@ export * from './types.js';
 **Step 4: Create backend package**
 
 `packages/backend/package.json`:
+
 ```json
 {
   "name": "@agent-shepherd/backend",
@@ -137,6 +141,7 @@ export * from './types.js';
 ```
 
 `packages/backend/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -151,6 +156,7 @@ export * from './types.js';
 **Step 5: Create frontend package**
 
 `packages/frontend/package.json`:
+
 ```json
 {
   "name": "@agent-shepherd/frontend",
@@ -171,6 +177,7 @@ export * from './types.js';
 ```
 
 `packages/frontend/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -186,6 +193,7 @@ export * from './types.js';
 **Step 6: Create CLI package**
 
 `packages/cli/package.json`:
+
 ```json
 {
   "name": "@agent-shepherd/cli",
@@ -207,6 +215,7 @@ export * from './types.js';
 ```
 
 `packages/cli/tsconfig.json`:
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
@@ -292,12 +301,14 @@ git commit -m "chore: install core dependencies for all packages"
 ### Task 3: Shared Types
 
 **Files:**
+
 - Create: `packages/shared/src/types.ts`
 - Test: `packages/shared/src/__tests__/types.test.ts`
 
 **Step 1: Write the type validation test**
 
 `packages/shared/src/__tests__/types.test.ts`:
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import type {
@@ -349,11 +360,15 @@ describe('Shared Types', () => {
   it('can construct a valid BatchCommentPayload', () => {
     const payload: BatchCommentPayload = {
       comments: [
-        { filePath: 'src/index.ts', startLine: 1, endLine: 1, body: 'test', severity: 'suggestion' },
+        {
+          filePath: 'src/index.ts',
+          startLine: 1,
+          endLine: 1,
+          body: 'test',
+          severity: 'suggestion',
+        },
       ],
-      replies: [
-        { commentId: 'abc', body: 'reply' },
-      ],
+      replies: [{ commentId: 'abc', body: 'reply' }],
     };
     expect(payload.comments).toHaveLength(1);
     expect(payload.replies).toHaveLength(1);
@@ -369,6 +384,7 @@ Expected: FAIL — types not defined yet
 **Step 3: Write the types**
 
 `packages/shared/src/types.ts`:
+
 ```typescript
 export type PRStatus = 'open' | 'approved' | 'closed';
 
@@ -502,6 +518,7 @@ git commit -m "feat: add shared types for projects, PRs, comments, review cycles
 ### Task 4: Database Schema (Drizzle)
 
 **Files:**
+
 - Create: `packages/backend/src/db/schema.ts`
 - Create: `packages/backend/src/db/index.ts`
 - Create: `packages/backend/drizzle.config.ts`
@@ -510,6 +527,7 @@ git commit -m "feat: add shared types for projects, PRs, comments, review cycles
 **Step 1: Write the schema test**
 
 `packages/backend/src/db/__tests__/schema.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Database from 'better-sqlite3';
@@ -593,14 +611,20 @@ describe('Database Schema', () => {
 
   it('can insert and query a project', () => {
     const id = randomUUID();
-    db.insert(schema.projects).values({
-      id,
-      name: 'test-project',
-      path: '/tmp/test-repo',
-      baseBranch: 'main',
-    }).run();
+    db.insert(schema.projects)
+      .values({
+        id,
+        name: 'test-project',
+        path: '/tmp/test-repo',
+        baseBranch: 'main',
+      })
+      .run();
 
-    const result = db.select().from(schema.projects).where(eq(schema.projects.id, id)).get();
+    const result = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, id))
+      .get();
     expect(result).toBeDefined();
     expect(result!.name).toBe('test-project');
     expect(result!.path).toBe('/tmp/test-repo');
@@ -610,24 +634,32 @@ describe('Database Schema', () => {
     const projectId = randomUUID();
     const prId = randomUUID();
 
-    db.insert(schema.projects).values({
-      id: projectId,
-      name: 'test',
-      path: '/tmp/repo',
-      baseBranch: 'main',
-    }).run();
+    db.insert(schema.projects)
+      .values({
+        id: projectId,
+        name: 'test',
+        path: '/tmp/repo',
+        baseBranch: 'main',
+      })
+      .run();
 
-    db.insert(schema.pullRequests).values({
-      id: prId,
-      projectId,
-      title: 'Add feature',
-      description: 'A new feature',
-      sourceBranch: 'feat/new',
-      baseBranch: 'main',
-      status: 'open',
-    }).run();
+    db.insert(schema.pullRequests)
+      .values({
+        id: prId,
+        projectId,
+        title: 'Add feature',
+        description: 'A new feature',
+        sourceBranch: 'feat/new',
+        baseBranch: 'main',
+        status: 'open',
+      })
+      .run();
 
-    const result = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, prId)).get();
+    const result = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, prId))
+      .get();
     expect(result).toBeDefined();
     expect(result!.title).toBe('Add feature');
     expect(result!.status).toBe('open');
@@ -640,36 +672,63 @@ describe('Database Schema', () => {
     const commentId = randomUUID();
     const replyId = randomUUID();
 
-    db.insert(schema.projects).values({ id: projectId, name: 'test', path: '/tmp/r', baseBranch: 'main' }).run();
-    db.insert(schema.pullRequests).values({ id: prId, projectId, title: 'PR', description: '', sourceBranch: 'feat', baseBranch: 'main', status: 'open' }).run();
-    db.insert(schema.reviewCycles).values({ id: cycleId, prId, cycleNumber: 1, status: 'in_review' }).run();
+    db.insert(schema.projects)
+      .values({
+        id: projectId,
+        name: 'test',
+        path: '/tmp/r',
+        baseBranch: 'main',
+      })
+      .run();
+    db.insert(schema.pullRequests)
+      .values({
+        id: prId,
+        projectId,
+        title: 'PR',
+        description: '',
+        sourceBranch: 'feat',
+        baseBranch: 'main',
+        status: 'open',
+      })
+      .run();
+    db.insert(schema.reviewCycles)
+      .values({ id: cycleId, prId, cycleNumber: 1, status: 'in_review' })
+      .run();
 
-    db.insert(schema.comments).values({
-      id: commentId,
-      reviewCycleId: cycleId,
-      filePath: 'src/index.ts',
-      startLine: 10,
-      endLine: 10,
-      body: 'This needs fixing',
-      severity: 'must-fix',
-      author: 'human',
-      resolved: false,
-    }).run();
+    db.insert(schema.comments)
+      .values({
+        id: commentId,
+        reviewCycleId: cycleId,
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 10,
+        body: 'This needs fixing',
+        severity: 'must-fix',
+        author: 'human',
+        resolved: false,
+      })
+      .run();
 
-    db.insert(schema.comments).values({
-      id: replyId,
-      reviewCycleId: cycleId,
-      filePath: 'src/index.ts',
-      startLine: 10,
-      endLine: 10,
-      body: 'Fixed it',
-      severity: 'suggestion',
-      author: 'agent',
-      parentCommentId: commentId,
-      resolved: false,
-    }).run();
+    db.insert(schema.comments)
+      .values({
+        id: replyId,
+        reviewCycleId: cycleId,
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 10,
+        body: 'Fixed it',
+        severity: 'suggestion',
+        author: 'agent',
+        parentCommentId: commentId,
+        resolved: false,
+      })
+      .run();
 
-    const reply = db.select().from(schema.comments).where(eq(schema.comments.id, replyId)).get();
+    const reply = db
+      .select()
+      .from(schema.comments)
+      .where(eq(schema.comments.id, replyId))
+      .get();
     expect(reply).toBeDefined();
     expect(reply!.parentCommentId).toBe(commentId);
   });
@@ -684,6 +743,7 @@ Expected: FAIL — schema module not found
 **Step 3: Write the schema**
 
 `packages/backend/src/db/schema.ts`:
+
 ```typescript
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
@@ -693,12 +753,16 @@ export const projects = sqliteTable('projects', {
   name: text('name').notNull(),
   path: text('path').notNull().unique(),
   baseBranch: text('base_branch').notNull().default('main'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 
 export const pullRequests = sqliteTable('pull_requests', {
   id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id),
   title: text('title').notNull(),
   description: text('description').notNull().default(''),
   sourceBranch: text('source_branch').notNull(),
@@ -706,13 +770,19 @@ export const pullRequests = sqliteTable('pull_requests', {
   status: text('status').notNull().default('open'),
   agentContext: text('agent_context'),
   agentSessionId: text('agent_session_id'),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
-  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 
 export const reviewCycles = sqliteTable('review_cycles', {
   id: text('id').primaryKey(),
-  prId: text('pr_id').notNull().references(() => pullRequests.id),
+  prId: text('pr_id')
+    .notNull()
+    .references(() => pullRequests.id),
   cycleNumber: integer('cycle_number').notNull(),
   status: text('status').notNull().default('pending_review'),
   reviewedAt: text('reviewed_at'),
@@ -721,7 +791,9 @@ export const reviewCycles = sqliteTable('review_cycles', {
 
 export const comments = sqliteTable('comments', {
   id: text('id').primaryKey(),
-  reviewCycleId: text('review_cycle_id').notNull().references(() => reviewCycles.id),
+  reviewCycleId: text('review_cycle_id')
+    .notNull()
+    .references(() => reviewCycles.id),
   filePath: text('file_path').notNull(),
   startLine: integer('start_line').notNull(),
   endLine: integer('end_line').notNull(),
@@ -730,12 +802,16 @@ export const comments = sqliteTable('comments', {
   author: text('author').notNull(),
   parentCommentId: text('parent_comment_id').references((): any => comments.id),
   resolved: integer('resolved', { mode: 'boolean' }).notNull().default(false),
-  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  createdAt: text('created_at')
+    .notNull()
+    .default(sql`(datetime('now'))`),
 });
 
 export const diffSnapshots = sqliteTable('diff_snapshots', {
   id: text('id').primaryKey(),
-  reviewCycleId: text('review_cycle_id').notNull().references(() => reviewCycles.id),
+  reviewCycleId: text('review_cycle_id')
+    .notNull()
+    .references(() => reviewCycles.id),
   diffData: text('diff_data').notNull(),
 });
 
@@ -745,7 +821,9 @@ export const globalConfig = sqliteTable('global_config', {
 });
 
 export const projectConfig = sqliteTable('project_config', {
-  projectId: text('project_id').notNull().references(() => projects.id),
+  projectId: text('project_id')
+    .notNull()
+    .references(() => projects.id),
   key: text('key').notNull(),
   value: text('value').notNull(),
 });
@@ -754,6 +832,7 @@ export const projectConfig = sqliteTable('project_config', {
 **Step 4: Write the database initialization module**
 
 `packages/backend/src/db/index.ts`:
+
 ```typescript
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -851,6 +930,7 @@ git commit -m "feat: add database schema and initialization with Drizzle ORM"
 ### Task 5: Fastify Server Bootstrap
 
 **Files:**
+
 - Create: `packages/backend/src/index.ts`
 - Create: `packages/backend/src/server.ts`
 - Test: `packages/backend/src/__tests__/server.test.ts`
@@ -858,6 +938,7 @@ git commit -m "feat: add database schema and initialization with Drizzle ORM"
 **Step 1: Write the server test**
 
 `packages/backend/src/__tests__/server.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildServer } from '../server.js';
@@ -893,6 +974,7 @@ Expected: FAIL — server module not found
 **Step 3: Write the server**
 
 `packages/backend/src/server.ts`:
+
 ```typescript
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
@@ -929,6 +1011,7 @@ export async function buildServer(opts: ServerOptions = {}) {
 ```
 
 `packages/backend/src/index.ts`:
+
 ```typescript
 import { buildServer } from './server.js';
 
@@ -964,6 +1047,7 @@ git commit -m "feat: add Fastify server bootstrap with health check"
 ### Task 6: Projects API
 
 **Files:**
+
 - Create: `packages/backend/src/routes/projects.ts`
 - Modify: `packages/backend/src/server.ts`
 - Test: `packages/backend/src/routes/__tests__/projects.test.ts`
@@ -971,6 +1055,7 @@ git commit -m "feat: add Fastify server bootstrap with health check"
 **Step 1: Write the projects route tests**
 
 `packages/backend/src/routes/__tests__/projects.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildServer } from '../../server.js';
@@ -1075,6 +1160,7 @@ Expected: FAIL — routes not registered
 **Step 3: Write the projects route**
 
 `packages/backend/src/routes/projects.ts`:
+
 ```typescript
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
@@ -1126,7 +1212,11 @@ export async function projectRoutes(fastify: FastifyInstance) {
 
   fastify.put('/api/projects/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const updates = request.body as Partial<{ name: string; path: string; baseBranch: string }>;
+    const updates = request.body as Partial<{
+      name: string;
+      path: string;
+      baseBranch: string;
+    }>;
 
     const existing = db
       .select()
@@ -1139,9 +1229,16 @@ export async function projectRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    db.update(schema.projects).set(updates).where(eq(schema.projects.id, id)).run();
+    db.update(schema.projects)
+      .set(updates)
+      .where(eq(schema.projects.id, id))
+      .run();
 
-    return db.select().from(schema.projects).where(eq(schema.projects.id, id)).get();
+    return db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, id))
+      .get();
   });
 
   fastify.delete('/api/projects/:id', async (request, reply) => {
@@ -1167,6 +1264,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
 **Step 4: Register routes in server.ts**
 
 Add to `packages/backend/src/server.ts` before the health check:
+
 ```typescript
 import { projectRoutes } from './routes/projects.js';
 // ... inside buildServer, after decorating db:
@@ -1190,6 +1288,7 @@ git commit -m "feat: add Projects CRUD API endpoints"
 ### Task 7: Pull Requests API
 
 **Files:**
+
 - Create: `packages/backend/src/routes/pull-requests.ts`
 - Modify: `packages/backend/src/server.ts`
 - Test: `packages/backend/src/routes/__tests__/pull-requests.test.ts`
@@ -1197,6 +1296,7 @@ git commit -m "feat: add Projects CRUD API endpoints"
 **Step 1: Write the PR route tests**
 
 `packages/backend/src/routes/__tests__/pull-requests.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildServer } from '../../server.js';
@@ -1313,6 +1413,7 @@ Expected: FAIL
 **Step 3: Write the pull requests route**
 
 `packages/backend/src/routes/pull-requests.ts`:
+
 ```typescript
 import type { FastifyInstance } from 'fastify';
 import { eq, and } from 'drizzle-orm';
@@ -1325,17 +1426,27 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   // Create a PR (also creates first review cycle)
   fastify.post('/api/projects/:projectId/prs', async (request, reply) => {
     const { projectId } = request.params as { projectId: string };
-    const { title, description, sourceBranch, baseBranch, agentContext, agentSessionId } =
-      request.body as {
-        title: string;
-        description?: string;
-        sourceBranch: string;
-        baseBranch?: string;
-        agentContext?: string;
-        agentSessionId?: string;
-      };
+    const {
+      title,
+      description,
+      sourceBranch,
+      baseBranch,
+      agentContext,
+      agentSessionId,
+    } = request.body as {
+      title: string;
+      description?: string;
+      sourceBranch: string;
+      baseBranch?: string;
+      agentContext?: string;
+      agentSessionId?: string;
+    };
 
-    const project = db.select().from(schema.projects).where(eq(schema.projects.id, projectId)).get();
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, projectId))
+      .get();
     if (!project) {
       reply.code(404).send({ error: 'Project not found' });
       return;
@@ -1345,41 +1456,57 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
     const cycleId = randomUUID();
     const now = new Date().toISOString();
 
-    db.insert(schema.pullRequests).values({
-      id: prId,
-      projectId,
-      title,
-      description: description || '',
-      sourceBranch,
-      baseBranch: baseBranch || project.baseBranch,
-      status: 'open',
-      agentContext: agentContext || null,
-      agentSessionId: agentSessionId || null,
-      createdAt: now,
-      updatedAt: now,
-    }).run();
+    db.insert(schema.pullRequests)
+      .values({
+        id: prId,
+        projectId,
+        title,
+        description: description || '',
+        sourceBranch,
+        baseBranch: baseBranch || project.baseBranch,
+        status: 'open',
+        agentContext: agentContext || null,
+        agentSessionId: agentSessionId || null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
 
-    db.insert(schema.reviewCycles).values({
-      id: cycleId,
-      prId,
-      cycleNumber: 1,
-      status: 'pending_review',
-    }).run();
+    db.insert(schema.reviewCycles)
+      .values({
+        id: cycleId,
+        prId,
+        cycleNumber: 1,
+        status: 'pending_review',
+      })
+      .run();
 
-    const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, prId)).get();
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, prId))
+      .get();
     reply.code(201).send(pr);
   });
 
   // List PRs for a project
   fastify.get('/api/projects/:projectId/prs', async (request) => {
     const { projectId } = request.params as { projectId: string };
-    return db.select().from(schema.pullRequests).where(eq(schema.pullRequests.projectId, projectId)).all();
+    return db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.projectId, projectId))
+      .all();
   });
 
   // Get a single PR
   fastify.get('/api/prs/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
     if (!pr) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
@@ -1398,7 +1525,11 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       agentSessionId: string;
     }>;
 
-    const existing = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    const existing = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
     if (!existing) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
@@ -1409,15 +1540,25 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
       .where(eq(schema.pullRequests.id, id))
       .run();
 
-    return db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    return db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
   });
 
   // Submit a review
   fastify.post('/api/prs/:id/review', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { action } = request.body as { action: 'approve' | 'request-changes' };
+    const { action } = request.body as {
+      action: 'approve' | 'request-changes';
+    };
 
-    const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
     if (!pr) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
@@ -1463,7 +1604,11 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
   fastify.post('/api/prs/:id/agent-ready', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
     if (!pr) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
@@ -1488,25 +1633,34 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 
     // Create new review cycle
     const newCycleId = randomUUID();
-    db.insert(schema.reviewCycles).values({
-      id: newCycleId,
-      prId: id,
-      cycleNumber: (currentCycle?.cycleNumber || 0) + 1,
-      status: 'pending_review',
-    }).run();
+    db.insert(schema.reviewCycles)
+      .values({
+        id: newCycleId,
+        prId: id,
+        cycleNumber: (currentCycle?.cycleNumber || 0) + 1,
+        status: 'pending_review',
+      })
+      .run();
 
     db.update(schema.pullRequests)
       .set({ updatedAt: now })
       .where(eq(schema.pullRequests.id, id))
       .run();
 
-    return { status: 'pending_review', cycleNumber: (currentCycle?.cycleNumber || 0) + 1 };
+    return {
+      status: 'pending_review',
+      cycleNumber: (currentCycle?.cycleNumber || 0) + 1,
+    };
   });
 
   // Get review cycles for a PR
   fastify.get('/api/prs/:id/cycles', async (request) => {
     const { id } = request.params as { id: string };
-    return db.select().from(schema.reviewCycles).where(eq(schema.reviewCycles.prId, id)).all();
+    return db
+      .select()
+      .from(schema.reviewCycles)
+      .where(eq(schema.reviewCycles.prId, id))
+      .all();
   });
 }
 ```
@@ -1514,6 +1668,7 @@ export async function pullRequestRoutes(fastify: FastifyInstance) {
 **Step 4: Register routes in server.ts**
 
 Add to `packages/backend/src/server.ts`:
+
 ```typescript
 import { pullRequestRoutes } from './routes/pull-requests.js';
 // inside buildServer:
@@ -1537,6 +1692,7 @@ git commit -m "feat: add Pull Requests API with review cycles"
 ### Task 8: Comments API
 
 **Files:**
+
 - Create: `packages/backend/src/routes/comments.ts`
 - Modify: `packages/backend/src/server.ts`
 - Test: `packages/backend/src/routes/__tests__/comments.test.ts`
@@ -1544,6 +1700,7 @@ git commit -m "feat: add Pull Requests API with review cycles"
 **Step 1: Write the comments route tests**
 
 `packages/backend/src/routes/__tests__/comments.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildServer } from '../../server.js';
@@ -1676,8 +1833,20 @@ describe('Comments API', () => {
       url: `/api/prs/${prId}/comments/batch`,
       payload: {
         comments: [
-          { filePath: 'src/a.ts', startLine: 1, endLine: 1, body: 'c1', severity: 'suggestion' },
-          { filePath: 'src/b.ts', startLine: 2, endLine: 2, body: 'c2', severity: 'request' },
+          {
+            filePath: 'src/a.ts',
+            startLine: 1,
+            endLine: 1,
+            body: 'c1',
+            severity: 'suggestion',
+          },
+          {
+            filePath: 'src/b.ts',
+            startLine: 2,
+            endLine: 2,
+            body: 'c2',
+            severity: 'request',
+          },
         ],
         replies: [],
       },
@@ -1696,12 +1865,17 @@ Expected: FAIL
 **Step 3: Write the comments route**
 
 `packages/backend/src/routes/comments.ts`:
+
 ```typescript
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { schema } from '../db/index.js';
-import type { CommentSeverity, CommentAuthor, BatchCommentPayload } from '@agent-shepherd/shared';
+import type {
+  CommentSeverity,
+  CommentAuthor,
+  BatchCommentPayload,
+} from '@agent-shepherd/shared';
 
 export async function commentRoutes(fastify: FastifyInstance) {
   const db = (fastify as any).db;
@@ -1718,16 +1892,23 @@ export async function commentRoutes(fastify: FastifyInstance) {
   // Add a comment to a PR (on the current review cycle)
   fastify.post('/api/prs/:prId/comments', async (request, reply) => {
     const { prId } = request.params as { prId: string };
-    const { filePath, startLine, endLine, body, severity, author, parentCommentId } =
-      request.body as {
-        filePath: string;
-        startLine: number;
-        endLine: number;
-        body: string;
-        severity: CommentSeverity;
-        author: CommentAuthor;
-        parentCommentId?: string;
-      };
+    const {
+      filePath,
+      startLine,
+      endLine,
+      body,
+      severity,
+      author,
+      parentCommentId,
+    } = request.body as {
+      filePath: string;
+      startLine: number;
+      endLine: number;
+      body: string;
+      severity: CommentSeverity;
+      author: CommentAuthor;
+      parentCommentId?: string;
+    };
 
     const cycleId = getCurrentCycleId(prId);
     if (!cycleId) {
@@ -1736,20 +1917,26 @@ export async function commentRoutes(fastify: FastifyInstance) {
     }
 
     const id = randomUUID();
-    db.insert(schema.comments).values({
-      id,
-      reviewCycleId: cycleId,
-      filePath,
-      startLine,
-      endLine,
-      body,
-      severity,
-      author,
-      parentCommentId: parentCommentId || null,
-      resolved: false,
-    }).run();
+    db.insert(schema.comments)
+      .values({
+        id,
+        reviewCycleId: cycleId,
+        filePath,
+        startLine,
+        endLine,
+        body,
+        severity,
+        author,
+        parentCommentId: parentCommentId || null,
+        resolved: false,
+      })
+      .run();
 
-    const comment = db.select().from(schema.comments).where(eq(schema.comments.id, id)).get();
+    const comment = db
+      .select()
+      .from(schema.comments)
+      .where(eq(schema.comments.id, id))
+      .get();
     reply.code(201).send(comment);
   });
 
@@ -1780,16 +1967,30 @@ export async function commentRoutes(fastify: FastifyInstance) {
   // Update a comment
   fastify.put('/api/comments/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
-    const updates = request.body as Partial<{ body: string; resolved: boolean }>;
+    const updates = request.body as Partial<{
+      body: string;
+      resolved: boolean;
+    }>;
 
-    const existing = db.select().from(schema.comments).where(eq(schema.comments.id, id)).get();
+    const existing = db
+      .select()
+      .from(schema.comments)
+      .where(eq(schema.comments.id, id))
+      .get();
     if (!existing) {
       reply.code(404).send({ error: 'Comment not found' });
       return;
     }
 
-    db.update(schema.comments).set(updates).where(eq(schema.comments.id, id)).run();
-    return db.select().from(schema.comments).where(eq(schema.comments.id, id)).get();
+    db.update(schema.comments)
+      .set(updates)
+      .where(eq(schema.comments.id, id))
+      .run();
+    return db
+      .select()
+      .from(schema.comments)
+      .where(eq(schema.comments.id, id))
+      .get();
   });
 
   // Delete a comment
@@ -1815,38 +2016,46 @@ export async function commentRoutes(fastify: FastifyInstance) {
     if (comments) {
       for (const c of comments) {
         const id = randomUUID();
-        db.insert(schema.comments).values({
-          id,
-          reviewCycleId: cycleId,
-          filePath: c.filePath,
-          startLine: c.startLine,
-          endLine: c.endLine,
-          body: c.body,
-          severity: c.severity,
-          author: 'agent' as CommentAuthor,
-          resolved: false,
-        }).run();
+        db.insert(schema.comments)
+          .values({
+            id,
+            reviewCycleId: cycleId,
+            filePath: c.filePath,
+            startLine: c.startLine,
+            endLine: c.endLine,
+            body: c.body,
+            severity: c.severity,
+            author: 'agent' as CommentAuthor,
+            resolved: false,
+          })
+          .run();
         created++;
       }
     }
 
     if (replies) {
       for (const r of replies) {
-        const parent = db.select().from(schema.comments).where(eq(schema.comments.id, r.commentId)).get();
+        const parent = db
+          .select()
+          .from(schema.comments)
+          .where(eq(schema.comments.id, r.commentId))
+          .get();
         if (parent) {
           const id = randomUUID();
-          db.insert(schema.comments).values({
-            id,
-            reviewCycleId: cycleId,
-            filePath: (parent as any).filePath,
-            startLine: (parent as any).startLine,
-            endLine: (parent as any).endLine,
-            body: r.body,
-            severity: 'suggestion',
-            author: 'agent' as CommentAuthor,
-            parentCommentId: r.commentId,
-            resolved: false,
-          }).run();
+          db.insert(schema.comments)
+            .values({
+              id,
+              reviewCycleId: cycleId,
+              filePath: (parent as any).filePath,
+              startLine: (parent as any).startLine,
+              endLine: (parent as any).endLine,
+              body: r.body,
+              severity: 'suggestion',
+              author: 'agent' as CommentAuthor,
+              parentCommentId: r.commentId,
+              resolved: false,
+            })
+            .run();
           created++;
         }
       }
@@ -1860,6 +2069,7 @@ export async function commentRoutes(fastify: FastifyInstance) {
 **Step 4: Register routes in server.ts**
 
 Add to `packages/backend/src/server.ts`:
+
 ```typescript
 import { commentRoutes } from './routes/comments.js';
 // inside buildServer:
@@ -1883,12 +2093,14 @@ git commit -m "feat: add Comments API with threading and batch support"
 ### Task 9: Git Diff Service
 
 **Files:**
+
 - Create: `packages/backend/src/services/git.ts`
 - Test: `packages/backend/src/services/__tests__/git.test.ts`
 
 **Step 1: Write the git service test**
 
 `packages/backend/src/services/__tests__/git.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
@@ -1952,6 +2164,7 @@ Expected: FAIL
 **Step 3: Write the git service**
 
 `packages/backend/src/services/git.ts`:
+
 ```typescript
 import simpleGit, { type SimpleGit } from 'simple-git';
 
@@ -1972,8 +2185,14 @@ export class GitService {
     return result;
   }
 
-  async getChangedFiles(baseBranch: string, sourceBranch: string): Promise<string[]> {
-    const result = await this.git.diff(['--name-only', `${baseBranch}...${sourceBranch}`]);
+  async getChangedFiles(
+    baseBranch: string,
+    sourceBranch: string,
+  ): Promise<string[]> {
+    const result = await this.git.diff([
+      '--name-only',
+      `${baseBranch}...${sourceBranch}`,
+    ]);
     return result.trim().split('\n').filter(Boolean);
   }
 
@@ -2005,6 +2224,7 @@ git commit -m "feat: add GitService for diff and branch operations"
 ### Task 10: Diff API Endpoint
 
 **Files:**
+
 - Create: `packages/backend/src/routes/diff.ts`
 - Modify: `packages/backend/src/server.ts`
 - Test: `packages/backend/src/routes/__tests__/diff.test.ts`
@@ -2012,6 +2232,7 @@ git commit -m "feat: add GitService for diff and branch operations"
 **Step 1: Write the diff route test**
 
 `packages/backend/src/routes/__tests__/diff.test.ts`:
+
 ```typescript
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildServer } from '../../server.js';
@@ -2082,6 +2303,7 @@ Expected: FAIL
 **Step 3: Write the diff route**
 
 `packages/backend/src/routes/diff.ts`:
+
 ```typescript
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
@@ -2094,21 +2316,35 @@ export async function diffRoutes(fastify: FastifyInstance) {
   fastify.get('/api/prs/:id/diff', async (request, reply) => {
     const { id } = request.params as { id: string };
 
-    const pr = db.select().from(schema.pullRequests).where(eq(schema.pullRequests.id, id)).get();
+    const pr = db
+      .select()
+      .from(schema.pullRequests)
+      .where(eq(schema.pullRequests.id, id))
+      .get();
     if (!pr) {
       reply.code(404).send({ error: 'Pull request not found' });
       return;
     }
 
-    const project = db.select().from(schema.projects).where(eq(schema.projects.id, (pr as any).projectId)).get();
+    const project = db
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, (pr as any).projectId))
+      .get();
     if (!project) {
       reply.code(404).send({ error: 'Project not found' });
       return;
     }
 
     const gitService = new GitService((project as any).path);
-    const diff = await gitService.getDiff((pr as any).baseBranch, (pr as any).sourceBranch);
-    const files = await gitService.getChangedFiles((pr as any).baseBranch, (pr as any).sourceBranch);
+    const diff = await gitService.getDiff(
+      (pr as any).baseBranch,
+      (pr as any).sourceBranch,
+    );
+    const files = await gitService.getChangedFiles(
+      (pr as any).baseBranch,
+      (pr as any).sourceBranch,
+    );
 
     return { diff, files };
   });
@@ -2118,6 +2354,7 @@ export async function diffRoutes(fastify: FastifyInstance) {
 **Step 4: Register routes in server.ts**
 
 Add to `packages/backend/src/server.ts`:
+
 ```typescript
 import { diffRoutes } from './routes/diff.js';
 // inside buildServer:
@@ -2143,6 +2380,7 @@ git commit -m "feat: add Diff API endpoint using GitService"
 ### Task 11: CLI Foundation + Init & Submit Commands
 
 **Files:**
+
 - Create: `packages/cli/src/index.ts`
 - Create: `packages/cli/src/api-client.ts`
 - Create: `packages/cli/src/commands/init.ts`
@@ -2152,6 +2390,7 @@ git commit -m "feat: add Diff API endpoint using GitService"
 **Step 1: Write the API client test**
 
 `packages/cli/src/__tests__/api-client.test.ts`:
+
 ```typescript
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ApiClient } from '../api-client.js';
@@ -2164,7 +2403,9 @@ describe('ApiClient', () => {
   });
 
   it('constructs URLs correctly', () => {
-    expect((client as any).url('/api/projects')).toBe('http://localhost:3847/api/projects');
+    expect((client as any).url('/api/projects')).toBe(
+      'http://localhost:3847/api/projects',
+    );
   });
 });
 ```
@@ -2177,6 +2418,7 @@ Expected: FAIL
 **Step 3: Write the API client and CLI commands**
 
 `packages/cli/src/api-client.ts`:
+
 ```typescript
 export class ApiClient {
   constructor(private baseUrl: string) {}
@@ -2187,7 +2429,8 @@ export class ApiClient {
 
   async get<T>(path: string): Promise<T> {
     const res = await fetch(this.url(path));
-    if (!res.ok) throw new Error(`GET ${path}: ${res.status} ${await res.text()}`);
+    if (!res.ok)
+      throw new Error(`GET ${path}: ${res.status} ${await res.text()}`);
     return res.json() as T;
   }
 
@@ -2197,7 +2440,8 @@ export class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) throw new Error(`POST ${path}: ${res.status} ${await res.text()}`);
+    if (!res.ok)
+      throw new Error(`POST ${path}: ${res.status} ${await res.text()}`);
     return res.json() as T;
   }
 
@@ -2207,13 +2451,15 @@ export class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`PUT ${path}: ${res.status} ${await res.text()}`);
+    if (!res.ok)
+      throw new Error(`PUT ${path}: ${res.status} ${await res.text()}`);
     return res.json() as T;
   }
 }
 ```
 
 `packages/cli/src/commands/init.ts`:
+
 ```typescript
 import { Command } from 'commander';
 import { resolve } from 'path';
@@ -2226,21 +2472,29 @@ export function initCommand(program: Command, client: ApiClient) {
     .description('Register a project with Agent Shepherd')
     .option('-n, --name <name>', 'Project name')
     .option('-b, --base-branch <branch>', 'Base branch', 'main')
-    .action(async (path: string | undefined, opts: { name?: string; baseBranch: string }) => {
-      const projectPath = resolve(path || '.');
-      const name = opts.name || basename(projectPath);
+    .action(
+      async (
+        path: string | undefined,
+        opts: { name?: string; baseBranch: string },
+      ) => {
+        const projectPath = resolve(path || '.');
+        const name = opts.name || basename(projectPath);
 
-      const project = await client.post('/api/projects', {
-        name,
-        path: projectPath,
-        baseBranch: opts.baseBranch,
-      });
-      console.log(`Project registered: ${(project as any).name} (${(project as any).id})`);
-    });
+        const project = await client.post('/api/projects', {
+          name,
+          path: projectPath,
+          baseBranch: opts.baseBranch,
+        });
+        console.log(
+          `Project registered: ${(project as any).name} (${(project as any).id})`,
+        );
+      },
+    );
 }
 ```
 
 `packages/cli/src/commands/submit.ts`:
+
 ```typescript
 import { Command } from 'commander';
 import { readFile } from 'fs/promises';
@@ -2253,7 +2507,10 @@ export function submitCommand(program: Command, client: ApiClient) {
     .requiredOption('-p, --project <id>', 'Project ID')
     .option('-t, --title <title>', 'PR title')
     .option('-d, --description <desc>', 'PR description', '')
-    .option('-s, --source-branch <branch>', 'Source branch (auto-detected if omitted)')
+    .option(
+      '-s, --source-branch <branch>',
+      'Source branch (auto-detected if omitted)',
+    )
     .option('-c, --context-file <path>', 'Path to JSON file with agent context')
     .option('--session-id <id>', 'Agent session ID for resume mode')
     .action(async (opts) => {
@@ -2278,6 +2535,7 @@ export function submitCommand(program: Command, client: ApiClient) {
 ```
 
 `packages/cli/src/index.ts`:
+
 ```typescript
 #!/usr/bin/env node
 import { Command } from 'commander';
@@ -2286,7 +2544,9 @@ import { initCommand } from './commands/init.js';
 import { submitCommand } from './commands/submit.js';
 
 const program = new Command();
-const client = new ApiClient(process.env.SHEPHERD_URL || 'http://localhost:3847');
+const client = new ApiClient(
+  process.env.SHEPHERD_URL || 'http://localhost:3847',
+);
 
 program
   .name('shepherd')
@@ -2316,6 +2576,7 @@ git commit -m "feat: add CLI foundation with init and submit commands"
 ### Task 12: CLI Batch, Ready, Status, and Config Commands
 
 **Files:**
+
 - Create: `packages/cli/src/commands/batch.ts`
 - Create: `packages/cli/src/commands/ready.ts`
 - Create: `packages/cli/src/commands/status.ts`
@@ -2324,6 +2585,7 @@ git commit -m "feat: add CLI foundation with init and submit commands"
 **Step 1: Write the batch command**
 
 `packages/cli/src/commands/batch.ts`:
+
 ```typescript
 import { Command } from 'commander';
 import { readFile } from 'fs/promises';
@@ -2351,7 +2613,10 @@ export function batchCommand(program: Command, client: ApiClient) {
         process.exit(1);
       }
 
-      const result = await client.post(`/api/prs/${prId}/comments/batch`, JSON.parse(payload));
+      const result = await client.post(
+        `/api/prs/${prId}/comments/batch`,
+        JSON.parse(payload),
+      );
       console.log(`Batch submitted: ${(result as any).created} items created`);
     });
 }
@@ -2360,6 +2625,7 @@ export function batchCommand(program: Command, client: ApiClient) {
 **Step 2: Write the ready command**
 
 `packages/cli/src/commands/ready.ts`:
+
 ```typescript
 import { Command } from 'commander';
 import { readFile } from 'fs/promises';
@@ -2369,12 +2635,20 @@ export function readyCommand(program: Command, client: ApiClient) {
   program
     .command('ready <pr-id>')
     .description('Signal PR is ready for re-review')
-    .option('-f, --file <path>', 'Batch comments JSON file to submit before signaling ready')
+    .option(
+      '-f, --file <path>',
+      'Batch comments JSON file to submit before signaling ready',
+    )
     .action(async (prId: string, opts: { file?: string }) => {
       if (opts.file) {
         const payload = await readFile(opts.file, 'utf-8');
-        const result = await client.post(`/api/prs/${prId}/comments/batch`, JSON.parse(payload));
-        console.log(`Batch submitted: ${(result as any).created} items created`);
+        const result = await client.post(
+          `/api/prs/${prId}/comments/batch`,
+          JSON.parse(payload),
+        );
+        console.log(
+          `Batch submitted: ${(result as any).created} items created`,
+        );
       }
 
       const result = await client.post(`/api/prs/${prId}/agent-ready`);
@@ -2386,6 +2660,7 @@ export function readyCommand(program: Command, client: ApiClient) {
 **Step 3: Write the status command**
 
 `packages/cli/src/commands/status.ts`:
+
 ```typescript
 import { Command } from 'commander';
 import { ApiClient } from '../api-client.js';
@@ -2402,7 +2677,9 @@ export function statusCommand(program: Command, client: ApiClient) {
       console.log(`PR: ${pr.title}`);
       console.log(`Status: ${pr.status}`);
       console.log(`Branch: ${pr.sourceBranch} -> ${pr.baseBranch}`);
-      console.log(`Review Cycle: ${currentCycle?.cycleNumber || 0} (${currentCycle?.status || 'none'})`);
+      console.log(
+        `Review Cycle: ${currentCycle?.cycleNumber || 0} (${currentCycle?.status || 'none'})`,
+      );
     });
 }
 ```
@@ -2425,6 +2702,7 @@ git commit -m "feat: add batch, ready, and status CLI commands"
 ### Task 13: Vite + React + Tailwind Setup
 
 **Files:**
+
 - Create: `packages/frontend/index.html`
 - Create: `packages/frontend/vite.config.ts`
 - Create: `packages/frontend/src/main.tsx`
@@ -2434,6 +2712,7 @@ git commit -m "feat: add batch, ready, and status CLI commands"
 **Step 1: Create Vite config**
 
 `packages/frontend/vite.config.ts`:
+
 ```typescript
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -2454,26 +2733,28 @@ export default defineConfig({
 **Step 2: Create index.html**
 
 `packages/frontend/index.html`:
+
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agent Shepherd</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Shepherd</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
 ```
 
 **Step 3: Create entry point and App**
 
 `packages/frontend/src/index.css`:
+
 ```css
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
   --color-bg: #ffffff;
@@ -2501,6 +2782,7 @@ export default defineConfig({
 ```
 
 `packages/frontend/src/main.tsx`:
+
 ```typescript
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -2518,6 +2800,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 ```
 
 `packages/frontend/src/App.tsx`:
+
 ```typescript
 import { Routes, Route } from 'react-router-dom';
 
@@ -2554,6 +2837,7 @@ git commit -m "feat: scaffold React frontend with Vite, Tailwind, and routing"
 ### Task 14: API Client Hook + Dashboard Page
 
 **Files:**
+
 - Create: `packages/frontend/src/api.ts`
 - Create: `packages/frontend/src/hooks/useApi.ts`
 - Create: `packages/frontend/src/pages/Dashboard.tsx`
@@ -2562,6 +2846,7 @@ git commit -m "feat: scaffold React frontend with Vite, Tailwind, and routing"
 **Step 1: Write the frontend API client**
 
 `packages/frontend/src/api.ts`:
+
 ```typescript
 const BASE = '/api';
 
@@ -2579,21 +2864,31 @@ export const api = {
   projects: {
     list: () => request<any[]>('/projects'),
     get: (id: string) => request<any>(`/projects/${id}`),
-    create: (data: any) => request<any>('/projects', { method: 'POST', body: JSON.stringify(data) }),
+    create: (data: any) =>
+      request<any>('/projects', { method: 'POST', body: JSON.stringify(data) }),
   },
   prs: {
     list: (projectId: string) => request<any[]>(`/projects/${projectId}/prs`),
     get: (id: string) => request<any>(`/prs/${id}`),
     diff: (id: string) => request<any>(`/prs/${id}/diff`),
     review: (id: string, action: string) =>
-      request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }),
+      request<any>(`/prs/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      }),
   },
   comments: {
     list: (prId: string) => request<any[]>(`/prs/${prId}/comments`),
     create: (prId: string, data: any) =>
-      request<any>(`/prs/${prId}/comments`, { method: 'POST', body: JSON.stringify(data) }),
+      request<any>(`/prs/${prId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
     update: (id: string, data: any) =>
-      request<any>(`/comments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      request<any>(`/comments/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
   },
 };
 ```
@@ -2601,6 +2896,7 @@ export const api = {
 **Step 2: Write the Dashboard page**
 
 `packages/frontend/src/pages/Dashboard.tsx`:
+
 ```typescript
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -2660,6 +2956,7 @@ git commit -m "feat: add API client, Dashboard page, and routing"
 ### Task 15: PR List Page
 
 **Files:**
+
 - Create: `packages/frontend/src/pages/ProjectView.tsx`
 - Modify: `packages/frontend/src/App.tsx`
 
@@ -2681,6 +2978,7 @@ git commit -m "feat: add Project View page with PR list"
 ### Task 16: PR Review Page - Diff Viewer
 
 **Files:**
+
 - Create: `packages/frontend/src/pages/PRReview.tsx`
 - Create: `packages/frontend/src/components/DiffViewer.tsx`
 - Create: `packages/frontend/src/components/FileTree.tsx`
@@ -2714,6 +3012,7 @@ git commit -m "feat: add PR Review page with git-diff-view diff rendering"
 ### Task 17: Inline Comment System
 
 **Files:**
+
 - Create: `packages/frontend/src/components/CommentWidget.tsx`
 - Create: `packages/frontend/src/components/CommentForm.tsx`
 - Create: `packages/frontend/src/components/CommentThread.tsx`
@@ -2751,6 +3050,7 @@ git commit -m "feat: add inline comment system with threading and severity level
 ### Task 18: Review Submission + Agent Status
 
 **Files:**
+
 - Create: `packages/frontend/src/components/ReviewBar.tsx`
 - Create: `packages/frontend/src/components/AgentStatus.tsx`
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
@@ -2779,6 +3079,7 @@ git commit -m "feat: add review submission bar and agent status indicator"
 ### Task 19: WebSocket Server
 
 **Files:**
+
 - Create: `packages/backend/src/ws.ts`
 - Modify: `packages/backend/src/server.ts`
 - Test: `packages/backend/src/__tests__/ws.test.ts`
@@ -2807,6 +3108,7 @@ git commit -m "feat: add WebSocket server for real-time PR events"
 ### Task 20: Frontend WebSocket Client
 
 **Files:**
+
 - Create: `packages/frontend/src/hooks/useWebSocket.ts`
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 
@@ -2832,6 +3134,7 @@ git commit -m "feat: add WebSocket client for real-time updates in frontend"
 ### Task 21: Agent Adapter Interface + Claude Code Adapter
 
 **Files:**
+
 - Create: `packages/backend/src/orchestrator/types.ts`
 - Create: `packages/backend/src/orchestrator/claude-code-adapter.ts`
 - Create: `packages/backend/src/orchestrator/prompt-builder.ts`
@@ -2841,6 +3144,7 @@ git commit -m "feat: add WebSocket client for real-time updates in frontend"
 **Step 1: Write prompt builder test**
 
 `packages/backend/src/orchestrator/__tests__/prompt-builder.test.ts`:
+
 ```typescript
 import { describe, it, expect } from 'vitest';
 import { buildReviewPrompt } from '../prompt-builder.js';
@@ -2851,9 +3155,33 @@ describe('PromptBuilder', () => {
       prTitle: 'Add feature',
       agentContext: '{"summary": "Added auth"}',
       comments: [
-        { filePath: 'src/auth.ts', startLine: 10, endLine: 10, body: 'Fix this', severity: 'must-fix', id: '1', thread: [] },
-        { filePath: 'src/auth.ts', startLine: 20, endLine: 22, body: 'Consider refactoring', severity: 'suggestion', id: '2', thread: [] },
-        { filePath: 'src/index.ts', startLine: 5, endLine: 5, body: 'Update import', severity: 'request', id: '3', thread: [] },
+        {
+          filePath: 'src/auth.ts',
+          startLine: 10,
+          endLine: 10,
+          body: 'Fix this',
+          severity: 'must-fix',
+          id: '1',
+          thread: [],
+        },
+        {
+          filePath: 'src/auth.ts',
+          startLine: 20,
+          endLine: 22,
+          body: 'Consider refactoring',
+          severity: 'suggestion',
+          id: '2',
+          thread: [],
+        },
+        {
+          filePath: 'src/index.ts',
+          startLine: 5,
+          endLine: 5,
+          body: 'Update import',
+          severity: 'request',
+          id: '3',
+          thread: [],
+        },
       ],
     });
 
@@ -2882,6 +3210,7 @@ Expected: FAIL
 **Step 3: Write the prompt builder**
 
 `packages/backend/src/orchestrator/prompt-builder.ts`:
+
 ```typescript
 interface ReviewComment {
   id: string;
@@ -2943,8 +3272,12 @@ Use the shepherd CLI to submit your responses as a batch.`);
   for (const [filePath, fileComments] of byFile) {
     sections.push(`### ${filePath}\n`);
     for (const c of fileComments) {
-      const sevLabel = c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
-      const lineRange = c.startLine === c.endLine ? `L${c.startLine}` : `L${c.startLine}-${c.endLine}`;
+      const sevLabel =
+        c.severity === 'must-fix' ? 'MUST FIX' : c.severity.toUpperCase();
+      const lineRange =
+        c.startLine === c.endLine
+          ? `L${c.startLine}`
+          : `L${c.startLine}-${c.endLine}`;
       sections.push(`**[${sevLabel}]** ${lineRange} (comment ID: ${c.id})`);
       sections.push(`> ${c.body}\n`);
 
@@ -2965,11 +3298,19 @@ Use the shepherd CLI to submit your responses as a batch.`);
 **Step 4: Write the adapter types and Claude Code adapter**
 
 `packages/backend/src/orchestrator/types.ts`:
+
 ```typescript
 export interface AgentAdapter {
   name: string;
-  startSession(opts: { projectPath: string; prompt: string }): Promise<AgentSession>;
-  resumeSession(opts: { sessionId: string; projectPath: string; prompt: string }): Promise<AgentSession>;
+  startSession(opts: {
+    projectPath: string;
+    prompt: string;
+  }): Promise<AgentSession>;
+  resumeSession(opts: {
+    sessionId: string;
+    projectPath: string;
+    prompt: string;
+  }): Promise<AgentSession>;
 }
 
 export interface AgentSession {
@@ -2981,6 +3322,7 @@ export interface AgentSession {
 ```
 
 `packages/backend/src/orchestrator/claude-code-adapter.ts`:
+
 ```typescript
 import { spawn, type ChildProcess } from 'child_process';
 import type { AgentAdapter, AgentSession } from './types.js';
@@ -2988,7 +3330,10 @@ import type { AgentAdapter, AgentSession } from './types.js';
 export class ClaudeCodeAdapter implements AgentAdapter {
   name = 'claude-code';
 
-  async startSession(opts: { projectPath: string; prompt: string }): Promise<AgentSession> {
+  async startSession(opts: {
+    projectPath: string;
+    prompt: string;
+  }): Promise<AgentSession> {
     const proc = spawn('claude', ['--yes', '-p', opts.prompt], {
       cwd: opts.projectPath,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -2997,11 +3342,19 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     return this.wrapProcess(proc);
   }
 
-  async resumeSession(opts: { sessionId: string; projectPath: string; prompt: string }): Promise<AgentSession> {
-    const proc = spawn('claude', ['--resume', opts.sessionId, '--yes', '-p', opts.prompt], {
-      cwd: opts.projectPath,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+  async resumeSession(opts: {
+    sessionId: string;
+    projectPath: string;
+    prompt: string;
+  }): Promise<AgentSession> {
+    const proc = spawn(
+      'claude',
+      ['--resume', opts.sessionId, '--yes', '-p', opts.prompt],
+      {
+        cwd: opts.projectPath,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      },
+    );
 
     return this.wrapProcess(proc);
   }
@@ -3024,9 +3377,15 @@ export class ClaudeCodeAdapter implements AgentAdapter {
 
     return {
       id: proc.pid?.toString() || 'unknown',
-      onComplete(cb) { completeCallback = cb; },
-      onError(cb) { errorCallback = cb; },
-      async kill() { proc.kill('SIGTERM'); },
+      onComplete(cb) {
+        completeCallback = cb;
+      },
+      onError(cb) {
+        errorCallback = cb;
+      },
+      async kill() {
+        proc.kill('SIGTERM');
+      },
     };
   }
 }
@@ -3049,6 +3408,7 @@ git commit -m "feat: add agent orchestrator with prompt builder and Claude Code 
 ### Task 22: Orchestrator Integration with Review Route
 
 **Files:**
+
 - Create: `packages/backend/src/orchestrator/index.ts`
 - Modify: `packages/backend/src/routes/pull-requests.ts`
 - Modify: `packages/backend/src/server.ts`
@@ -3079,6 +3439,7 @@ git commit -m "feat: integrate orchestrator with review route for agent kickoff"
 ### Task 23: Config Service
 
 **Files:**
+
 - Create: `packages/backend/src/services/config.ts`
 - Create: `packages/backend/src/routes/config.ts`
 - Modify: `packages/backend/src/server.ts`
@@ -3110,6 +3471,7 @@ git commit -m "feat: add hierarchical config system with file and DB layers"
 ### Task 24: Notification Service
 
 **Files:**
+
 - Create: `packages/backend/src/services/notifications.ts`
 - Modify: `packages/backend/src/orchestrator/index.ts`
 
@@ -3135,6 +3497,7 @@ git commit -m "feat: add OS notification support for PR review readiness"
 ### Task 25: Claude Code Skills
 
 **Files:**
+
 - Create: `skills/shepherd-submit-pr/skill.md`
 - Create: `skills/shepherd-respond-to-review/skill.md`
 - Create: `skills/shepherd-context-guidelines/skill.md`
@@ -3165,6 +3528,7 @@ git commit -m "feat: add Claude Code skills for PR submission and review respons
 ### Task 26: Frontend Theming
 
 **Files:**
+
 - Create: `packages/frontend/src/themes/`
 - Modify: `packages/frontend/src/index.css`
 
@@ -3186,6 +3550,7 @@ git commit -m "feat: add light/dark theme support with theme switcher"
 ### Task 27: Inter-Cycle Diff View
 
 **Files:**
+
 - Modify: `packages/frontend/src/pages/PRReview.tsx`
 - Modify: `packages/backend/src/routes/diff.ts`
 
@@ -3209,6 +3574,7 @@ git commit -m "feat: add inter-cycle diff comparison view"
 ### Task 28: End-to-End Integration Test
 
 **Files:**
+
 - Create: `tests/e2e/full-workflow.test.ts`
 
 **Step 1: Write an integration test**
@@ -3231,15 +3597,15 @@ git commit -m "test: add end-to-end integration test for full PR review workflow
 
 ## Summary
 
-| Phase | Tasks | What it delivers |
-|---|---|---|
-| 1: Foundation | 1-4 | Monorepo, deps, types, DB schema |
-| 2: Backend API | 5-10 | REST API for projects, PRs, comments, diffs |
-| 3: CLI | 11-12 | `shepherd` CLI with all commands |
-| 4: Frontend | 13-18 | React app with diff viewer, comments, review |
-| 5: WebSocket | 19-20 | Real-time updates |
-| 6: Orchestrator | 21-22 | Agent management with Claude Code adapter |
-| 7: Config | 23 | Hierarchical config system |
-| 8: Notifications | 24 | OS + browser notifications |
-| 9: Skills | 25 | Claude Code skill files |
-| 10: Polish | 26-28 | Theming, inter-cycle diff, E2E tests |
+| Phase            | Tasks | What it delivers                             |
+| ---------------- | ----- | -------------------------------------------- |
+| 1: Foundation    | 1-4   | Monorepo, deps, types, DB schema             |
+| 2: Backend API   | 5-10  | REST API for projects, PRs, comments, diffs  |
+| 3: CLI           | 11-12 | `shepherd` CLI with all commands             |
+| 4: Frontend      | 13-18 | React app with diff viewer, comments, review |
+| 5: WebSocket     | 19-20 | Real-time updates                            |
+| 6: Orchestrator  | 21-22 | Agent management with Claude Code adapter    |
+| 7: Config        | 23    | Hierarchical config system                   |
+| 8: Notifications | 24    | OS + browser notifications                   |
+| 9: Skills        | 25    | Claude Code skill files                      |
+| 10: Polish       | 26-28 | Theming, inter-cycle diff, E2E tests         |

@@ -2,70 +2,160 @@ import { getSessionToken } from './session-token.js';
 
 const BASE = '/api';
 
-async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+export interface Project {
+  id: string;
+  name: string;
+  path: string;
+}
+
+export interface PullRequest {
+  id: string;
+  projectId: string;
+  title: string;
+  sourceBranch: string;
+  baseBranch: string;
+  status: string;
+  workingDirectory?: string;
+  agents?: Record<string, unknown>;
+}
+
+interface DiffResponse {
+  diff: string;
+  files: string[];
+  fileGroups?: { name: string; description?: string; files: string[] }[];
+}
+
+interface ReviewCycleDetail {
+  id: string;
+  prId: string;
+  cycleNumber: number;
+  status: string;
+  reviewedAt: string | undefined;
+  agentCompletedAt: string | undefined;
+  hasDiffSnapshot: boolean;
+  context: string | undefined;
+}
+
+interface CommentData {
+  id: string;
+  reviewCycleId: string;
+  filePath: string | undefined;
+  startLine: number | undefined;
+  endLine: number | undefined;
+  body: string;
+  severity: string;
+  author: string;
+  parentCommentId: string | undefined;
+  resolved: boolean;
+  createdAt: string;
+}
+
+interface InsightsResponse {
+  categories: Record<string, unknown>;
+  branchRef: string | undefined;
+  updatedAt: string;
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'X-Session-Token': getSessionToken(),
   };
-  if (opts?.body) headers['Content-Type'] = 'application/json';
-  const res = await fetch(`${BASE}${path}`, {
+  if (options?.body) headers['Content-Type'] = 'application/json';
+  const response = await fetch(`${BASE}${path}`, {
     headers,
-    ...opts,
+    ...options,
   });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  if (res.status === 204) return undefined as T;
-  return res.json() as T;
+  if (!response.ok)
+    throw new Error(`${String(response.status)}: ${await response.text()}`);
+  if (response.status === 204) return undefined as T;
+  return response.json() as T;
 }
 
 export const api = {
   projects: {
-    list: () => request<any[]>('/projects'),
-    get: (id: string) => request<any>(`/projects/${id}`),
-    create: (data: any) => request<any>('/projects', { method: 'POST', body: JSON.stringify(data) }),
+    list: () => request<Project[]>('/projects'),
+    get: (id: string) => request<Project>(`/projects/${id}`),
+    create: (data: { name: string; path?: string }) =>
+      request<Project>('/projects', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
   prs: {
-    list: (projectId: string) => request<any[]>(`/projects/${projectId}/prs`),
-    get: (id: string) => request<any>(`/prs/${id}`),
-    diff: (id: string, opts?: { cycle?: number; from?: number; to?: number }) => {
-      const params = new URLSearchParams();
-      if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
-      if (opts?.from !== undefined) params.set('from', String(opts.from));
-      if (opts?.to !== undefined) params.set('to', String(opts.to));
-      const qs = params.toString();
-      return request<any>(`/prs/${id}/diff${qs ? `?${qs}` : ''}`);
+    list: (projectId: string) =>
+      request<PullRequest[]>(`/projects/${projectId}/prs`),
+    get: (id: string) => request<PullRequest>(`/prs/${id}`),
+    diff: (
+      id: string,
+      options?: { cycle?: number; from?: number; to?: number },
+    ) => {
+      const parameters = new URLSearchParams();
+      if (options?.cycle !== undefined)
+        parameters.set('cycle', String(options.cycle));
+      if (options?.from !== undefined)
+        parameters.set('from', String(options.from));
+      if (options?.to !== undefined) parameters.set('to', String(options.to));
+      const qs = parameters.toString();
+      const queryString = qs ? `?${qs}` : '';
+      return request<DiffResponse>(`/prs/${id}/diff${queryString}`);
     },
-    cycles: (id: string) => request<any[]>(`/prs/${id}/cycles/details`),
-    fileGroups: (id: string, opts?: { cycle?: number }) => {
-      const params = new URLSearchParams();
-      if (opts?.cycle !== undefined) params.set('cycle', String(opts.cycle));
-      const qs = params.toString();
-      return request<{ fileGroups: any[] | null; cycleNumber: number }>(
-        `/prs/${id}/file-groups${qs ? `?${qs}` : ''}`,
-      );
+    cycles: (id: string) =>
+      request<ReviewCycleDetail[]>(`/prs/${id}/cycles/details`),
+    fileGroups: (id: string, options?: { cycle?: number }) => {
+      const parameters = new URLSearchParams();
+      if (options?.cycle !== undefined)
+        parameters.set('cycle', String(options.cycle));
+      const qs = parameters.toString();
+      const queryString = qs ? `?${qs}` : '';
+      return request<{
+        fileGroups: { name: string; files: string[] }[] | undefined;
+        cycleNumber: number;
+      }>(`/prs/${id}/file-groups${queryString}`);
     },
     snapshotDiff: (id: string) =>
-      request<any>(`/prs/${id}/diff/snapshot`, { method: 'POST' }),
+      request<Record<string, unknown>>(`/prs/${id}/diff/snapshot`, {
+        method: 'POST',
+      }),
     review: (id: string, action: string) =>
-      request<any>(`/prs/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }),
+      request<Record<string, unknown>>(`/prs/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      }),
     cancelAgent: (id: string, source?: string) => {
-      const params = source ? `?source=${source}` : '';
-      return request<any>(`/prs/${id}/cancel-agent${params}`, { method: 'POST' });
+      const parameters = source ? `?source=${source}` : '';
+      return request<Record<string, unknown>>(
+        `/prs/${id}/cancel-agent${parameters}`,
+        {
+          method: 'POST',
+        },
+      );
     },
     close: (id: string) =>
-      request<any>(`/prs/${id}/close`, { method: 'POST' }),
+      request<PullRequest>(`/prs/${id}/close`, { method: 'POST' }),
     reopen: (id: string) =>
-      request<any>(`/prs/${id}/reopen`, { method: 'POST' }),
+      request<PullRequest>(`/prs/${id}/reopen`, { method: 'POST' }),
   },
   comments: {
-    list: (prId: string) => request<any[]>(`/prs/${prId}/comments`),
-    create: (prId: string, data: any) =>
-      request<any>(`/prs/${prId}/comments`, { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: any) =>
-      request<any>(`/comments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    list: (prId: string) => request<CommentData[]>(`/prs/${prId}/comments`),
+    create: (prId: string, data: Record<string, unknown>) =>
+      request<CommentData>(`/prs/${prId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Record<string, unknown>) =>
+      request<CommentData>(`/comments/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
     delete: (id: string) =>
-      request<void>(`/comments/${id}`, { method: 'DELETE' }),
+      request<undefined>(`/comments/${id}`, { method: 'DELETE' }),
   },
   insights: {
-    get: (prId: string) => request<any | null>(`/prs/${prId}/insights`),
-    runAnalyzer: (prId: string) => request<any>(`/prs/${prId}/run-insights`, { method: 'POST' }),
+    get: (prId: string) =>
+      request<InsightsResponse | undefined>(`/prs/${prId}/insights`),
+    runAnalyzer: (prId: string) =>
+      request<Record<string, unknown>>(`/prs/${prId}/run-insights`, {
+        method: 'POST',
+      }),
   },
 };

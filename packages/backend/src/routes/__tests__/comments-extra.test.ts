@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { createTestServer } from '../../__tests__/helpers.js';
+import {
+  createTestServer,
+  jsonBody,
+  jsonArrayBody,
+} from '../../__tests__/helpers.js';
 
 describe('Comments API - additional coverage', () => {
   let server: FastifyInstance;
@@ -10,19 +14,19 @@ describe('Comments API - additional coverage', () => {
 
   beforeEach(async () => {
     ({ server, inject } = await createTestServer());
-    const proj = await inject({
+    const projectResponse = await inject({
       method: 'POST',
       url: '/api/projects',
       payload: { name: 'test', path: '/tmp/test' },
     });
-    projectId = proj.json().id;
+    projectId = jsonBody(projectResponse).id as string;
 
-    const pr = await inject({
+    const prResponse = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
       payload: { title: 'PR', description: '', sourceBranch: 'feat/x' },
     });
-    prId = pr.json().id;
+    prId = jsonBody(prResponse).id as string;
   });
 
   afterEach(async () => {
@@ -51,20 +55,19 @@ describe('Comments API - additional coverage', () => {
         author: 'human',
       },
     });
-    const commentId = create.json().id;
+    const commentId = jsonBody(create).id as string;
 
-    const del = await inject({
+    const deleteResponse = await inject({
       method: 'DELETE',
       url: `/api/comments/${commentId}`,
     });
-    expect(del.statusCode).toBe(204);
+    expect(deleteResponse.statusCode).toBe(204);
 
-    // Verify it's gone
     const list = await inject({
       method: 'GET',
       url: `/api/prs/${prId}/comments`,
     });
-    expect(list.json()).toHaveLength(0);
+    expect(jsonArrayBody(list)).toHaveLength(0);
   });
 
   it('DELETE /api/comments/:id returns 404 for missing comment', async () => {
@@ -76,7 +79,6 @@ describe('Comments API - additional coverage', () => {
   });
 
   it('POST /api/prs/:prId/comments returns 404 when no review cycle exists', async () => {
-    // Use a nonexistent PR ID
     const response = await inject({
       method: 'POST',
       url: '/api/prs/no-such-pr/comments',
@@ -105,12 +107,16 @@ describe('Comments API - additional coverage', () => {
       payload: {
         comments: [],
         replies: [
-          { parentCommentId: 'nonexistent', body: 'reply to nothing', severity: 'suggestion' },
+          {
+            parentCommentId: 'nonexistent',
+            body: 'reply to nothing',
+            severity: 'suggestion',
+          },
         ],
       },
     });
     expect(response.statusCode).toBe(201);
-    expect(response.json().created).toBe(0);
+    expect(jsonBody(response).created).toBe(0);
   });
 
   it('GET /api/prs/:prId/comments?summary=true returns summary for PR with no cycles', async () => {
@@ -119,7 +125,7 @@ describe('Comments API - additional coverage', () => {
       url: '/api/prs/nonexistent/comments?summary=true',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().total).toBe(0);
+    expect(jsonBody(response).total).toBe(0);
   });
 
   it('GET /api/prs/:prId/comments returns empty array for PR with no cycles', async () => {
@@ -128,7 +134,7 @@ describe('Comments API - additional coverage', () => {
       url: '/api/prs/nonexistent/comments',
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([]);
+    expect(jsonArrayBody(response)).toEqual([]);
   });
 
   it('PUT /api/comments/:id updates comment body', async () => {
@@ -144,7 +150,7 @@ describe('Comments API - additional coverage', () => {
         author: 'human',
       },
     });
-    const commentId = create.json().id;
+    const commentId = jsonBody(create).id as string;
 
     const response = await inject({
       method: 'PUT',
@@ -152,7 +158,7 @@ describe('Comments API - additional coverage', () => {
       payload: { body: 'updated body' },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().body).toBe('updated body');
+    expect(jsonBody(response).body).toBe('updated body');
   });
 
   it('POST comment without optional fields defaults correctly', async () => {
@@ -165,7 +171,7 @@ describe('Comments API - additional coverage', () => {
       },
     });
     expect(response.statusCode).toBe(201);
-    const comment = response.json();
+    const comment = jsonBody(response);
     expect(comment.filePath).toBeNull();
     expect(comment.startLine).toBeNull();
     expect(comment.endLine).toBeNull();
