@@ -12,6 +12,7 @@ import {
   getGroupedFileOrder,
 } from './file-tree-utilities.js';
 import type { ThreadStatus } from '../utils/comment-thread-status.js';
+import type { CommentSide } from '@agent-shepherd/shared';
 
 /** Typed wrapper for Array.prototype.toSorted since TS target < ES2023 */
 function sortedCopy<T>(
@@ -25,6 +26,15 @@ function sortedCopy<T>(
   ).toSorted(compareFunction);
 }
 
+interface AddCommentData {
+  filePath: string | undefined;
+  startLine: number | undefined;
+  endLine: number | undefined;
+  body: string;
+  type: string;
+  side: CommentSide | undefined;
+}
+
 interface DiffViewerProperties {
   diff: string;
   files: string[];
@@ -33,13 +43,7 @@ interface DiffViewerProperties {
   onVisibleFileChange?: (file: string) => void;
   comments?: Comment[];
   threadStatusMap?: Map<string, ThreadStatus>;
-  onAddComment?: (data: {
-    filePath: string | undefined;
-    startLine: number | undefined;
-    endLine: number | undefined;
-    body: string;
-    type: string;
-  }) => void;
+  onAddComment?: (data: AddCommentData) => void;
   onReplyComment?: (commentId: string, body: string) => void;
   onResolveComment?: (commentId: string) => void;
   onEditComment?: (commentId: string, body: string) => void;
@@ -293,15 +297,20 @@ function FileDiffComponent({
   commentsByFileLine: Map<string, Comment[]>;
   repliesByParent: Map<string, Comment[]>;
   commentFormLine:
-    | { file: string; startLine: number; endLine: number }
+    | { file: string; startLine: number; endLine: number; side: 'old' | 'new' }
     | undefined;
   dragSelection:
-    | { file: string; startLine: number; endLine: number }
+    | { file: string; startLine: number; endLine: number; side: 'old' | 'new' }
     | undefined;
   buttonsHidden: boolean;
-  onLineClick: (filePath: string, lineNo: number, shiftKey: boolean) => void;
-  onDragStart: (filePath: string, lineNo: number) => void;
-  onDragOver: (filePath: string, lineNo: number) => void;
+  onLineClick: (
+    filePath: string,
+    lineNo: number,
+    shiftKey: boolean,
+    side: 'old' | 'new',
+  ) => void;
+  onDragStart: (filePath: string, lineNo: number, side: 'old' | 'new') => void;
+  onDragOver: (filePath: string, lineNo: number, side: 'old' | 'new') => void;
   onFinalizeDrag: () => void;
   onCancelComment: () => void;
   onAddComment?: DiffViewerProperties['onAddComment'];
@@ -311,6 +320,7 @@ function FileDiffComponent({
     endLine: number | undefined,
     body: string,
     type: string,
+    side: 'old' | 'new' | undefined,
   ) => void;
   onReplyComment?: DiffViewerProperties['onReplyComment'];
   onResolveComment?: DiffViewerProperties['onResolveComment'];
@@ -440,10 +450,12 @@ function FileDiffComponent({
                 const activeRange = dragSelection ?? commentFormLine;
                 const isInSelectedRange =
                   activeRange?.file === file.path &&
+                  activeRange.side === side &&
                   lineNo >= activeRange.startLine &&
                   lineNo <= activeRange.endLine;
                 const isFormOpenAfterThis =
                   commentFormLine?.file === file.path &&
+                  commentFormLine.side === side &&
                   commentFormLine.endLine === lineNo;
                 const isInCommentRange = commentRangeLines.has(lineKey);
                 const lineComments = commentsByFileLine.get(lineKey) ?? [];
@@ -463,7 +475,12 @@ function FileDiffComponent({
                       onClick={
                         onAddComment
                           ? (event) => {
-                              onLineClick(file.path, lineNo, event.shiftKey);
+                              onLineClick(
+                                file.path,
+                                lineNo,
+                                event.shiftKey,
+                                side,
+                              );
                             }
                           : undefined
                       }
@@ -472,7 +489,7 @@ function FileDiffComponent({
                           ? (event) => {
                               if (!event.shiftKey) {
                                 event.preventDefault();
-                                onDragStart(file.path, lineNo);
+                                onDragStart(file.path, lineNo, side);
                               }
                             }
                           : undefined
@@ -481,7 +498,7 @@ function FileDiffComponent({
                         setHoveredLineKey(
                           `${String(hunkIndex)}:${String(lineIndex)}`,
                         );
-                        onDragOver(file.path, lineNo);
+                        onDragOver(file.path, lineNo, side);
                       }}
                       onMouseLeave={() => {
                         setHoveredLineKey((previous) =>
@@ -553,6 +570,7 @@ function FileDiffComponent({
                               commentFormLine.endLine,
                               body,
                               type ?? 'suggestion',
+                              commentFormLine.side,
                             );
                           }}
                           onCancel={onCancelComment}
@@ -826,6 +844,7 @@ export function DiffViewer({
         file: string;
         startLine: number;
         endLine: number;
+        side: 'old' | 'new';
       }
     | undefined
   >();
@@ -833,6 +852,7 @@ export function DiffViewer({
     | {
         file: string;
         line: number;
+        side: 'old' | 'new';
       }
     | undefined
   >();
@@ -841,14 +861,15 @@ export function DiffViewer({
         file: string;
         startLine: number;
         endLine: number;
+        side: 'old' | 'new';
       }
     | undefined
   >();
   const [buttonsHidden, setButtonsHidden] = useState(false);
   const isDragging = useRef(false);
-  const dragAnchor = useRef<{ file: string; line: number } | undefined>(
-    undefined,
-  );
+  const dragAnchor = useRef<
+    { file: string; line: number; side: 'old' | 'new' } | undefined
+  >(undefined);
   const isScrolling = useRef(false);
   const [fileCommentFormPath, setFileCommentFormPath] = useState<
     string | undefined
@@ -1026,18 +1047,28 @@ export function DiffViewer({
   );
 
   const handleLineClick = useCallback(
-    (filePath: string, lineNo: number, shiftKey: boolean) => {
+    (
+      filePath: string,
+      lineNo: number,
+      shiftKey: boolean,
+      side: 'old' | 'new',
+    ) => {
       if (isDragging.current) return;
-      if (shiftKey && rangeAnchor?.file === filePath) {
+      if (
+        shiftKey &&
+        rangeAnchor?.file === filePath &&
+        rangeAnchor.side === side
+      ) {
         const startLine = Math.min(rangeAnchor.line, lineNo);
         const endLine = Math.max(rangeAnchor.line, lineNo);
-        setCommentFormLine({ file: filePath, startLine, endLine });
+        setCommentFormLine({ file: filePath, startLine, endLine, side });
       } else {
-        setRangeAnchor({ file: filePath, line: lineNo });
+        setRangeAnchor({ file: filePath, line: lineNo, side });
         setCommentFormLine({
           file: filePath,
           startLine: lineNo,
           endLine: lineNo,
+          side,
         });
       }
     },
@@ -1058,8 +1089,9 @@ export function DiffViewer({
       endLine: number | undefined,
       body: string,
       type: string,
+      side: 'old' | 'new' | undefined,
     ) => {
-      onAddComment?.({ filePath, startLine, endLine, body, type });
+      onAddComment?.({ filePath, startLine, endLine, body, type, side });
       setCommentFormLine(undefined);
       setRangeAnchor(undefined);
     },
@@ -1074,6 +1106,7 @@ export function DiffViewer({
         endLine: undefined,
         body,
         type,
+        side: undefined,
       });
       setFileCommentFormPath(undefined);
     },
@@ -1088,24 +1121,37 @@ export function DiffViewer({
         endLine: undefined,
         body,
         type,
+        side: undefined,
       });
       onToggleGlobalCommentForm?.();
     },
     [onAddComment, onToggleGlobalCommentForm],
   );
 
-  const handleDragStart = useCallback((filePath: string, lineNo: number) => {
-    dragAnchor.current = { file: filePath, line: lineNo };
-  }, []);
+  const handleDragStart = useCallback(
+    (filePath: string, lineNo: number, side: 'old' | 'new') => {
+      dragAnchor.current = { file: filePath, line: lineNo, side };
+    },
+    [],
+  );
 
-  const handleDragOver = useCallback((filePath: string, lineNo: number) => {
-    if (dragAnchor.current?.file !== filePath) return;
-    if (dragAnchor.current.line === lineNo && !isDragging.current) return;
-    isDragging.current = true;
-    const start = Math.min(dragAnchor.current.line, lineNo);
-    const end = Math.max(dragAnchor.current.line, lineNo);
-    setDragSelection({ file: filePath, startLine: start, endLine: end });
-  }, []);
+  const handleDragOver = useCallback(
+    (filePath: string, lineNo: number, side: 'old' | 'new') => {
+      if (dragAnchor.current?.file !== filePath) return;
+      if (dragAnchor.current.side !== side) return;
+      if (dragAnchor.current.line === lineNo && !isDragging.current) return;
+      isDragging.current = true;
+      const start = Math.min(dragAnchor.current.line, lineNo);
+      const end = Math.max(dragAnchor.current.line, lineNo);
+      setDragSelection({
+        file: filePath,
+        startLine: start,
+        endLine: end,
+        side,
+      });
+    },
+    [],
+  );
 
   const finalizeDrag = useCallback(() => {
     const wasDragging = isDragging.current;
@@ -1115,7 +1161,11 @@ export function DiffViewer({
       setDragSelection((sel) => {
         if (sel) {
           setCommentFormLine(sel);
-          setRangeAnchor({ file: sel.file, line: sel.startLine });
+          setRangeAnchor({
+            file: sel.file,
+            line: sel.startLine,
+            side: sel.side,
+          });
         }
         // Keep current selection (cleared by next mouse interaction)
         return sel;

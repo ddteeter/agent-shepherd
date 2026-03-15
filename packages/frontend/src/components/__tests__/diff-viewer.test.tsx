@@ -50,6 +50,7 @@ interface AddCommentData {
   endLine: number | undefined;
   body: string;
   type: string;
+  side: 'old' | 'new' | undefined;
 }
 
 describe('DiffViewer — multi-line comment support', () => {
@@ -606,5 +607,73 @@ describe('DiffViewer — side-aware comment matching', () => {
 
     const matches = screen.getAllByText('Good change!');
     expect(matches).toHaveLength(1);
+  });
+});
+
+describe('DiffViewer — side-aware selection', () => {
+  it('passes side: old when submitting comment on removed line', async () => {
+    const user = userEvent.setup();
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const removedLine = lines.find(
+      (element) =>
+        element.textContent.includes('-') &&
+        element.textContent.includes('3000'),
+    );
+    expect(removedLine).toBeTruthy();
+    if (removedLine) fireEvent.click(removedLine);
+
+    const textarea = screen.getByPlaceholderText('Write a comment...');
+    await user.type(textarea, 'Old side comment');
+    await user.click(screen.getByText('Add Comment'));
+
+    expect(onAddComment).toHaveBeenCalledTimes(1);
+    const call = onAddComment.mock.calls[0][0];
+    expect(call.side).toBe('old');
+    expect(call.body).toBe('Old side comment');
+  });
+
+  it('passes side: new when submitting comment on added line', async () => {
+    const user = userEvent.setup();
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const addedLine = lines.find(
+      (element) =>
+        element.textContent.includes('+') &&
+        element.textContent.includes('8080'),
+    );
+    expect(addedLine).toBeTruthy();
+    if (addedLine) fireEvent.click(addedLine);
+
+    const textarea = screen.getByPlaceholderText('Write a comment...');
+    await user.type(textarea, 'New side comment');
+    await user.click(screen.getByText('Add Comment'));
+
+    expect(onAddComment).toHaveBeenCalledTimes(1);
+    const call = onAddComment.mock.calls[0][0];
+    expect(call.side).toBe('new');
+    expect(call.body).toBe('New side comment');
   });
 });
