@@ -295,13 +295,13 @@ describe('FileTree', () => {
     const button = screen.getByText('index.ts').closest('button');
     expect(button).toBeTruthy();
     const children = [...(button as HTMLElement).children];
-    const indicatorColumn = children[0];
-    const fileIcon = children[1];
-    const fileName = children[2];
+    const commentPill = children[0];
+    const statusColumn = children[1];
+    const fileIcon = children[2];
+    const fileName = children[3];
 
-    expect(indicatorColumn.querySelector('.text-xs')).toBeTruthy();
-    expect(indicatorColumn.textContent).toContain('M');
-    expect(indicatorColumn.textContent).toContain('3');
+    expect(commentPill.textContent).toBe('3');
+    expect(statusColumn.textContent).toContain('M');
     expect(['img', 'svg']).toContain(fileIcon.tagName.toLowerCase());
     expect(fileName.textContent).toBe('index.ts');
   });
