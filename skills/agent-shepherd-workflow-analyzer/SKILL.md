@@ -119,7 +119,7 @@ Examples:
 
 ### 4. Agent Behavior Observations
 
-What the agent did wrong, why, and how to fix it. Every observation MUST include a concrete recommendation for improvement -- don't just describe the problem, prescribe the solution.
+What the agent did wrong, why, and how to fix it. Only report behaviors that need to change — do not note things the agent handled correctly. Every observation MUST include a concrete recommendation for improvement -- don't just describe the problem, prescribe the solution.
 
 Examples:
 
@@ -213,6 +213,8 @@ Set `appliedPath` to the file path you modified (e.g., `"CLAUDE.md"`, `".claude/
 
 ## Principles
 
+- **Only report problems and improvements** -- Do not note what the agent did well. Positive observations are noise. If the agent handled something correctly, there is nothing to report.
+- **Empty categories are expected** -- If a category has no findings, return an empty array. Do not invent recommendations to fill every category. A run with few or no findings is a good outcome.
 - **Every insight must be actionable** -- Don't just observe problems, recommend solutions. If you can't suggest a concrete improvement, the observation isn't worth reporting. Every item across all categories must answer: "What should change to prevent this?"
 - **Be specific** -- "Add error handling" is useless. "The agent added try/catch blocks around internal database calls in 4 files, but these functions are only called internally and errors should propagate" is actionable.
 - **Cite evidence** -- Reference specific transcript lines, file paths, or comment text.
