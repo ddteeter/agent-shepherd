@@ -22,6 +22,10 @@ export interface Project {
   createdAt: string;
 }
 
+export interface ProjectWithStats extends Project {
+  pendingReviewCount: number;
+}
+
 export interface PullRequest {
   id: string;
   projectId: string;

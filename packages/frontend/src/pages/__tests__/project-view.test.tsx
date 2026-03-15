@@ -52,6 +52,7 @@ describe('ProjectView', () => {
       id: 'proj-1',
       name: 'Test Project',
       path: '/tmp/test',
+      pendingReviewCount: 0,
     });
     mockApi.prs.list.mockResolvedValue([
       {

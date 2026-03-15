@@ -1,9 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import type { CreateProjectInput } from '@agent-shepherd/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
 import { findProjectOrFail } from './route-helpers.js';
+
+const pendingReviewCountSql = sql<number>`(
+  SELECT count(*)
+  FROM review_cycles
+  JOIN pull_requests ON pull_requests.id = review_cycles.pr_id
+  WHERE pull_requests.project_id = projects.id
+    AND pull_requests.status = 'open'
+    AND review_cycles.status = 'pending_review'
+)`.as('pending_review_count');
 
 export function projectRoutes(fastify: FastifyInstance) {
   const database = fastify.db;
@@ -36,7 +45,17 @@ export function projectRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/api/projects', () => {
-    return database.select().from(schema.projects).all();
+    return database
+      .select({
+        id: schema.projects.id,
+        name: schema.projects.name,
+        path: schema.projects.path,
+        baseBranch: schema.projects.baseBranch,
+        createdAt: schema.projects.createdAt,
+        pendingReviewCount: pendingReviewCountSql,
+      })
+      .from(schema.projects)
+      .all();
   });
 
   fastify.get('/api/projects/:id', async (request, reply) => {
