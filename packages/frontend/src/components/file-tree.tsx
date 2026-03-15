@@ -57,7 +57,7 @@ function FileItemButton({
         onClick={() => {
           onSelectFile(filePath);
         }}
-        className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 pr-3 text-sm whitespace-nowrap ${
+        className={`file-tree-item w-full text-left flex items-center gap-1.5 py-1 text-sm whitespace-nowrap ${
           selectedFile === filePath ? 'font-medium' : ''
         }`}
         style={{
@@ -70,32 +70,34 @@ function FileItemButton({
             : {}),
         }}
       >
+        <span className="inline-flex items-center justify-end gap-1 shrink-0 w-12">
+          {badge && (
+            <span
+              className="text-xs font-bold shrink-0"
+              style={{ color: badge.color }}
+            >
+              {badge.label}
+            </span>
+          )}
+          {count > 0 && (
+            <span
+              className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
+              style={{
+                backgroundColor:
+                  'color-mix(in srgb, var(--color-accent) 15%, transparent)',
+                color: 'var(--color-accent)',
+              }}
+            >
+              {count}
+            </span>
+          )}
+        </span>
         <FileIcon
           fileName={displayName}
           autoAssign
           className="w-4 h-4 shrink-0"
         />
         <span className="whitespace-nowrap flex-1">{displayName}</span>
-        {count > 0 && (
-          <span
-            className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
-            style={{
-              backgroundColor:
-                'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-              color: 'var(--color-accent)',
-            }}
-          >
-            {count}
-          </span>
-        )}
-        {badge && (
-          <span
-            className="text-xs font-bold shrink-0"
-            style={{ color: badge.color }}
-          >
-            {badge.label}
-          </span>
-        )}
       </button>
     </li>
   );

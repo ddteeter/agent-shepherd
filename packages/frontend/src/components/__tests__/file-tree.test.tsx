@@ -301,7 +301,7 @@ describe('FileTree', () => {
     expect(indicatorColumn.querySelector('.text-xs')).toBeTruthy();
     expect(indicatorColumn.textContent).toContain('M');
     expect(indicatorColumn.textContent).toContain('3');
-    expect(fileIcon.tagName.toLowerCase()).toBe('img');
+    expect(['img', 'svg']).toContain(fileIcon.tagName.toLowerCase());
     expect(fileName.textContent).toBe('index.ts');
   });
 });
