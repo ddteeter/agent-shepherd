@@ -63,7 +63,7 @@ describe('Insights API', () => {
 
     const body = jsonBody(response);
     expect(body.prId).toBe(prId);
-    expect(body.categories).toEqual(categories);
+    expect(body.categories).toMatchObject(categories);
     expect(body.branchRef).toBe('feat/x');
     expect(body.worktreePath).toBe('/tmp/wt');
     expect(body.id).toBeDefined();
@@ -110,7 +110,7 @@ describe('Insights API', () => {
     expect(second.statusCode).toBe(200);
     const secondBody = jsonBody(second);
     expect(secondBody.id).toBe(firstId);
-    expect(secondBody.categories).toEqual(categories2);
+    expect(secondBody.categories).toMatchObject(categories2);
     expect(secondBody.branchRef).toBe('feat/y');
   });
 
@@ -396,6 +396,158 @@ describe('Insights API', () => {
     const body = jsonBody(response);
     expect(body).not.toBeNull();
     expect(body.prId).toBe(prId);
-    expect(body.categories).toEqual(categories);
+    expect(body.categories).toMatchObject(categories);
+  });
+
+  it('PUT stamps firstSeenAt on items during first create', async () => {
+    const categories = {
+      toolRecommendations: [],
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Desc', confidence: 'high' },
+      ],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    const response = await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+    const body = jsonBody(response);
+    const items = (body.categories as Record<string, Record<string, unknown>[]>)
+      .claudeMdRecommendations;
+    expect(items[0].firstSeenAt).toBeDefined();
+    expect(items[0].lastUpdatedAt).toBeUndefined();
+    expect(body.previousUpdatedAt).toBeNull();
+  });
+
+  it('PUT rotates previousUpdatedAt on second call', async () => {
+    const categories = {
+      toolRecommendations: [],
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Desc', confidence: 'high' },
+      ],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    const first = await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+    const firstUpdatedAt = jsonBody(first).updatedAt as string;
+
+    const second = await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+    const secondBody = jsonBody(second);
+    expect(secondBody.previousUpdatedAt).toBe(firstUpdatedAt);
+  });
+
+  it('PUT preserves firstSeenAt for unchanged items across updates', async () => {
+    const categories = {
+      toolRecommendations: [],
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Desc', confidence: 'high' },
+      ],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    const first = await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+    const firstItems = (
+      jsonBody(first).categories as Record<string, Record<string, unknown>[]>
+    ).claudeMdRecommendations;
+    const originalFirstSeenAt = firstItems[0].firstSeenAt;
+
+    const second = await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+    const secondItems = (
+      jsonBody(second).categories as Record<string, Record<string, unknown>[]>
+    ).claudeMdRecommendations;
+    expect(secondItems[0].firstSeenAt).toBe(originalFirstSeenAt);
+  });
+
+  it('PUT sets lastUpdatedAt when item content changes', async () => {
+    const categories1 = {
+      toolRecommendations: [],
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Desc', confidence: 'high' },
+      ],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories: categories1 },
+    });
+
+    const categories2 = {
+      ...categories1,
+      claudeMdRecommendations: [
+        { title: 'Rule A', description: 'Changed desc', confidence: 'medium' },
+      ],
+    };
+
+    const second = await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories: categories2 },
+    });
+    const items = (
+      jsonBody(second).categories as Record<string, Record<string, unknown>[]>
+    ).claudeMdRecommendations;
+    expect(items[0].lastUpdatedAt).toBeDefined();
+  });
+
+  it('GET returns previousUpdatedAt from the record', async () => {
+    const categories = {
+      toolRecommendations: [],
+      claudeMdRecommendations: [],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+    await inject({
+      method: 'PUT',
+      url: `/api/prs/${prId}/insights`,
+      payload: { categories },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/insights`,
+    });
+    const body = jsonBody(response);
+    expect(body.previousUpdatedAt).toBeDefined();
+    expect(body.previousUpdatedAt).not.toBeNull();
   });
 });

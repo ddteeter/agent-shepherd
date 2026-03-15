@@ -30,7 +30,7 @@ CREATE TABLE `__new_insights` (
 	FOREIGN KEY (`pr_id`) REFERENCES `pull_requests`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
-INSERT INTO `__new_insights`("id", "pr_id", "categories", "branch_ref", "worktree_path", "updated_at", "previous_updated_at") SELECT "id", "pr_id", "categories", "branch_ref", "worktree_path", "updated_at", "previous_updated_at" FROM `insights`;--> statement-breakpoint
+INSERT INTO `__new_insights`("id", "pr_id", "categories", "branch_ref", "worktree_path", "updated_at", "previous_updated_at") SELECT "id", "pr_id", "categories", "branch_ref", "worktree_path", "updated_at", NULL FROM `insights`;--> statement-breakpoint
 DROP TABLE `insights`;--> statement-breakpoint
 ALTER TABLE `__new_insights` RENAME TO `insights`;--> statement-breakpoint
 CREATE TABLE `__new_projects` (

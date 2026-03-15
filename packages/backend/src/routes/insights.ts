@@ -2,28 +2,22 @@ import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { schema } from '../db/index.js';
+import type { InsightCategories } from '@agent-shepherd/shared';
+import { diffInsightCategories } from './insight-differ.js';
 
-interface InsightItem {
+interface LegacyInsightItem {
   applied?: boolean;
   confidence?: string;
   appliedPath?: string;
   [key: string]: unknown;
 }
 
-interface InsightCategories {
-  toolRecommendations?: InsightItem[];
-  claudeMdRecommendations?: InsightItem[];
-  skillRecommendations?: InsightItem[];
-  promptEngineering?: InsightItem[];
-  agentBehaviorObservations?: InsightItem[];
-  recurringPatterns?: InsightItem[];
-  [key: string]: InsightItem[] | undefined;
-}
+type LegacyInsightCategories = Record<string, LegacyInsightItem[] | undefined>;
 
 export function migrateInsightCategories(
-  categories: InsightCategories,
-): Record<string, InsightItem[]> {
-  const migrate = (items: InsightItem[]) =>
+  categories: LegacyInsightCategories,
+): Record<string, LegacyInsightItem[]> {
+  const migrate = (items: LegacyInsightItem[]) =>
     items.map(({ applied, ...rest }) => ({
       ...rest,
       confidence: rest.confidence ?? 'medium',
@@ -61,7 +55,7 @@ export function insightsRoutes(fastify: FastifyInstance) {
     return {
       ...row,
       categories: migrateInsightCategories(
-        JSON.parse(row.categories) as InsightCategories,
+        JSON.parse(row.categories) as LegacyInsightCategories,
       ),
     };
   });
@@ -69,18 +63,29 @@ export function insightsRoutes(fastify: FastifyInstance) {
   fastify.put('/api/prs/:prId/insights', (request) => {
     const { prId } = request.params as { prId: string };
     const { categories, branchRef, worktreePath } = request.body as {
-      categories: Record<string, unknown>;
+      categories: InsightCategories;
       branchRef?: string;
       worktreePath?: string;
     };
-
-    const categoriesJson = JSON.stringify(categories);
 
     const existing = database
       .select()
       .from(schema.insights)
       .where(eq(schema.insights.prId, prId))
       .get();
+
+    const existingCategories = existing
+      ? (migrateInsightCategories(
+          JSON.parse(existing.categories) as LegacyInsightCategories,
+        ) as unknown as InsightCategories)
+      : undefined;
+
+    const diffedCategories = diffInsightCategories(
+      categories,
+      existingCategories,
+    );
+    const categoriesJson = JSON.stringify(diffedCategories);
+    const now = new Date().toISOString();
 
     if (existing) {
       database
@@ -89,7 +94,8 @@ export function insightsRoutes(fastify: FastifyInstance) {
           categories: categoriesJson,
           ...(branchRef === undefined ? {} : { branchRef }),
           ...(worktreePath === undefined ? {} : { worktreePath }),
-          updatedAt: new Date().toISOString(),
+          previousUpdatedAt: existing.updatedAt,
+          updatedAt: now,
         })
         .where(eq(schema.insights.id, existing.id))
         .run();
@@ -103,7 +109,8 @@ export function insightsRoutes(fastify: FastifyInstance) {
           categories: categoriesJson,
           branchRef,
           worktreePath,
-          updatedAt: new Date().toISOString(),
+          previousUpdatedAt: undefined,
+          updatedAt: now,
         })
         .run();
     }
@@ -121,7 +128,7 @@ export function insightsRoutes(fastify: FastifyInstance) {
     return {
       ...row,
       categories: migrateInsightCategories(
-        JSON.parse(row.categories) as InsightCategories,
+        JSON.parse(row.categories) as LegacyInsightCategories,
       ),
     };
   });
