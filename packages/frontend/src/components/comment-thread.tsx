@@ -9,7 +9,7 @@ interface Comment {
   startLine: number | undefined;
   endLine: number | undefined;
   body: string;
-  severity: string;
+  type: string;
   author: string;
   parentCommentId: string | undefined;
   resolved: boolean;
@@ -27,7 +27,8 @@ interface CommentThreadProperties {
   threadStatus?: ThreadStatus;
 }
 
-const severityColors: Record<string, string> = {
+const typeColors: Record<string, string> = {
+  question: 'var(--color-question)',
   suggestion: 'var(--color-accent)',
   request: 'var(--color-warning)',
   'must-fix': 'var(--color-danger)',
@@ -133,11 +134,11 @@ export function CommentThread({
           <span
             className="text-xs px-1.5 py-0.5 rounded"
             style={{
-              backgroundColor: `color-mix(in srgb, ${severityColors[comment.severity] ?? 'gray'} 15%, transparent)`,
-              color: severityColors[comment.severity] ?? 'gray',
+              backgroundColor: `color-mix(in srgb, ${typeColors[comment.type] ?? 'gray'} 15%, transparent)`,
+              color: typeColors[comment.type] ?? 'gray',
             }}
           >
-            {comment.severity}
+            {comment.type}
           </span>
           <CommentScopeBadge comment={comment} />
           {comment.resolved && (

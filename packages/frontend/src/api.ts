@@ -43,7 +43,7 @@ interface CommentData {
   startLine: number | undefined;
   endLine: number | undefined;
   body: string;
-  severity: string;
+  type: string;
   author: string;
   parentCommentId: string | undefined;
   resolved: boolean;

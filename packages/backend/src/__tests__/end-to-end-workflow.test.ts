@@ -133,13 +133,13 @@ describe('E2E: Full PR Review Workflow', () => {
         startLine: 5,
         endLine: 7,
         body: 'Please add input validation for multiply - what about NaN?',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
     expect(comment1Response.statusCode).toBe(201);
     const comment1 = jsonBody(comment1Response);
-    expect(comment1.severity).toBe('must-fix');
+    expect(comment1.type).toBe('must-fix');
     expect(comment1.author).toBe('human');
 
     const comment2Response = await inject({
@@ -150,12 +150,12 @@ describe('E2E: Full PR Review Workflow', () => {
         startLine: 2,
         endLine: 2,
         body: 'Consider using a barrel export pattern instead',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
     expect(comment2Response.statusCode).toBe(201);
-    expect(jsonBody(comment2Response).severity).toBe('suggestion');
+    expect(jsonBody(comment2Response).type).toBe('suggestion');
 
     const comment3Response = await inject({
       method: 'POST',
@@ -165,12 +165,12 @@ describe('E2E: Full PR Review Workflow', () => {
         startLine: 1,
         endLine: 3,
         body: 'Add JSDoc comments to the add function too while you are at it',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
     expect(comment3Response.statusCode).toBe(201);
-    expect(jsonBody(comment3Response).severity).toBe('request');
+    expect(jsonBody(comment3Response).type).toBe('request');
 
     const commentsResponse = await inject({
       method: 'GET',
@@ -179,9 +179,9 @@ describe('E2E: Full PR Review Workflow', () => {
     expect(commentsResponse.statusCode).toBe(200);
     const allComments = jsonArrayBody(commentsResponse);
     expect(allComments).toHaveLength(3);
-    const severities = allComments.map((c) => String(c.severity));
-    severities.sort((a, b) => a.localeCompare(b));
-    expect(severities).toEqual(['must-fix', 'request', 'suggestion']);
+    const types = allComments.map((c) => String(c.type));
+    types.sort((a, b) => a.localeCompare(b));
+    expect(types).toEqual(['must-fix', 'request', 'suggestion']);
 
     const reviewResponse = await inject({
       method: 'POST',
@@ -217,7 +217,7 @@ describe('E2E: Full PR Review Workflow', () => {
             startLine: 5,
             endLine: 7,
             body: 'Added NaN guard: throws TypeError if inputs are not finite numbers',
-            severity: 'suggestion',
+            type: 'suggestion',
           },
         ],
         replies: [
@@ -617,7 +617,7 @@ describe('E2E: Multiple Review Cycles', () => {
         startLine: 1,
         endLine: 1,
         body: 'Cycle 1 comment A',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -629,7 +629,7 @@ describe('E2E: Multiple Review Cycles', () => {
         startLine: 5,
         endLine: 7,
         body: 'Cycle 1 comment B',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
@@ -652,7 +652,7 @@ describe('E2E: Multiple Review Cycles', () => {
         startLine: 1,
         endLine: 1,
         body: 'Cycle 2 comment',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -701,7 +701,7 @@ describe('E2E: Multiple Review Cycles', () => {
         startLine: 5,
         endLine: 7,
         body: 'This function needs error handling',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -766,7 +766,7 @@ describe('E2E: Multiple Review Cycles', () => {
         startLine: 1,
         endLine: 1,
         body: 'Need to fix this',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });

@@ -3,7 +3,7 @@ import type {
   Project,
   PRStatus,
   ReviewCycleStatus,
-  CommentSeverity,
+  CommentType,
   BatchCommentPayload,
 } from '../types.js';
 
@@ -25,9 +25,14 @@ describe('Shared Types', () => {
     expect(statuses).toHaveLength(6);
   });
 
-  it('CommentSeverity has correct values', () => {
-    const severities: CommentSeverity[] = ['suggestion', 'request', 'must-fix'];
-    expect(severities).toHaveLength(3);
+  it('CommentType has correct values', () => {
+    const types: CommentType[] = [
+      'question',
+      'suggestion',
+      'request',
+      'must-fix',
+    ];
+    expect(types).toHaveLength(4);
   });
 
   it('can construct a valid Project', () => {
@@ -49,7 +54,7 @@ describe('Shared Types', () => {
           startLine: 1,
           endLine: 1,
           body: 'test',
-          severity: 'suggestion',
+          type: 'suggestion',
         },
       ],
       replies: [{ parentCommentId: 'abc', body: 'reply' }],

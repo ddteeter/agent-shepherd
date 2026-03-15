@@ -127,7 +127,7 @@ describe('Insights API', () => {
         startLine: 1,
         endLine: 1,
         body: 'Fix in PR1',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -140,7 +140,7 @@ describe('Insights API', () => {
         startLine: 5,
         endLine: 5,
         body: 'Fix in PR2',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -180,7 +180,7 @@ describe('Insights API', () => {
         startLine: 1,
         endLine: 1,
         body: 'A comment',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -201,6 +201,111 @@ describe('Insights API', () => {
     const comments = otherPrs[0].comments as Record<string, unknown>[];
     expect(comments).toHaveLength(1);
     expect(comments[0].body).toBe('A comment');
+  });
+
+  it('GET /api/projects/:projectId/comments/history filters out question comments by default', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Why is this here?',
+        type: 'question',
+        author: 'human',
+      },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Consider renaming',
+        type: 'suggestion',
+        author: 'human',
+      },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/c.ts',
+        startLine: 3,
+        endLine: 3,
+        body: 'This must be fixed',
+        type: 'must-fix',
+        author: 'human',
+      },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/comments/history`,
+    });
+    expect(response.statusCode).toBe(200);
+
+    const body = jsonBody(response);
+    const comments = body.otherPrs as { comments: Record<string, unknown>[] }[];
+    const allComments = comments.flatMap((pr) => pr.comments);
+    expect(allComments).toHaveLength(2);
+
+    const bodies = allComments.map((c) => String(c.body));
+    bodies.sort((a, b) => a.localeCompare(b));
+    expect(bodies).toEqual(['Consider renaming', 'This must be fixed']);
+  });
+
+  it('GET /api/projects/:projectId/comments/history respects insightsIgnoredTypes config override', async () => {
+    await inject({
+      method: 'PUT',
+      url: `/api/projects/${projectId}/config`,
+      payload: { key: 'insightsIgnoredTypes', value: '[]' },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Why is this here?',
+        type: 'question',
+        author: 'human',
+      },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Must fix this',
+        type: 'must-fix',
+        author: 'human',
+      },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/comments/history`,
+    });
+    expect(response.statusCode).toBe(200);
+
+    const body = jsonBody(response);
+    const comments = body.otherPrs as { comments: Record<string, unknown>[] }[];
+    const allComments = comments.flatMap((pr) => pr.comments);
+    expect(allComments).toHaveLength(2);
+
+    const types = allComments.map((c) => String(c.type));
+    types.sort((a, b) => a.localeCompare(b));
+    expect(types).toEqual(['must-fix', 'question']);
   });
 
   it('GET /api/projects/:projectId/comments/history returns grouped structure for empty project', async () => {

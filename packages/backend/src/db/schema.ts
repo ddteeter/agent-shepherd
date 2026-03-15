@@ -58,7 +58,7 @@ export const comments = sqliteTable('comments', {
   startLine: integer('start_line'),
   endLine: integer('end_line'),
   body: text('body').notNull(),
-  severity: text('severity').notNull().default('suggestion'),
+  type: text('type').notNull().default('suggestion'),
   author: text('author').notNull(),
   parentCommentId: text('parent_comment_id').references(
     (): ReturnType<typeof text> => comments.id,

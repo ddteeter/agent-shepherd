@@ -38,7 +38,7 @@ interface DiffViewerProperties {
     startLine: number | undefined;
     endLine: number | undefined;
     body: string;
-    severity: string;
+    type: string;
   }) => void;
   onReplyComment?: (commentId: string, body: string) => void;
   onResolveComment?: (commentId: string) => void;
@@ -306,7 +306,7 @@ function FileDiffComponent({
     startLine: number | undefined,
     endLine: number | undefined,
     body: string,
-    severity: string,
+    type: string,
   ) => void;
   onReplyComment?: DiffViewerProperties['onReplyComment'];
   onResolveComment?: DiffViewerProperties['onResolveComment'];
@@ -319,7 +319,7 @@ function FileDiffComponent({
   fileCommentFormOpen: boolean;
   onToggleFileCommentForm: () => void;
   onCancelFileComment: () => void;
-  handleFileComment: (filePath: string, body: string, severity: string) => void;
+  handleFileComment: (filePath: string, body: string, type: string) => void;
   threadStatusMap?: Map<string, ThreadStatus>;
   orphanedComments: Comment[];
 }>) {
@@ -381,8 +381,8 @@ function FileDiffComponent({
             <div className="mx-4 my-2">
               <div className="text-xs mb-1 opacity-70">Commenting on file</div>
               <CommentForm
-                onSubmit={({ body, severity }) => {
-                  handleFileComment(file.path, body, severity ?? 'suggestion');
+                onSubmit={({ body, type }) => {
+                  handleFileComment(file.path, body, type ?? 'suggestion');
                 }}
                 onCancel={onCancelFileComment}
               />
@@ -538,13 +538,13 @@ function FileDiffComponent({
                           </div>
                         )}
                         <CommentForm
-                          onSubmit={({ body, severity }) => {
+                          onSubmit={({ body, type }) => {
                             handleAddComment(
                               file.path,
                               commentFormLine.startLine,
                               commentFormLine.endLine,
                               body,
-                              severity ?? 'suggestion',
+                              type ?? 'suggestion',
                             );
                           }}
                           onCancel={onCancelComment}
@@ -1043,9 +1043,9 @@ export function DiffViewer({
       startLine: number | undefined,
       endLine: number | undefined,
       body: string,
-      severity: string,
+      type: string,
     ) => {
-      onAddComment?.({ filePath, startLine, endLine, body, severity });
+      onAddComment?.({ filePath, startLine, endLine, body, type });
       setCommentFormLine(undefined);
       setRangeAnchor(undefined);
     },
@@ -1053,13 +1053,13 @@ export function DiffViewer({
   );
 
   const handleFileComment = useCallback(
-    (filePath: string, body: string, severity: string) => {
+    (filePath: string, body: string, type: string) => {
       onAddComment?.({
         filePath,
         startLine: undefined,
         endLine: undefined,
         body,
-        severity,
+        type,
       });
       setFileCommentFormPath(undefined);
     },
@@ -1067,13 +1067,13 @@ export function DiffViewer({
   );
 
   const handleGlobalComment = useCallback(
-    (body: string, severity: string) => {
+    (body: string, type: string) => {
       onAddComment?.({
         filePath: undefined,
         startLine: undefined,
         endLine: undefined,
         body,
-        severity,
+        type,
       });
       onToggleGlobalCommentForm?.();
     },
@@ -1179,8 +1179,8 @@ export function DiffViewer({
           {globalCommentForm && (
             <div className="mx-4 my-2">
               <CommentForm
-                onSubmit={({ body, severity }) => {
-                  handleGlobalComment(body, severity ?? 'suggestion');
+                onSubmit={({ body, type }) => {
+                  handleGlobalComment(body, type ?? 'suggestion');
                 }}
                 onCancel={() => onToggleGlobalCommentForm?.()}
               />

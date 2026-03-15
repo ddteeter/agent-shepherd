@@ -51,7 +51,7 @@ describe('Comments API - additional coverage', () => {
         startLine: 1,
         endLine: 1,
         body: 'delete me',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -84,7 +84,7 @@ describe('Comments API - additional coverage', () => {
       url: '/api/prs/no-such-pr/comments',
       payload: {
         body: 'test',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -110,7 +110,7 @@ describe('Comments API - additional coverage', () => {
           {
             parentCommentId: 'nonexistent',
             body: 'reply to nothing',
-            severity: 'suggestion',
+            type: 'suggestion',
           },
         ],
       },
@@ -146,7 +146,7 @@ describe('Comments API - additional coverage', () => {
         startLine: 1,
         endLine: 1,
         body: 'original',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -175,7 +175,7 @@ describe('Comments API - additional coverage', () => {
     expect(comment.filePath).toBeNull();
     expect(comment.startLine).toBeNull();
     expect(comment.endLine).toBeNull();
-    expect(comment.severity).toBe('suggestion');
+    expect(comment.type).toBe('suggestion');
     expect(comment.parentCommentId).toBeNull();
   });
 });

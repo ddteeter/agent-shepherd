@@ -47,14 +47,14 @@ Start working on the code changes immediately.\n`,
 
   // Comment Summary section
   if (commentSummary.total > 0) {
-    const severityParts = Object.entries(commentSummary.bySeverity)
-      .map(([sev, count]) => `${String(count)} ${sev}`)
+    const typeParts = Object.entries(commentSummary.byType)
+      .map(([type, count]) => `${String(count)} ${type}`)
       .join(', ');
 
     const fileCount = commentSummary.files.length;
     sections.push(`## Comment Summary
 
-${String(commentSummary.total)} comment${commentSummary.total === 1 ? '' : 's'} (${severityParts}) across ${String(fileCount)} file${fileCount === 1 ? '' : 's'}
+${String(commentSummary.total)} comment${commentSummary.total === 1 ? '' : 's'} (${typeParts}) across ${String(fileCount)} file${fileCount === 1 ? '' : 's'}
 `);
 
     if (commentSummary.generalCount > 0) {
@@ -65,10 +65,10 @@ ${String(commentSummary.total)} comment${commentSummary.total === 1 ? '' : 's'} 
 
     if (commentSummary.files.length > 0) {
       const fileLines = commentSummary.files.map((f, index) => {
-        const fileSeverityParts = Object.entries(f.bySeverity)
-          .map(([sev, count]) => `${String(count)} ${sev}`)
+        const fileTypeParts = Object.entries(f.byType)
+          .map(([type, count]) => `${String(count)} ${type}`)
           .join(', ');
-        return `${String(index + 1)}. ${f.path} (${String(f.count)} comment${f.count === 1 ? '' : 's'}: ${fileSeverityParts})`;
+        return `${String(index + 1)}. ${f.path} (${String(f.count)} comment${f.count === 1 ? '' : 's'}: ${fileTypeParts})`;
       });
       sections.push(`### Files (in diff order)\n${fileLines.join('\n')}\n`);
     }
@@ -78,9 +78,9 @@ ${String(commentSummary.total)} comment${commentSummary.total === 1 ? '' : 's'} 
 
 ## When to Use
 
-Use this skill when the human reviewer has requested changes on your PR. The comment summary above tells you how many comments exist and their severity breakdown. Your job is to fetch the comments, address every one of them: either make the requested change or reply with a reasoned explanation for why you are not making it.
+Use this skill when the human reviewer has requested changes on your PR. The comment summary above tells you how many comments exist and their type breakdown. Your job is to fetch the comments, address every one of them: either make the requested change or reply with a reasoned explanation for why you are not making it.
 
-## Severity Levels and How to Handle Them
+## Comment Types and How to Handle Them
 
 ### \`must-fix\`
 
@@ -118,11 +118,21 @@ Reply example (accepting): "Good call. Renamed the variable to \`activeConnectio
 
 Reply example (declining): "I considered this approach but stayed with the current one because the Map gives us O(1) lookup by ID, which matters in the hot path of the WebSocket handler. An array would require a linear scan on every message."
 
+### \`question\`
+
+**Action:** Answer the question. If it reveals an actual issue, fix it.
+
+The reviewer is asking for clarification or exploring whether something is a problem. Answer the question directly. If your answer reveals that there IS an issue worth fixing, go ahead and fix it. If not, just reply with your answer — no code changes needed.
+
+Reply example (no issue): "The retry logic caps at 3 attempts because the upstream API rate-limits after 5 calls per second. The exponential backoff ensures we stay under that limit."
+
+Reply example (issue found): "Good question — looking at this, the timeout is actually never reset after a successful retry, which means subsequent requests inherit the extended timeout. Fixed by resetting \`timeoutMs\` after line 84."
+
 ## Step-by-Step Workflow
 
 ### 1. Review the Comment Summary
 
-Look at the comment summary above. Note the severity breakdown and which files have comments.
+Look at the comment summary above. Note the type breakdown and which files have comments.
 
 ### 2. Work Through Files Top-to-Bottom
 
@@ -192,7 +202,7 @@ agent-shepherd ready ${prId}
       "startLine": 42,
       "endLine": 42,
       "body": "Note: I moved this validation to a shared utility since it is used in three places now.",
-      "severity": "suggestion"
+      "type": "suggestion"
     }
   ],
   "replies": [

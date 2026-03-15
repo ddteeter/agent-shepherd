@@ -4,19 +4,19 @@ import userEvent from '@testing-library/user-event';
 import { CommentForm } from '../comment-form.js';
 
 describe('CommentForm', () => {
-  it('shows severity selector for new comments', () => {
+  it('shows type selector for new comments', () => {
     render(<CommentForm onSubmit={vi.fn()} onCancel={vi.fn()} />);
-    expect(screen.getByText('Severity:')).toBeInTheDocument();
+    expect(screen.getByText('Type:')).toBeInTheDocument();
     expect(screen.getByText('Add Comment')).toBeInTheDocument();
   });
 
-  it('hides severity selector for replies', () => {
+  it('hides type selector for replies', () => {
     render(<CommentForm onSubmit={vi.fn()} onCancel={vi.fn()} isReply />);
-    expect(screen.queryByText('Severity:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Type:')).not.toBeInTheDocument();
     expect(screen.getByText('Reply')).toBeInTheDocument();
   });
 
-  it('hides severity selector when editing', () => {
+  it('hides type selector when editing', () => {
     render(
       <CommentForm
         onSubmit={vi.fn()}
@@ -25,11 +25,11 @@ describe('CommentForm', () => {
         initialBody="test"
       />,
     );
-    expect(screen.queryByText('Severity:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Type:')).not.toBeInTheDocument();
     expect(screen.getByText('Save')).toBeInTheDocument();
   });
 
-  it('submits with body and severity', async () => {
+  it('submits with body and type', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} />);
@@ -42,7 +42,7 @@ describe('CommentForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       body: 'My comment',
-      severity: 'suggestion',
+      type: 'suggestion',
     });
   });
 
@@ -86,7 +86,7 @@ describe('CommentForm', () => {
     expect(textarea).toHaveValue('');
   });
 
-  it('changes severity', async () => {
+  it('changes type', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} />);
@@ -103,11 +103,11 @@ describe('CommentForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       body: 'Fix this',
-      severity: 'must-fix',
+      type: 'must-fix',
     });
   });
 
-  it('submits reply without severity', async () => {
+  it('submits reply without type', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<CommentForm onSubmit={onSubmit} onCancel={vi.fn()} isReply />);
@@ -120,11 +120,11 @@ describe('CommentForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       body: 'My reply',
-      severity: undefined,
+      type: undefined,
     });
   });
 
-  it('submits edit without severity', async () => {
+  it('submits edit without type', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(
@@ -143,18 +143,25 @@ describe('CommentForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       body: 'Edited',
-      severity: undefined,
+      type: undefined,
     });
   });
 
-  it('uses custom default severity', async () => {
+  it('includes question as a type option', () => {
+    render(<CommentForm onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    expect(
+      screen.getByRole('option', { name: 'Question' }),
+    ).toBeInTheDocument();
+  });
+
+  it('uses custom default type', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(
       <CommentForm
         onSubmit={onSubmit}
         onCancel={vi.fn()}
-        defaultSeverity="must-fix"
+        defaultType="must-fix"
       />,
     );
 
@@ -163,7 +170,7 @@ describe('CommentForm', () => {
 
     expect(onSubmit).toHaveBeenCalledWith({
       body: 'Fix',
-      severity: 'must-fix',
+      type: 'must-fix',
     });
   });
 });

@@ -18,6 +18,7 @@ import { insightsRoutes } from './routes/insights.js';
 import { websocketPlugin, broadcast } from './ws.js';
 import { Orchestrator } from './orchestrator/index.js';
 import { NotificationService } from './services/notifications.js';
+import { ConfigService } from './services/config.js';
 import type { Database as DatabaseType } from 'better-sqlite3';
 import {
   generateSessionToken,
@@ -33,6 +34,7 @@ declare module 'fastify' {
     broadcast: typeof broadcast;
     orchestrator?: Orchestrator;
     notificationService: NotificationService;
+    configService: ConfigService;
   }
 }
 
@@ -108,6 +110,14 @@ export async function buildServer(options: ServerOptions = {}) {
 
   fastify.decorate('db', db);
   fastify.decorate('sqlite', sqlite);
+
+  const globalConfigPath = path.join(
+    homedir(),
+    '.agent-shepherd',
+    'config.yml',
+  );
+  const configService = new ConfigService(db, globalConfigPath);
+  fastify.decorate('configService', configService);
 
   // Reset stale agent_working cycles from previous server runs
   db.update(schema.reviewCycles)

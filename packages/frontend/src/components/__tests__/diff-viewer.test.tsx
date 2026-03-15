@@ -49,7 +49,7 @@ interface AddCommentData {
   startLine: number | undefined;
   endLine: number | undefined;
   body: string;
-  severity: string;
+  type: string;
 }
 
 describe('DiffViewer — multi-line comment support', () => {
@@ -124,7 +124,7 @@ describe('DiffViewer — multi-line comment support', () => {
     expect(call.filePath).toBe('src/app.ts');
     expect(call.startLine).toBe(call.endLine);
     expect(call.body).toBe('Single line comment');
-    expect(call.severity).toBe('suggestion');
+    expect(call.type).toBe('suggestion');
   });
 
   it('cancel clears the form', () => {
@@ -160,7 +160,7 @@ describe('DiffViewer — multi-line comment support', () => {
       startLine: 1,
       endLine: 3,
       body: 'This spans multiple lines',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'human' as const,
       parentCommentId: undefined,
       resolved: false,
@@ -265,7 +265,7 @@ describe('DiffViewer — file-level comments', () => {
       startLine: undefined,
       endLine: undefined,
       body: 'File-level comment here',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'human' as const,
       parentCommentId: undefined,
       resolved: false,
@@ -295,7 +295,7 @@ describe('DiffViewer — global/PR-level comments', () => {
       startLine: undefined,
       endLine: undefined,
       body: 'Overall PR feedback',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'human' as const,
       parentCommentId: undefined,
       resolved: false,
@@ -362,7 +362,7 @@ describe('DiffViewer — orphaned comments', () => {
       startLine: 999,
       endLine: 999,
       body: 'Orphaned line comment',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'human' as const,
       parentCommentId: undefined,
       resolved: false,
@@ -393,7 +393,7 @@ describe('DiffViewer — orphaned comments', () => {
       startLine: 10,
       endLine: 10,
       body: 'Comment on deleted file',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'human' as const,
       parentCommentId: undefined,
       resolved: false,
@@ -453,7 +453,7 @@ describe('DiffViewer — reply comments', () => {
       startLine: 1,
       endLine: 1,
       body: 'Parent comment',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'human' as const,
       parentCommentId: undefined,
       resolved: false,
@@ -466,7 +466,7 @@ describe('DiffViewer — reply comments', () => {
       startLine: 1,
       endLine: 1,
       body: 'Reply to parent',
-      severity: 'suggestion',
+      type: 'suggestion',
       author: 'agent' as const,
       parentCommentId: 'c1',
       resolved: false,

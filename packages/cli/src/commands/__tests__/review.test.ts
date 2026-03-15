@@ -23,12 +23,12 @@ describe('reviewCommand', () => {
         .mockResolvedValueOnce({ title: 'My PR' })
         .mockResolvedValueOnce({
           total: 5,
-          bySeverity: { 'must-fix': 2, suggestion: 3 },
+          byType: { 'must-fix': 2, suggestion: 3 },
           files: [
             {
               path: 'src/a.ts',
               count: 3,
-              bySeverity: { 'must-fix': 1, suggestion: 2 },
+              byType: { 'must-fix': 1, suggestion: 2 },
             },
           ],
           generalCount: 2,
@@ -54,7 +54,7 @@ describe('reviewCommand', () => {
     it('shows summary without general comments when count is 0', async () => {
       client.get.mockResolvedValueOnce({ title: 'PR2' }).mockResolvedValueOnce({
         total: 1,
-        bySeverity: { suggestion: 1 },
+        byType: { suggestion: 1 },
         files: [],
         generalCount: 0,
       });
@@ -83,7 +83,7 @@ describe('reviewCommand', () => {
             startLine: 10,
             endLine: 10,
             body: 'Fix this',
-            severity: 'must-fix',
+            type: 'must-fix',
             author: 'human',
             parentCommentId: undefined,
             resolved: false,
@@ -94,7 +94,7 @@ describe('reviewCommand', () => {
             startLine: undefined,
             endLine: undefined,
             body: 'General note',
-            severity: 'suggestion',
+            type: 'suggestion',
             author: 'human',
             parentCommentId: undefined,
             resolved: false,
@@ -105,7 +105,7 @@ describe('reviewCommand', () => {
             startLine: 10,
             endLine: 10,
             body: 'Fixed it',
-            severity: 'suggestion',
+            type: 'suggestion',
             author: 'agent',
             parentCommentId: 'c1',
             resolved: false,
@@ -132,7 +132,7 @@ describe('reviewCommand', () => {
           startLine: 5,
           endLine: 10,
           body: 'Refactor this range',
-          severity: 'request',
+          type: 'request',
           author: 'human',
           parentCommentId: undefined,
           resolved: false,
@@ -167,7 +167,7 @@ describe('reviewCommand', () => {
       expect(output).toContain('Comments for: src/a.ts');
     });
 
-    it('filters by severity', async () => {
+    it('filters by type', async () => {
       client.get
         .mockResolvedValueOnce({ title: 'PR' })
         .mockResolvedValueOnce([]);
@@ -178,12 +178,12 @@ describe('reviewCommand', () => {
         'review',
         'comments',
         'pr-1',
-        '--severity',
+        '--type',
         'must-fix',
       ]);
 
       expect(client.get).toHaveBeenCalledWith(
-        '/api/prs/pr-1/comments?severity=must-fix',
+        '/api/prs/pr-1/comments?type=must-fix',
       );
       const output = vi.mocked(console.log).mock.calls[0][0] as string;
       expect(output).toContain('must-fix comments');
@@ -197,7 +197,7 @@ describe('reviewCommand', () => {
           startLine: 1,
           endLine: 1,
           body: 'Resolved comment',
-          severity: 'suggestion',
+          type: 'suggestion',
           author: 'human',
           parentCommentId: undefined,
           resolved: true,
@@ -217,7 +217,7 @@ describe('reviewCommand', () => {
           startLine: 5,
           endLine: undefined,
           body: 'Single line',
-          severity: 'suggestion',
+          type: 'suggestion',
           author: 'human',
           parentCommentId: undefined,
           resolved: false,
