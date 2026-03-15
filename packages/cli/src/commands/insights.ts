@@ -5,11 +5,6 @@ interface InsightsResult {
   categories: Record<string, unknown>;
 }
 
-interface CommentHistory {
-  id: string;
-  body: string;
-}
-
 export function insightsCommand(program: Command, client: ApiClient) {
   const insights = program
     .command('insights')
@@ -59,10 +54,12 @@ export function insightsCommand(program: Command, client: ApiClient) {
   insights
     .command('history <project-id>')
     .description('Get all comments across PRs for a project')
-    .action(async (projectId: string) => {
-      const comments = await client.get<CommentHistory[]>(
-        `/api/projects/${projectId}/comments/history`,
+    .option('--pr <pr-id>', 'Current PR ID to separate from other PRs')
+    .action(async (projectId: string, options: { pr?: string }) => {
+      const query = options.pr ? `?currentPrId=${options.pr}` : '';
+      const result = await client.get<Record<string, unknown>>(
+        `/api/projects/${projectId}/comments/history${query}`,
       );
-      console.log(JSON.stringify(comments, undefined, 2));
+      console.log(JSON.stringify(result, undefined, 2));
     });
 }
