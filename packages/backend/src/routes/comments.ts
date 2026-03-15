@@ -174,6 +174,7 @@ export function commentRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/projects/:projectId/comments/history', (request) => {
     const { projectId } = request.params as { projectId: string };
+    const { currentPrId } = request.query as { currentPrId?: string };
 
     const prs = database
       .select()
@@ -181,7 +182,7 @@ export function commentRoutes(fastify: FastifyInstance) {
       .where(eq(schema.pullRequests.projectId, projectId))
       .all();
     const prIds = prs.map((pullRequest) => pullRequest.id);
-    if (prIds.length === 0) return [];
+    if (prIds.length === 0) return { currentPr: undefined, otherPrs: [] };
 
     const cycles = database
       .select()
@@ -189,7 +190,7 @@ export function commentRoutes(fastify: FastifyInstance) {
       .where(inArray(schema.reviewCycles.prId, prIds))
       .all();
     const cycleIds = cycles.map((cycle) => cycle.id);
-    if (cycleIds.length === 0) return [];
+    if (cycleIds.length === 0) return { currentPr: undefined, otherPrs: [] };
 
     const allComments = database
       .select()
@@ -198,10 +199,44 @@ export function commentRoutes(fastify: FastifyInstance) {
       .all();
 
     const cycleToPr = new Map(cycles.map((cycle) => [cycle.id, cycle.prId]));
-    return allComments.map((comment) => ({
-      ...comment,
-      prId: cycleToPr.get(comment.reviewCycleId),
-    }));
+    const prTitleMap = new Map(prs.map((pr) => [pr.id, pr.title]));
+
+    const commentsByPr = new Map<string, CommentRow[]>();
+    for (const comment of allComments) {
+      const commentPrId = cycleToPr.get(comment.reviewCycleId);
+      if (!commentPrId) continue;
+      const existing = commentsByPr.get(commentPrId) ?? [];
+      existing.push(comment);
+      commentsByPr.set(commentPrId, existing);
+    }
+
+    let currentPr:
+      | {
+          prId: string;
+          prTitle: string;
+          comments: CommentRow[];
+        }
+      | undefined;
+    const otherPrs: {
+      prId: string;
+      prTitle: string;
+      comments: CommentRow[];
+    }[] = [];
+
+    for (const [groupPrId, comments] of commentsByPr) {
+      const entry = {
+        prId: groupPrId,
+        prTitle: prTitleMap.get(groupPrId) ?? '',
+        comments,
+      };
+      if (groupPrId === currentPrId) {
+        currentPr = entry;
+      } else {
+        otherPrs.push(entry);
+      }
+    }
+
+    return { currentPr, otherPrs };
   });
 
   fastify.post('/api/prs/:prId/comments', async (request, reply) => {

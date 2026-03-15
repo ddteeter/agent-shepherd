@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import {
-  createTestServer,
-  jsonBody,
-  jsonArrayBody,
-} from '../../__tests__/helpers.js';
+import { createTestServer, jsonBody } from '../../__tests__/helpers.js';
 
 describe('Insights API', () => {
   let server: FastifyInstance;
@@ -115,11 +111,11 @@ describe('Insights API', () => {
     expect(secondBody.branchRef).toBe('feat/y');
   });
 
-  it('GET /api/projects/:projectId/comments/history returns comments across all PRs', async () => {
+  it('GET /api/projects/:projectId/comments/history with currentPrId groups comments', async () => {
     const pr2Response = await inject({
       method: 'POST',
       url: `/api/projects/${projectId}/prs`,
-      payload: { title: 'PR 2', description: '', sourceBranch: 'feat/y' },
+      payload: { title: 'PR 2', description: 'second', sourceBranch: 'feat/y' },
     });
     const prId2 = jsonBody(pr2Response).id as string;
 
@@ -151,25 +147,63 @@ describe('Insights API', () => {
 
     const response = await inject({
       method: 'GET',
+      url: `/api/projects/${projectId}/comments/history?currentPrId=${prId}`,
+    });
+    expect(response.statusCode).toBe(200);
+
+    const body = jsonBody(response);
+    expect(body.currentPr).toBeDefined();
+    expect((body.currentPr as Record<string, unknown>).prId).toBe(prId);
+    expect((body.currentPr as Record<string, unknown>).prTitle).toBe('PR');
+
+    const currentComments = (body.currentPr as Record<string, unknown>)
+      .comments as Record<string, unknown>[];
+    expect(currentComments).toHaveLength(1);
+    expect(currentComments[0].body).toBe('Fix in PR1');
+
+    const otherPrs = body.otherPrs as Record<string, unknown>[];
+    expect(otherPrs).toHaveLength(1);
+    expect(otherPrs[0].prId).toBe(prId2);
+    expect(otherPrs[0].prTitle).toBe('PR 2');
+
+    const otherComments = otherPrs[0].comments as Record<string, unknown>[];
+    expect(otherComments).toHaveLength(1);
+    expect(otherComments[0].body).toBe('Fix in PR2');
+  });
+
+  it('GET /api/projects/:projectId/comments/history without currentPrId puts all in otherPrs', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'A comment',
+        severity: 'must-fix',
+        author: 'human',
+      },
+    });
+
+    const response = await inject({
+      method: 'GET',
       url: `/api/projects/${projectId}/comments/history`,
     });
     expect(response.statusCode).toBe(200);
 
-    const comments = jsonArrayBody(response);
-    expect(comments).toHaveLength(2);
+    const body = jsonBody(response);
+    expect(body.currentPr).toBeUndefined();
 
-    const bodies = comments.map((c) => String(c.body));
-    bodies.sort((a, b) => a.localeCompare(b));
-    expect(bodies).toEqual(['Fix in PR1', 'Fix in PR2']);
+    const otherPrs = body.otherPrs as Record<string, unknown>[];
+    expect(otherPrs).toHaveLength(1);
+    expect(otherPrs[0].prId).toBe(prId);
 
-    const prIds = comments.map((c) => String(c.prId));
-    prIds.sort((a, b) => a.localeCompare(b));
-    const expectedPrIds = [prId, prId2];
-    expectedPrIds.sort((a, b) => a.localeCompare(b));
-    expect(prIds).toEqual(expectedPrIds);
+    const comments = otherPrs[0].comments as Record<string, unknown>[];
+    expect(comments).toHaveLength(1);
+    expect(comments[0].body).toBe('A comment');
   });
 
-  it('GET /api/projects/:projectId/comments/history returns empty array for project with no PRs', async () => {
+  it('GET /api/projects/:projectId/comments/history returns grouped structure for empty project', async () => {
     const proj2Response = await inject({
       method: 'POST',
       url: '/api/projects',
@@ -182,7 +216,10 @@ describe('Insights API', () => {
       url: `/api/projects/${emptyProjectId}/comments/history`,
     });
     expect(response.statusCode).toBe(200);
-    expect(jsonArrayBody(response)).toEqual([]);
+
+    const body = jsonBody(response);
+    expect(body.currentPr).toBeUndefined();
+    expect(body.otherPrs).toEqual([]);
   });
 
   it('POST /api/prs/:id/run-insights returns insights_started', async () => {
