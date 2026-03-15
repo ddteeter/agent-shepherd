@@ -281,4 +281,27 @@ describe('FileTree', () => {
     fireEvent.mouseMove(document, { clientX: 300 });
     fireEvent.mouseUp(document);
   });
+
+  it('renders indicators before the filename', () => {
+    render(
+      <FileTree
+        files={files}
+        selectedFile={undefined}
+        onSelectFile={vi.fn()}
+        fileStatuses={{ 'src/index.ts': 'modified' }}
+        commentCounts={{ 'src/index.ts': 3 }}
+      />,
+    );
+    const button = screen.getByText('index.ts').closest('button')!;
+    const children = [...button.children];
+    const indicatorColumn = children[0];
+    const fileIcon = children[1];
+    const fileName = children[2];
+
+    expect(indicatorColumn.querySelector('.text-xs')).toBeTruthy();
+    expect(indicatorColumn.textContent).toContain('M');
+    expect(indicatorColumn.textContent).toContain('3');
+    expect(fileIcon.tagName.toLowerCase()).toBe('img');
+    expect(fileName.textContent).toBe('index.ts');
+  });
 });
