@@ -40,24 +40,48 @@ Use the CLI commands provided in your prompt to fetch:
 1. **Read existing insights** -- Call `agent-shepherd insights get <pr-id>` first. If insights already exist, build on them rather than replacing them.
 
 2. **Fetch comment history** -- Call the `insights history` command from your prompt (it includes the `--pr` flag). The response is grouped:
-   - `currentPr.comments` — comments on this PR. Use these for categories 1-4 (CLAUDE.md, skills, prompt engineering, agent behavior). If `currentPr` is absent, there are no reviewer comments on this PR yet — skip categories 1-4 comment analysis.
-   - `otherPrs[].comments` — comments on other PRs in this project. Use these ONLY for category 5 (Recurring Pattern Alerts).
+   - `currentPr.comments` — comments on this PR. Use these for categories 1-5 (tools, CLAUDE.md, skills, prompt engineering, agent behavior). If `currentPr` is absent, there are no reviewer comments on this PR yet — skip categories 1-5 comment analysis.
+   - `otherPrs[].comments` — comments on other PRs in this project. Use these ONLY for category 6 (Recurring Pattern Alerts).
 
 3. **Read session transcripts** -- Read the JSONL files listed in your prompt. Scan for patterns described above.
 
-4. **Correlate transcripts with comments** -- For each comment in `currentPr.comments`, trace back to what the agent did and why. Ask: What in the agent's context or instructions caused this behavior? Only correlate session transcripts with comments from `currentPr`. Never attribute comments from `otherPrs` to the current PR's agent session.
+4. **Audit project tooling** -- Before producing recommendations, inspect the project's installed tools and configuration. Check `package.json` devDependencies, lint configs, `.claude/settings.json` hooks, pre-commit hooks, and CI workflows. Note what's already in place — this context informs whether to recommend new tools, config changes, or transitions.
 
-5. **Produce recommendations** -- Fill all 5 categories below, placing each insight in exactly one category per the Placement Priority rules.
+5. **Correlate transcripts with comments** -- For each comment in `currentPr.comments`, trace back to what the agent did and why. Ask: What in the agent's context or instructions caused this behavior? Only correlate session transcripts with comments from `currentPr`. Never attribute comments from `otherPrs` to the current PR's agent session.
 
-6. **Deduplicate across categories** -- Review all recommendations across all 5 categories. For each insight, check whether the same conceptual problem appears in another category. If it does: keep the instance in the highest-priority category (per the Placement Priority rule), remove it from all other categories, and fold any unique context from the removed instances into the kept instance's description.
+6. **Produce recommendations** -- Fill all 6 categories below, placing each insight in exactly one category per the Placement Priority rules.
 
-7. **For CLAUDE.md and skill recommendations** -- For CLAUDE.md and skill recommendations with `high` confidence, actually make the file changes and commit them. For `medium` and `low` confidence, describe the recommendation but do not make file changes. For new skills: use the `skill-creator` skill if it is available in your current environment. If no skill-creation tool is installed, note this in your recommendation and suggest the user install `anthropic/skills/skill-creator`.
+7. **Deduplicate across categories** -- Review all recommendations across all 6 categories. For each insight, check whether the same conceptual problem appears in another category. If it does: keep the instance in the highest-priority category (per the Placement Priority rule), remove it from all other categories, and fold any unique context from the removed instances into the kept instance's description.
 
-8. **Submit insights** -- Use the CLI command to save your findings.
+8. **For CLAUDE.md and skill recommendations** -- For CLAUDE.md and skill recommendations with `high` confidence, actually make the file changes and commit them. For `medium` and `low` confidence, describe the recommendation but do not make file changes. For new skills: use the `skill-creator` skill if it is available in your current environment. If no skill-creation tool is installed, note this in your recommendation and suggest the user install `anthropic/skills/skill-creator`.
+
+9. **Submit insights** -- Use the CLI command to save your findings.
 
 ## Output Categories
 
-### 1. CLAUDE.md Recommendations
+### 1. Tool & Guardrail Recommendations
+
+Specific tools, linters, hooks, or CI checks that could automatically enforce what the reviewer flagged. These are the strongest guardrails because they actively block or auto-fix issues rather than relying on the agent to read instructions.
+
+Before making recommendations, audit the project's existing tooling:
+
+- `package.json` (deps and devDeps) for installed tools
+- Lint configs (`.eslintrc`, `eslint.config.*`, `.prettierrc`, etc.)
+- `.claude/settings.json` for existing Claude Code hooks (PreToolUse, PostToolUse)
+- Pre-commit config (`.husky/`, `.pre-commit-config.yaml`, lint-staged config)
+- CI config if present (`.github/workflows/`)
+
+When recommending, always note what's already installed and explain what gap the recommendation fills. If a better tool exists for something already configured, recommend the transition with rationale.
+
+Tool recommendations are NEVER auto-applied regardless of confidence. The `implementationPrompt` field must be written as a self-contained prompt that could be pasted into an agent session to implement the recommendation.
+
+Examples:
+
+- "Add eslint-plugin-sonarjs — ESLint is installed but has no cognitive complexity rules. The agent introduced deeply nested conditionals in 3 files that sonarjs would catch."
+- "Add a PostToolUse hook for `tsc --noEmit` — the agent committed type errors in 2 files that TypeScript would have caught. Currently no type-checking hook is configured."
+- "Switch from jshint to ESLint — jshint is installed but ESLint has better plugin ecosystem for the patterns the reviewer keeps flagging."
+
+### 2. CLAUDE.md Recommendations
 
 Specific rules or instructions to add to the project's CLAUDE.md file. These should be concrete and actionable.
 
@@ -102,7 +126,7 @@ paths:
 - Use standard error response format
 ```
 
-### 2. Skill Recommendations
+### 3. Skill Recommendations
 
 New skills to create or existing skills to modify. Skills encode reusable methodology.
 
@@ -111,7 +135,7 @@ Examples:
 - "Create a testing skill that enforces the project's test patterns"
 - "The submit-pr skill should include a step to verify all tests pass"
 
-### 3. Prompt & Context Engineering
+### 4. Prompt & Context Engineering
 
 Coaching for the human on how they interact with agents. This is about the human's behavior, not the agent's.
 
@@ -121,7 +145,7 @@ Examples:
 - "You didn't respond to the agent's clarifying question, so it guessed wrong."
 - "The task description referenced 'the usual pattern' but the agent has no memory of previous sessions."
 
-### 4. Agent Behavior Observations
+### 5. Agent Behavior Observations
 
 What the agent did wrong, why, and how to fix it. Only report behaviors that need to change — do not note things the agent handled correctly. Every observation MUST include a concrete recommendation for improvement -- don't just describe the problem, prescribe the solution.
 
@@ -132,7 +156,7 @@ Examples:
 - "Agent created 3 helper functions that are only used once. Recommendation: Add a CLAUDE.md rule against premature abstraction, or reference the existing 'avoid over-engineering' instruction more prominently."
 - "Agent didn't read the existing test file before writing new tests, resulting in inconsistent patterns. Recommendation: Add a CLAUDE.md rule: 'Before writing tests, read existing test files in the same directory to match conventions.'"
 
-### 5. Recurring Pattern Alerts
+### 6. Recurring Pattern Alerts
 
 Cross-PR trends detected from comment history. Reference specific PRs where the pattern appeared.
 
@@ -146,11 +170,12 @@ Examples:
 
 Each insight goes in exactly ONE category. When an insight could fit multiple categories, walk this priority list top-to-bottom and place it in the first category where it fits **with confidence that the fix is correct**:
 
-1. **CLAUDE.md Recommendations** — the fix is a concrete rule that would prevent the issue, and you're confident the rule is right
-2. **Skill Recommendations** — the fix is a new or modified skill, and you're confident the change is correct
-3. **Prompt & Context Engineering** — the root cause is the human's input or context, not the agent's behavior
-4. **Recurring Pattern Alerts** — this is a cross-PR trend (evidence from 2+ PRs) without a clear single-category fix yet
-5. **Agent Behavior Observations** — the issue doesn't yet have a confident actionable fix; use this as a holding category until evidence supports a concrete recommendation
+1. **Tool & Guardrail Recommendations** — a tool exists (or could be installed) that would automatically enforce this. The fix is automated enforcement, not a written rule.
+2. **CLAUDE.md Recommendations** — the fix is a concrete rule that would prevent the issue, and you're confident the rule is right
+3. **Skill Recommendations** — the fix is a new or modified skill, and you're confident the change is correct
+4. **Prompt & Context Engineering** — the root cause is the human's input or context, not the agent's behavior
+5. **Recurring Pattern Alerts** — this is a cross-PR trend (evidence from 2+ PRs) without a clear single-category fix yet
+6. **Agent Behavior Observations** — the issue doesn't yet have a confident actionable fix; use this as a holding category until evidence supports a concrete recommendation
 
 If you're unsure a CLAUDE.md rule or skill change would actually help, the insight belongs in Agent Behavior Observations — not in the actionable category. Prefer observations over speculative fixes.
 
@@ -163,6 +188,8 @@ Every recommendation MUST include a `confidence` field:
 - **low** — Possible pattern worth considering, but could be a one-off or context-dependent. **Action: recommend only, mark as speculative.**
 
 For CLAUDE.md and skill recommendations: only commit file changes when confidence is `high`. For `medium` and `low`, describe the recommendation but leave implementation to the user.
+
+**Exception:** Tool & Guardrail Recommendations are never auto-applied regardless of confidence level. Always describe only — the human decides whether to install tooling.
 
 ## Output Format
 
@@ -184,6 +211,14 @@ JSON structure:
 ```json
 {
   "categories": {
+    "toolRecommendations": [
+      {
+        "title": "Short title",
+        "description": "Gap analysis — what's installed, what's missing, why this tool helps",
+        "confidence": "high",
+        "implementationPrompt": "Self-contained agent-ready prompt to implement this recommendation. Include install commands, config changes, and verification steps."
+      }
+    ],
     "claudeMdRecommendations": [
       {
         "title": "Short title",
