@@ -56,6 +56,7 @@ interface InsightsResponse {
   categories: Record<string, unknown>;
   branchRef: string | undefined;
   updatedAt: string;
+  previousUpdatedAt: string | null | undefined;
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
