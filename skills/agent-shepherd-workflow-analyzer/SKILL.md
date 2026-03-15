@@ -47,11 +47,13 @@ Use the CLI commands provided in your prompt to fetch:
 
 4. **Correlate transcripts with comments** -- For each comment in `currentPr.comments`, trace back to what the agent did and why. Ask: What in the agent's context or instructions caused this behavior? Only correlate session transcripts with comments from `currentPr`. Never attribute comments from `otherPrs` to the current PR's agent session.
 
-5. **Produce recommendations** -- Fill all 5 categories below.
+5. **Produce recommendations** -- Fill all 5 categories below, placing each insight in exactly one category per the Placement Priority rules.
 
-6. **For CLAUDE.md and skill recommendations** -- For CLAUDE.md and skill recommendations with `high` confidence, actually make the file changes and commit them. For `medium` and `low` confidence, describe the recommendation but do not make file changes. For new skills: use the `skill-creator` skill if it is available in your current environment. If no skill-creation tool is installed, note this in your recommendation and suggest the user install `anthropic/skills/skill-creator`.
+6. **Deduplicate across categories** -- Review all recommendations across all 5 categories. For each insight, check whether the same conceptual problem appears in another category. If it does: keep the instance in the highest-priority category (per the Placement Priority rule), remove it from all other categories, and fold any unique context from the removed instances into the kept instance's description.
 
-7. **Submit insights** -- Use the CLI command to save your findings.
+7. **For CLAUDE.md and skill recommendations** -- For CLAUDE.md and skill recommendations with `high` confidence, actually make the file changes and commit them. For `medium` and `low` confidence, describe the recommendation but do not make file changes. For new skills: use the `skill-creator` skill if it is available in your current environment. If no skill-creation tool is installed, note this in your recommendation and suggest the user install `anthropic/skills/skill-creator`.
+
+8. **Submit insights** -- Use the CLI command to save your findings.
 
 ## Output Categories
 
@@ -139,6 +141,18 @@ Examples:
 - "3rd time reviewer flagged unnecessary error handling (PRs: abc, def, ghi)"
 - "Reviewer has requested snake_case naming in 2 previous PRs"
 - "Agent consistently over-engineers validation logic"
+
+## Placement Priority
+
+Each insight goes in exactly ONE category. When an insight could fit multiple categories, walk this priority list top-to-bottom and place it in the first category where it fits **with confidence that the fix is correct**:
+
+1. **CLAUDE.md Recommendations** — the fix is a concrete rule that would prevent the issue, and you're confident the rule is right
+2. **Skill Recommendations** — the fix is a new or modified skill, and you're confident the change is correct
+3. **Prompt & Context Engineering** — the root cause is the human's input or context, not the agent's behavior
+4. **Recurring Pattern Alerts** — this is a cross-PR trend (evidence from 2+ PRs) without a clear single-category fix yet
+5. **Agent Behavior Observations** — the issue doesn't yet have a confident actionable fix; use this as a holding category until evidence supports a concrete recommendation
+
+If you're unsure a CLAUDE.md rule or skill change would actually help, the insight belongs in Agent Behavior Observations — not in the actionable category. Prefer observations over speculative fixes.
 
 ## Confidence Levels
 
