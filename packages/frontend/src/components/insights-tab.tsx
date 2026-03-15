@@ -18,7 +18,15 @@ interface RecurringPatternItem {
   prIds: string[];
 }
 
+interface ToolRecommendationItem {
+  title: string;
+  description: string;
+  confidence: InsightConfidence;
+  implementationPrompt: string;
+}
+
 interface InsightCategories {
+  toolRecommendations: ToolRecommendationItem[];
   claudeMdRecommendations: InsightItem[];
   skillRecommendations: InsightItem[];
   promptEngineering: InsightItem[];
@@ -131,6 +139,81 @@ function InsightCard({ item }: Readonly<{ item: InsightItem }>) {
   );
 }
 
+function ToolRecommendationCard({
+  item,
+}: Readonly<{ item: ToolRecommendationItem }>) {
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const config = confidenceColors[item.confidence];
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(item.implementationPrompt);
+    setCopied(true);
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  };
+
+  return (
+    <div
+      className="p-3 rounded border text-sm"
+      style={{
+        borderColor: 'var(--color-border)',
+        backgroundColor: 'var(--color-bg-secondary, rgba(130,130,130,0.05))',
+      }}
+    >
+      <div className="font-medium flex items-center gap-2">
+        {item.title}
+        <span
+          className="text-xs px-1.5 py-0.5 rounded"
+          style={{ backgroundColor: config.bg, color: config.text }}
+        >
+          {config.label}
+        </span>
+      </div>
+      <div className="mt-1 opacity-80">{item.description}</div>
+      <div className="mt-2">
+        <button
+          onClick={() => {
+            setExpanded(!expanded);
+          }}
+          className="text-xs flex items-center gap-1 hover:opacity-80"
+          style={{ color: 'var(--color-accent, #58a6ff)' }}
+        >
+          <span>{expanded ? '\u25BC' : '\u25B6'}</span>
+          <span>Implementation</span>
+        </button>
+        {expanded && (
+          <div className="mt-2 relative">
+            <button
+              onClick={() => {
+                void handleCopy();
+              }}
+              className="absolute top-2 right-2 text-xs px-2 py-1 rounded hover:opacity-80"
+              style={{
+                backgroundColor:
+                  'var(--color-bg-tertiary, rgba(130,130,130,0.2))',
+                color: 'var(--color-text)',
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <pre
+              className="p-3 rounded text-xs overflow-x-auto whitespace-pre-wrap"
+              style={{
+                backgroundColor:
+                  'var(--color-bg-tertiary, rgba(130,130,130,0.1))',
+              }}
+            >
+              {item.implementationPrompt}
+            </pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function InsightsTab({
   insights,
   hasComments,
@@ -182,6 +265,13 @@ export function InsightsTab({
               </div>
             )}
 
+            <CategorySection
+              title="Tool & Guardrail Recommendations"
+              items={insights.categories.toolRecommendations}
+              renderItem={(item: ToolRecommendationItem, index: number) => (
+                <ToolRecommendationCard key={index} item={item} />
+              )}
+            />
             <CategorySection
               title="CLAUDE.md Recommendations"
               items={insights.categories.claudeMdRecommendations}

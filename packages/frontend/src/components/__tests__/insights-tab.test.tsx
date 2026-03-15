@@ -15,7 +15,15 @@ interface RecurringPatternItem extends InsightItem {
   prIds: string[];
 }
 
+interface ToolRecommendationItem {
+  title: string;
+  description: string;
+  confidence: 'high' | 'medium' | 'low';
+  implementationPrompt: string;
+}
+
 interface InsightCategories {
+  toolRecommendations: ToolRecommendationItem[];
   claudeMdRecommendations: InsightItem[];
   skillRecommendations: InsightItem[];
   promptEngineering: InsightItem[];
@@ -30,12 +38,13 @@ interface InsightsData {
 }
 
 function makeInsights(
-  overrides: Partial<InsightsData> & {
+  overrides: Omit<Partial<InsightsData>, 'categories'> & {
     categories?: Partial<InsightCategories>;
   } = {},
 ): InsightsData {
   return {
     categories: {
+      toolRecommendations: [],
       claudeMdRecommendations: [],
       skillRecommendations: [],
       promptEngineering: [],
@@ -95,9 +104,6 @@ describe('InsightsTab', () => {
             confidence: 'medium',
           },
         ],
-        promptEngineering: [],
-        agentBehaviorObservations: [],
-        recurringPatterns: [],
       },
     });
 
@@ -129,10 +135,6 @@ describe('InsightsTab', () => {
             appliedPath: 'CLAUDE.md',
           },
         ],
-        skillRecommendations: [],
-        promptEngineering: [],
-        agentBehaviorObservations: [],
-        recurringPatterns: [],
       },
     });
 
@@ -145,10 +147,6 @@ describe('InsightsTab', () => {
   it('renders recurring patterns with PR count', () => {
     const insights = makeInsights({
       categories: {
-        claudeMdRecommendations: [],
-        skillRecommendations: [],
-        promptEngineering: [],
-        agentBehaviorObservations: [],
         recurringPatterns: [
           {
             title: 'Pattern',
@@ -174,10 +172,6 @@ describe('InsightsTab', () => {
         claudeMdRecommendations: [
           { title: 'Rule', description: 'desc', confidence: 'high' },
         ],
-        skillRecommendations: [],
-        promptEngineering: [],
-        agentBehaviorObservations: [],
-        recurringPatterns: [],
       },
     });
 
@@ -198,5 +192,87 @@ describe('InsightsTab', () => {
       <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
     );
     expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
+  });
+
+  it('renders tool recommendations as the first category', () => {
+    const insights = makeInsights({
+      categories: {
+        toolRecommendations: [
+          {
+            title: 'Add sonarjs plugin',
+            description: 'Catches cognitive complexity issues',
+            confidence: 'high',
+            implementationPrompt: 'npm install eslint-plugin-sonarjs',
+          },
+        ],
+      },
+    });
+
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
+    expect(screen.getByText('Add sonarjs plugin')).toBeInTheDocument();
+    expect(
+      screen.getByText('Catches cognitive complexity issues'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Tool & Guardrail Recommendations'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows implementation prompt when expanded', async () => {
+    const user = userEvent.setup();
+    const insights = makeInsights({
+      categories: {
+        toolRecommendations: [
+          {
+            title: 'Add sonarjs',
+            description: 'desc',
+            confidence: 'high',
+            implementationPrompt: 'npm install eslint-plugin-sonarjs',
+          },
+        ],
+      },
+    });
+
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
+
+    expect(
+      screen.queryByText('npm install eslint-plugin-sonarjs'),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('Implementation'));
+    expect(
+      screen.getByText('npm install eslint-plugin-sonarjs'),
+    ).toBeInTheDocument();
+  });
+
+  it('copies implementation prompt to clipboard', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { clipboard: { writeText } });
+
+    const insights = makeInsights({
+      categories: {
+        toolRecommendations: [
+          {
+            title: 'Add tool',
+            description: 'desc',
+            confidence: 'high',
+            implementationPrompt: 'npm install some-tool',
+          },
+        ],
+      },
+    });
+
+    render(
+      <InsightsTab {...defaultProps} hasComments={true} insights={insights} />,
+    );
+
+    await user.click(screen.getByText('Implementation'));
+    await user.click(screen.getByText('Copy'));
+    expect(writeText).toHaveBeenCalledWith('npm install some-tool');
   });
 });
