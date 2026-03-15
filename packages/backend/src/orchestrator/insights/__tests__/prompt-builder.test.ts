@@ -69,6 +69,20 @@ describe('Insights PromptBuilder', () => {
     expect(prompt).toContain('already been factored');
   });
 
+  it('includes --pr flag in history command', () => {
+    const prompt = buildInsightsPrompt({
+      prId: 'pr-123',
+      prTitle: 'Test PR',
+      branch: 'feat/test',
+      projectId: 'proj-456',
+      transcriptPaths: [],
+    });
+
+    expect(prompt).toContain(
+      'agent-shepherd insights history proj-456 --pr pr-123',
+    );
+  });
+
   it('omits deduplication context when previousUpdatedAt is not provided', () => {
     const prompt = buildInsightsPrompt({
       prId: 'pr-1',

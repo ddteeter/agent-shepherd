@@ -48,7 +48,7 @@ Your previous analysis was saved at ${input.previousUpdatedAt}. This is a follow
 
 - \`agent-shepherd insights get ${prId}\` — Read current insights (call this first to work additively)
 - \`agent-shepherd insights update ${prId} --stdin\` — Save/update your insights
-- \`agent-shepherd insights history ${projectId}\` — Get all comments across PRs for pattern detection
+- \`agent-shepherd insights history ${projectId} --pr ${prId}\` — Get comment history grouped by current PR vs. other PRs
 
 ## Your Task
 
