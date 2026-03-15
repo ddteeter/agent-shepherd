@@ -150,11 +150,18 @@ For CLAUDE.md and skill recommendations: only commit file changes when confidenc
 
 ## Output Format
 
-Submit via CLI:
+Submit via CLI using this three-step pattern. Direct piping (heredocs, `echo` with JSON, input redirection) is blocked by Claude Code's sandbox because JSON braces with quotes trigger expansion obfuscation detection.
 
-```bash
-echo '<json>' | agent-shepherd insights update <pr-id> --stdin
-```
+1. Use the `Write` tool to save your JSON to a temp file in the project directory:
+   - File name: `tmp-insights.json`
+2. Pipe the file to the CLI:
+   ```bash
+   cat tmp-insights.json | agent-shepherd insights update <pr-id> --stdin
+   ```
+3. Clean up the temp file:
+   ```bash
+   rm tmp-insights.json
+   ```
 
 JSON structure:
 
