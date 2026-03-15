@@ -5,37 +5,6 @@ import { schema } from '../db/index.js';
 import type { InsightCategories } from '@agent-shepherd/shared';
 import { diffInsightCategories } from './insight-differ.js';
 
-interface LegacyInsightItem {
-  applied?: boolean;
-  confidence?: string;
-  appliedPath?: string;
-  [key: string]: unknown;
-}
-
-type LegacyInsightCategories = Record<string, LegacyInsightItem[] | undefined>;
-
-export function migrateInsightCategories(
-  categories: LegacyInsightCategories,
-): Record<string, LegacyInsightItem[]> {
-  const migrate = (items: LegacyInsightItem[]) =>
-    items.map(({ applied, ...rest }) => ({
-      ...rest,
-      confidence: rest.confidence ?? 'medium',
-      ...(applied === true ? { appliedPath: 'CLAUDE.md' } : {}),
-    }));
-
-  return {
-    toolRecommendations: migrate(categories.toolRecommendations ?? []),
-    claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
-    skillRecommendations: migrate(categories.skillRecommendations ?? []),
-    promptEngineering: migrate(categories.promptEngineering ?? []),
-    agentBehaviorObservations: migrate(
-      categories.agentBehaviorObservations ?? [],
-    ),
-    recurringPatterns: migrate(categories.recurringPatterns ?? []),
-  };
-}
-
 export function insightsRoutes(fastify: FastifyInstance) {
   const database = fastify.db;
 
@@ -54,9 +23,7 @@ export function insightsRoutes(fastify: FastifyInstance) {
 
     return {
       ...row,
-      categories: migrateInsightCategories(
-        JSON.parse(row.categories) as LegacyInsightCategories,
-      ),
+      categories: JSON.parse(row.categories) as InsightCategories,
     };
   });
 
@@ -75,9 +42,7 @@ export function insightsRoutes(fastify: FastifyInstance) {
       .get();
 
     const existingCategories = existing
-      ? (migrateInsightCategories(
-          JSON.parse(existing.categories) as LegacyInsightCategories,
-        ) as unknown as InsightCategories)
+      ? (JSON.parse(existing.categories) as InsightCategories)
       : undefined;
 
     const diffedCategories = diffInsightCategories(
@@ -127,9 +92,7 @@ export function insightsRoutes(fastify: FastifyInstance) {
 
     return {
       ...row,
-      categories: migrateInsightCategories(
-        JSON.parse(row.categories) as LegacyInsightCategories,
-      ),
+      categories: JSON.parse(row.categories) as InsightCategories,
     };
   });
 }
