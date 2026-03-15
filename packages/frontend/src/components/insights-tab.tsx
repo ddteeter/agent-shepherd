@@ -1,38 +1,13 @@
 import { useState } from 'react';
 import type { ActivityEntry } from './agent-activity-panel.js';
 import { AgentStatusSection } from './agent-status-section.js';
-
-type InsightConfidence = 'high' | 'medium' | 'low';
-
-interface InsightItem {
-  title: string;
-  description: string;
-  confidence: InsightConfidence;
-  appliedPath?: string;
-}
-
-interface RecurringPatternItem {
-  title: string;
-  description: string;
-  confidence: InsightConfidence;
-  prIds: string[];
-}
-
-interface ToolRecommendationItem {
-  title: string;
-  description: string;
-  confidence: InsightConfidence;
-  implementationPrompt: string;
-}
-
-interface InsightCategories {
-  toolRecommendations: ToolRecommendationItem[];
-  claudeMdRecommendations: InsightItem[];
-  skillRecommendations: InsightItem[];
-  promptEngineering: InsightItem[];
-  agentBehaviorObservations: InsightItem[];
-  recurringPatterns: RecurringPatternItem[];
-}
+import type {
+  InsightConfidence,
+  InsightItem,
+  InsightCategories,
+  RecurringPatternItem,
+  ToolRecommendationItem,
+} from '@agent-shepherd/shared';
 
 interface InsightsTabProperties {
   insights:
@@ -40,6 +15,7 @@ interface InsightsTabProperties {
         categories: InsightCategories;
         branchRef: string | undefined;
         updatedAt: string;
+        previousUpdatedAt: string | null | undefined;
       }
     | undefined;
   hasComments: boolean;
@@ -104,7 +80,52 @@ const confidenceColors: Record<
   },
 };
 
-function InsightCard({ item }: Readonly<{ item: InsightItem }>) {
+type BadgeStatus = 'new' | 'updated' | undefined;
+
+function getItemBadgeStatus(
+  item: { firstSeenAt: string; lastUpdatedAt?: string },
+  previousUpdatedAt: string | null | undefined,
+): BadgeStatus {
+  if (!previousUpdatedAt) return 'new';
+  if (item.firstSeenAt > previousUpdatedAt) return 'new';
+  if (item.lastUpdatedAt && item.lastUpdatedAt > previousUpdatedAt)
+    return 'updated';
+  return undefined;
+}
+
+const badgeStyles: Record<
+  'new' | 'updated',
+  { bg: string; text: string; label: string }
+> = {
+  new: {
+    bg: 'rgba(56,139,253,0.15)',
+    text: 'var(--color-accent, #58a6ff)',
+    label: 'New',
+  },
+  updated: {
+    bg: 'rgba(163,113,247,0.15)',
+    text: 'var(--color-purple, #a371f7)',
+    label: 'Updated',
+  },
+};
+
+function ItemBadge({ status }: Readonly<{ status: BadgeStatus }>) {
+  if (!status) return;
+  const style = badgeStyles[status];
+  return (
+    <span
+      className="text-xs px-1.5 py-0.5 rounded"
+      style={{ backgroundColor: style.bg, color: style.text }}
+    >
+      {style.label}
+    </span>
+  );
+}
+
+function InsightCard({
+  item,
+  badgeStatus,
+}: Readonly<{ item: InsightItem; badgeStatus?: BadgeStatus }>) {
   const config = confidenceColors[item.confidence];
   return (
     <div
@@ -122,6 +143,7 @@ function InsightCard({ item }: Readonly<{ item: InsightItem }>) {
         >
           {config.label}
         </span>
+        <ItemBadge status={badgeStatus} />
       </div>
       <div className="mt-1 opacity-80">{item.description}</div>
       {item.appliedPath && (
@@ -141,7 +163,8 @@ function InsightCard({ item }: Readonly<{ item: InsightItem }>) {
 
 function ToolRecommendationCard({
   item,
-}: Readonly<{ item: ToolRecommendationItem }>) {
+  badgeStatus,
+}: Readonly<{ item: ToolRecommendationItem; badgeStatus?: BadgeStatus }>) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const config = confidenceColors[item.confidence];
@@ -170,6 +193,7 @@ function ToolRecommendationCard({
         >
           {config.label}
         </span>
+        <ItemBadge status={badgeStatus} />
       </div>
       <div className="mt-1 opacity-80">{item.description}</div>
       <div className="mt-2">
@@ -269,35 +293,70 @@ export function InsightsTab({
               title="Tool & Guardrail Recommendations"
               items={insights.categories.toolRecommendations}
               renderItem={(item: ToolRecommendationItem, index: number) => (
-                <ToolRecommendationCard key={index} item={item} />
+                <ToolRecommendationCard
+                  key={index}
+                  item={item}
+                  badgeStatus={getItemBadgeStatus(
+                    item,
+                    insights.previousUpdatedAt,
+                  )}
+                />
               )}
             />
             <CategorySection
               title="CLAUDE.md Recommendations"
               items={insights.categories.claudeMdRecommendations}
               renderItem={(item: InsightItem, index: number) => (
-                <InsightCard key={index} item={item} />
+                <InsightCard
+                  key={index}
+                  item={item}
+                  badgeStatus={getItemBadgeStatus(
+                    item,
+                    insights.previousUpdatedAt,
+                  )}
+                />
               )}
             />
             <CategorySection
               title="Skill Recommendations"
               items={insights.categories.skillRecommendations}
               renderItem={(item: InsightItem, index: number) => (
-                <InsightCard key={index} item={item} />
+                <InsightCard
+                  key={index}
+                  item={item}
+                  badgeStatus={getItemBadgeStatus(
+                    item,
+                    insights.previousUpdatedAt,
+                  )}
+                />
               )}
             />
             <CategorySection
               title="Prompt & Context Engineering"
               items={insights.categories.promptEngineering}
               renderItem={(item: InsightItem, index: number) => (
-                <InsightCard key={index} item={item} />
+                <InsightCard
+                  key={index}
+                  item={item}
+                  badgeStatus={getItemBadgeStatus(
+                    item,
+                    insights.previousUpdatedAt,
+                  )}
+                />
               )}
             />
             <CategorySection
               title="Agent Behavior Observations"
               items={insights.categories.agentBehaviorObservations}
               renderItem={(item: InsightItem, index: number) => (
-                <InsightCard key={index} item={item} />
+                <InsightCard
+                  key={index}
+                  item={item}
+                  badgeStatus={getItemBadgeStatus(
+                    item,
+                    insights.previousUpdatedAt,
+                  )}
+                />
               )}
             />
             <CategorySection
@@ -305,7 +364,13 @@ export function InsightsTab({
               items={insights.categories.recurringPatterns}
               renderItem={(item: RecurringPatternItem, index: number) => (
                 <div key={index}>
-                  <InsightCard item={item} />
+                  <InsightCard
+                    item={item}
+                    badgeStatus={getItemBadgeStatus(
+                      item,
+                      insights.previousUpdatedAt,
+                    )}
+                  />
                   {item.prIds.length > 0 && (
                     <div className="ml-3 mt-1 text-xs opacity-60">
                       Seen in {item.prIds.length} PR

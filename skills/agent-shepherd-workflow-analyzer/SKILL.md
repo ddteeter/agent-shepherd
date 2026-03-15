@@ -272,3 +272,7 @@ Set `appliedPath` to the file path you modified (e.g., `"CLAUDE.md"`, `".claude/
 - **Work additively** -- Read existing insights and build on them. Don't replace previous findings unless they're wrong.
 - **Focus on systemic fixes** -- A CLAUDE.md rule that prevents a class of errors is worth more than fixing one instance.
 - **Respect the human** -- Prompt engineering recommendations are coaching, not criticism. Frame them constructively.
+
+## Title Stability
+
+When updating existing insights, preserve the original title exactly. The system uses titles to track item identity across runs — changing a title causes the item to appear as a new finding rather than an update to an existing one. If the wording of an insight needs to change, update the description rather than the title.

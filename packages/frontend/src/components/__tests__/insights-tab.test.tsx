@@ -4,37 +4,47 @@ import userEvent from '@testing-library/user-event';
 import { InsightsTab } from '../insights-tab.js';
 import type { ActivityEntry } from '../agent-activity-panel.js';
 
-interface InsightItem {
-  title: string;
-  description: string;
-  confidence: 'high' | 'medium' | 'low';
-  appliedPath?: string;
-}
-
-interface RecurringPatternItem extends InsightItem {
-  prIds: string[];
-}
-
-interface ToolRecommendationItem {
-  title: string;
-  description: string;
-  confidence: 'high' | 'medium' | 'low';
-  implementationPrompt: string;
-}
-
-interface InsightCategories {
-  toolRecommendations: ToolRecommendationItem[];
-  claudeMdRecommendations: InsightItem[];
-  skillRecommendations: InsightItem[];
-  promptEngineering: InsightItem[];
-  agentBehaviorObservations: InsightItem[];
-  recurringPatterns: RecurringPatternItem[];
-}
+import type {
+  InsightItem,
+  RecurringPatternItem,
+  ToolRecommendationItem,
+  InsightCategories,
+} from '@agent-shepherd/shared';
 
 interface InsightsData {
   categories: InsightCategories;
   branchRef: string | undefined;
   updatedAt: string;
+  previousUpdatedAt: string | null | undefined;
+}
+
+const defaultFirstSeenAt = '2026-01-01T00:00:00Z';
+
+function makeInsightItem(
+  overrides: Partial<InsightItem> &
+    Pick<InsightItem, 'title' | 'description' | 'confidence'>,
+): InsightItem {
+  return { firstSeenAt: defaultFirstSeenAt, ...overrides };
+}
+
+function makeRecurringPatternItem(
+  overrides: Partial<RecurringPatternItem> &
+    Pick<
+      RecurringPatternItem,
+      'title' | 'description' | 'confidence' | 'prIds'
+    >,
+): RecurringPatternItem {
+  return { firstSeenAt: defaultFirstSeenAt, ...overrides };
+}
+
+function makeToolRecommendationItem(
+  overrides: Partial<ToolRecommendationItem> &
+    Pick<
+      ToolRecommendationItem,
+      'title' | 'description' | 'confidence' | 'implementationPrompt'
+    >,
+): ToolRecommendationItem {
+  return { firstSeenAt: defaultFirstSeenAt, ...overrides };
 }
 
 function makeInsights(
@@ -54,6 +64,7 @@ function makeInsights(
     },
     branchRef: overrides.branchRef,
     updatedAt: overrides.updatedAt ?? '2026-01-01T00:00:00Z',
+    previousUpdatedAt: overrides.previousUpdatedAt,
   };
 }
 
@@ -91,18 +102,18 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         claudeMdRecommendations: [
-          {
+          makeInsightItem({
             title: 'Add lint rule',
             description: 'Consider adding ESLint rule',
             confidence: 'high',
-          },
+          }),
         ],
         skillRecommendations: [
-          {
+          makeInsightItem({
             title: 'Create skill',
             description: 'Create a test skill',
             confidence: 'medium',
-          },
+          }),
         ],
       },
     });
@@ -128,12 +139,12 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         claudeMdRecommendations: [
-          {
+          makeInsightItem({
             title: 'Rule',
             description: 'desc',
             confidence: 'high',
             appliedPath: 'CLAUDE.md',
-          },
+          }),
         ],
       },
     });
@@ -148,12 +159,12 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         recurringPatterns: [
-          {
+          makeRecurringPatternItem({
             title: 'Pattern',
             description: 'desc',
             confidence: 'low',
             prIds: ['pr-1', 'pr-2'],
-          },
+          }),
         ],
       },
     });
@@ -170,7 +181,11 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         claudeMdRecommendations: [
-          { title: 'Rule', description: 'desc', confidence: 'high' },
+          makeInsightItem({
+            title: 'Rule',
+            description: 'desc',
+            confidence: 'high',
+          }),
         ],
       },
     });
@@ -198,12 +213,12 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         toolRecommendations: [
-          {
+          makeToolRecommendationItem({
             title: 'Add sonarjs plugin',
             description: 'Catches cognitive complexity issues',
             confidence: 'high',
             implementationPrompt: 'npm install eslint-plugin-sonarjs',
-          },
+          }),
         ],
       },
     });
@@ -225,12 +240,12 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         toolRecommendations: [
-          {
+          makeToolRecommendationItem({
             title: 'Add sonarjs',
             description: 'desc',
             confidence: 'high',
             implementationPrompt: 'npm install eslint-plugin-sonarjs',
-          },
+          }),
         ],
       },
     });
@@ -257,12 +272,12 @@ describe('InsightsTab', () => {
     const insights = makeInsights({
       categories: {
         toolRecommendations: [
-          {
+          makeToolRecommendationItem({
             title: 'Add tool',
             description: 'desc',
             confidence: 'high',
             implementationPrompt: 'npm install some-tool',
-          },
+          }),
         ],
       },
     });

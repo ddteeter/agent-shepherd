@@ -141,6 +141,8 @@ export interface InsightItem {
   description: string;
   confidence: InsightConfidence;
   appliedPath?: string;
+  firstSeenAt: string;
+  lastUpdatedAt?: string;
 }
 
 export interface RecurringPatternItem {
@@ -148,6 +150,8 @@ export interface RecurringPatternItem {
   description: string;
   confidence: InsightConfidence;
   prIds: string[];
+  firstSeenAt: string;
+  lastUpdatedAt?: string;
 }
 
 export interface ToolRecommendationItem {
@@ -155,6 +159,8 @@ export interface ToolRecommendationItem {
   description: string;
   confidence: InsightConfidence;
   implementationPrompt: string;
+  firstSeenAt: string;
+  lastUpdatedAt?: string;
 }
 
 export interface InsightCategories {
@@ -173,4 +179,5 @@ export interface Insights {
   branchRef: string | null;
   worktreePath: string | null;
   updatedAt: string;
+  previousUpdatedAt: string | null;
 }

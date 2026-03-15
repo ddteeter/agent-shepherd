@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { migrateInsightCategories } from '../insights.js';
-describe('migrateInsightCategories', () => {
+import { migrateCategories } from '../../db/data-migrations.js';
+
+describe('migrateCategories', () => {
   it('converts applied: true to appliedPath: "CLAUDE.md"', () => {
     const input = {
       claudeMdRecommendations: [
@@ -12,7 +13,7 @@ describe('migrateInsightCategories', () => {
       recurringPatterns: [],
     };
 
-    const result = migrateInsightCategories(input);
+    const result = migrateCategories(input);
     expect(result.claudeMdRecommendations[0]).toEqual({
       title: 'Test',
       description: 'Desc',
@@ -33,7 +34,7 @@ describe('migrateInsightCategories', () => {
       recurringPatterns: [],
     };
 
-    const result = migrateInsightCategories(input);
+    const result = migrateCategories(input);
     expect(result.claudeMdRecommendations[0]).toEqual({
       title: 'Test',
       description: 'Desc',
@@ -57,7 +58,7 @@ describe('migrateInsightCategories', () => {
       recurringPatterns: [],
     };
 
-    const result = migrateInsightCategories(input);
+    const result = migrateCategories(input);
     expect(result.claudeMdRecommendations[0]).toEqual({
       title: 'Test',
       description: 'Desc',
@@ -75,7 +76,7 @@ describe('migrateInsightCategories', () => {
       recurringPatterns: [],
     };
 
-    const result = migrateInsightCategories(input);
+    const result = migrateCategories(input);
     expect(result.toolRecommendations).toEqual([]);
   });
 
@@ -96,7 +97,7 @@ describe('migrateInsightCategories', () => {
       recurringPatterns: [],
     };
 
-    const result = migrateInsightCategories(input);
+    const result = migrateCategories(input);
     expect(result.toolRecommendations).toEqual([
       {
         title: 'Add sonarjs',
@@ -108,8 +109,8 @@ describe('migrateInsightCategories', () => {
   });
 
   it('handles missing categories gracefully', () => {
-    const result = migrateInsightCategories(
-      {} as unknown as Parameters<typeof migrateInsightCategories>[0],
+    const result = migrateCategories(
+      {} as unknown as Parameters<typeof migrateCategories>[0],
     );
     expect(result.claudeMdRecommendations).toEqual([]);
     expect(result.recurringPatterns).toEqual([]);
