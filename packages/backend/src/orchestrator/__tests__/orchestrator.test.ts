@@ -43,7 +43,7 @@ describe('Orchestrator cross-cycle comment query', () => {
         startLine: 10,
         endLine: 10,
         body: 'Fix the null check',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -55,7 +55,7 @@ describe('Orchestrator cross-cycle comment query', () => {
         startLine: 5,
         endLine: 5,
         body: 'Add validation',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
@@ -126,7 +126,7 @@ describe('Orchestrator cross-cycle comment query', () => {
         startLine: 5,
         endLine: 5,
         body: 'This is resolved already',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -140,7 +140,7 @@ describe('Orchestrator cross-cycle comment query', () => {
         startLine: 20,
         endLine: 20,
         body: 'This still needs work',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });

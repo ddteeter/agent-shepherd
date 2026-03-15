@@ -113,7 +113,7 @@ describe('FeedbackIntegrator', () => {
         startLine: 10,
         endLine: 10,
         body: 'Fix this',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -123,7 +123,7 @@ describe('FeedbackIntegrator', () => {
       url: `/api/prs/${prId}/comments`,
       payload: {
         body: 'Overall the code needs cleanup',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -309,7 +309,7 @@ describe('FeedbackIntegrator', () => {
         startLine: 1,
         endLine: 1,
         body: 'resolved',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -328,7 +328,7 @@ describe('FeedbackIntegrator', () => {
         startLine: 5,
         endLine: 5,
         body: 'needs work',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
@@ -341,7 +341,7 @@ describe('FeedbackIntegrator', () => {
         startLine: 1,
         endLine: 1,
         body: 'reply',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'agent',
         parentCommentId: c1Id,
       },
