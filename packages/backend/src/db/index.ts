@@ -7,7 +7,7 @@ import {
 } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from './schema.js';
-import { runDataMigrations } from './data-migrations.js';
+import { migrateLegacyInsightCategories } from './data-migrations.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = path.resolve(__dirname, '../../drizzle');
@@ -24,7 +24,7 @@ export function createDatabase(databasePath = './agent-shepherd.db'): {
 
   const database = drizzle(sqlite, { schema });
   migrate(database, { migrationsFolder });
-  runDataMigrations(database);
+  migrateLegacyInsightCategories(database);
 
   return { db: database, sqlite };
 }

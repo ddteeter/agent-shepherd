@@ -50,7 +50,7 @@ export function migrateCategories(
   return result;
 }
 
-export function runDataMigrations(database: AppDatabase): void {
+export function migrateLegacyInsightCategories(database: AppDatabase): void {
   const rows = database.select().from(schema.insights).all();
 
   for (const row of rows) {
