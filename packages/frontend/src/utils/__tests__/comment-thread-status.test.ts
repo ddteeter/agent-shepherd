@@ -10,7 +10,7 @@ function makeComment(overrides: Partial<Comment> = {}): Comment {
     startLine: 10,
     endLine: 10,
     body: 'Test',
-    severity: 'suggestion',
+    type: 'suggestion',
     author: 'human',
     parentCommentId: undefined,
     resolved: false,

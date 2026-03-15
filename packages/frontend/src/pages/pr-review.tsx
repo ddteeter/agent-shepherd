@@ -292,7 +292,7 @@ export function PRReview() {
     startLine: number | undefined;
     endLine: number | undefined;
     body: string;
-    severity: string;
+    type: string;
   }) => {
     if (!prId) return;
     try {
@@ -301,7 +301,7 @@ export function PRReview() {
         startLine: data.startLine,
         endLine: data.endLine,
         body: data.body,
-        severity: data.severity,
+        type: data.type,
         author: 'human',
       });
       await fetchComments();
@@ -320,7 +320,7 @@ export function PRReview() {
         startLine: parent?.startLine,
         endLine: parent?.endLine,
         body,
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
         parentCommentId: commentId,
       });

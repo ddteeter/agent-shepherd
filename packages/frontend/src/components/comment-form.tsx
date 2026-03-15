@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
 interface CommentFormProperties {
-  onSubmit: (data: { body: string; severity?: string }) => void;
+  onSubmit: (data: { body: string; type?: string }) => void;
   onCancel: () => void;
   isReply?: boolean;
   isEditing?: boolean;
   initialBody?: string;
-  defaultSeverity?: string;
+  defaultType?: string;
 }
 
 export function CommentForm({
@@ -15,17 +15,17 @@ export function CommentForm({
   isReply = false,
   isEditing = false,
   initialBody = '',
-  defaultSeverity = 'suggestion',
+  defaultType = 'suggestion',
 }: Readonly<CommentFormProperties>) {
   const [body, setBody] = useState(initialBody);
-  const [severity, setSeverity] = useState(defaultSeverity);
+  const [type, setType] = useState(defaultType);
 
   const defaultButtonLabel = isReply ? 'Reply' : 'Add Comment';
 
   const handleSubmit = (event: React.SyntheticEvent) => {
     event.preventDefault();
     if (!body.trim()) return;
-    onSubmit({ body, severity: isReply || isEditing ? undefined : severity });
+    onSubmit({ body, type: isReply || isEditing ? undefined : type });
     if (!isEditing) setBody('');
   };
 
@@ -53,11 +53,11 @@ export function CommentForm({
       />
       {!isReply && !isEditing && (
         <div className="mt-2">
-          <label className="text-xs font-medium mr-2">Severity:</label>
+          <label className="text-xs font-medium mr-2">Type:</label>
           <select
-            value={severity}
+            value={type}
             onChange={(event) => {
-              setSeverity(event.target.value);
+              setType(event.target.value);
             }}
             className="text-sm border rounded px-2 py-1"
             style={{
@@ -65,6 +65,7 @@ export function CommentForm({
               backgroundColor: 'var(--color-bg-secondary)',
             }}
           >
+            <option value="question">Question</option>
             <option value="suggestion">Suggestion</option>
             <option value="request">Request</option>
             <option value="must-fix">Must Fix</option>
