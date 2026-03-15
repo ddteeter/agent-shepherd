@@ -3,6 +3,7 @@ dist/
 *.db
 *.db-journal
 .env
+.env.*
 .DS_Store
 .playwright-cli/
 *.db-shm
@@ -10,3 +11,8 @@ dist/
 *.tsbuildinfo
 .worktrees/
 coverage/
+*.log
+.vscode/
+.idea/
+*.swp
+*.swo

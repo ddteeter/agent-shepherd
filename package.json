@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/ddteeter/agent-shepherd.git"
+    "url": "git+https://github.com/ddteeter/agent-shepherd.git"
   },
   "homepage": "https://github.com/ddteeter/agent-shepherd",
   "bugs": {
