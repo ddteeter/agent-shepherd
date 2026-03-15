@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev --workspace=packages/backend\" \"npm run dev --workspace=packages/frontend\"",
-    "build": "npm run build --workspaces",
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=packages/backend --workspace=packages/frontend --workspace=packages/cli",
     "setup:dev": "npm run build && npm link && npm run link-skills",
     "link-skills": "for skill in skills/*/; do ln -sfn \"$(pwd)/$skill\" ~/.claude/skills/$(basename $skill); done",
     "teardown:dev": "npm unlink && for skill in skills/*/; do rm -f ~/.claude/skills/$(basename $skill); done",
