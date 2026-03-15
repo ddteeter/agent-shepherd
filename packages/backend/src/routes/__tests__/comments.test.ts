@@ -369,6 +369,99 @@ describe('Comments API', () => {
     expect(files[0].count).toBe(2);
   });
 
+  it('POST /api/prs/:id/comments with side: old stores the side', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 12,
+        side: 'old',
+        body: 'This was removed',
+        type: 'suggestion',
+        author: 'human',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(jsonBody(response).side).toBe('old');
+  });
+
+  it('POST /api/prs/:id/comments with side: new stores the side', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 12,
+        side: 'new',
+        body: 'This was added',
+        type: 'suggestion',
+        author: 'human',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(jsonBody(response).side).toBe('new');
+  });
+
+  it('POST /api/prs/:id/comments without side defaults to null', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/index.ts',
+        startLine: 10,
+        endLine: 12,
+        body: 'No side specified',
+        type: 'suggestion',
+        author: 'human',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(jsonBody(response).side).toBeNull();
+  });
+
+  it('POST /api/prs/:id/comments/batch passes side through for each comment', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments/batch`,
+      payload: {
+        comments: [
+          {
+            filePath: 'src/a.ts',
+            startLine: 1,
+            endLine: 1,
+            side: 'old',
+            body: 'old side comment',
+            type: 'suggestion',
+          },
+          {
+            filePath: 'src/b.ts',
+            startLine: 2,
+            endLine: 2,
+            side: 'new',
+            body: 'new side comment',
+            type: 'suggestion',
+          },
+        ],
+        replies: [],
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(jsonBody(response).created).toBe(2);
+
+    const commentsResponse = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/comments`,
+    });
+    const allComments = jsonArrayBody(commentsResponse);
+    const oldComment = allComments.find((c) => c.body === 'old side comment');
+    const newComment = allComments.find((c) => c.body === 'new side comment');
+    expect(oldComment?.side).toBe('old');
+    expect(newComment?.side).toBe('new');
+  });
+
   it('POST /api/prs/:id/comments/batch handles batch comments', async () => {
     const response = await inject({
       method: 'POST',
