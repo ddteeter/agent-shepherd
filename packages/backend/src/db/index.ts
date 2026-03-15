@@ -20,10 +20,15 @@ export function createDatabase(databasePath = './agent-shepherd.db'): {
 } {
   const sqlite = new Database(databasePath);
   sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('foreign_keys = ON');
 
+  // Foreign keys must be OFF during migrations because SQLite's table-rebuild
+  // pattern (used by Drizzle for column changes) requires DROP TABLE, which
+  // fails if foreign keys are enforced. PRAGMA foreign_keys cannot be changed
+  // inside a transaction, so Drizzle's inline PRAGMA statements are ignored.
+  sqlite.pragma('foreign_keys = OFF');
   const database = drizzle(sqlite, { schema });
   migrate(database, { migrationsFolder });
+  sqlite.pragma('foreign_keys = ON');
   migrateLegacyInsightCategories(database);
 
   return { db: database, sqlite };
