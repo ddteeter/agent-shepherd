@@ -47,8 +47,18 @@ describe('Dashboard', () => {
 
   it('renders project list', async () => {
     mockApi.projects.list.mockResolvedValue([
-      { id: 'p1', name: 'My Project', path: '/home/user/project' },
-      { id: 'p2', name: 'Another', path: '/tmp/another' },
+      {
+        id: 'p1',
+        name: 'My Project',
+        path: '/home/user/project',
+        pendingReviewCount: 2,
+      },
+      {
+        id: 'p2',
+        name: 'Another',
+        path: '/tmp/another',
+        pendingReviewCount: 0,
+      },
     ]);
     render(
       <MemoryRouter>
@@ -61,9 +71,40 @@ describe('Dashboard', () => {
     });
   });
 
+  it('shows pending review badge when count > 0', async () => {
+    mockApi.projects.list.mockResolvedValue([
+      {
+        id: 'p1',
+        name: 'My Project',
+        path: '/home/user/project',
+        pendingReviewCount: 3,
+      },
+      {
+        id: 'p2',
+        name: 'Another',
+        path: '/tmp/another',
+        pendingReviewCount: 0,
+      },
+    ]);
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('3 pending')).toBeInTheDocument();
+      expect(screen.queryByText('0 pending')).not.toBeInTheDocument();
+    });
+  });
+
   it('renders project links with correct hrefs', async () => {
     mockApi.projects.list.mockResolvedValue([
-      { id: 'p1', name: 'My Project', path: '/home/user/project' },
+      {
+        id: 'p1',
+        name: 'My Project',
+        path: '/home/user/project',
+        pendingReviewCount: 0,
+      },
     ]);
     render(
       <MemoryRouter>

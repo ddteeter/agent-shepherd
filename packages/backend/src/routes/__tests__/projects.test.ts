@@ -31,7 +31,7 @@ describe('Projects API', () => {
     expect(body.id).toBeDefined();
   });
 
-  it('GET /api/projects lists projects', async () => {
+  it('GET /api/projects lists projects with pendingReviewCount', async () => {
     await inject({
       method: 'POST',
       url: '/api/projects',
@@ -48,7 +48,37 @@ describe('Projects API', () => {
       url: '/api/projects',
     });
     expect(response.statusCode).toBe(200);
-    expect(jsonArrayBody(response)).toHaveLength(2);
+    const projects = jsonArrayBody(response);
+    expect(projects).toHaveLength(2);
+    expect(projects[0].pendingReviewCount).toBe(0);
+    expect(projects[1].pendingReviewCount).toBe(0);
+  });
+
+  it('GET /api/projects includes pending review count from review cycles', async () => {
+    const createResponse = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'proj1', path: '/tmp/p1' },
+    });
+    const projectId = jsonBody(createResponse).id as string;
+
+    await inject({
+      method: 'POST',
+      url: `/api/projects/${projectId}/prs`,
+      payload: {
+        title: 'Test PR',
+        sourceBranch: 'feat/test',
+        baseBranch: 'main',
+      },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: '/api/projects',
+    });
+    expect(response.statusCode).toBe(200);
+    const projects = jsonArrayBody(response);
+    expect(projects[0].pendingReviewCount).toBe(1);
   });
 
   it('GET /api/projects/:id returns a project', async () => {

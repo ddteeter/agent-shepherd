@@ -41,7 +41,14 @@ export function Dashboard() {
                   backgroundColor: 'var(--color-bg-secondary)',
                 }}
               >
-                <div className="font-medium">{p.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{p.name}</span>
+                  {p.pendingReviewCount > 0 && (
+                    <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                      {p.pendingReviewCount} pending
+                    </span>
+                  )}
+                </div>
                 <div className="text-sm opacity-70">{p.path}</div>
               </Link>
             </li>
