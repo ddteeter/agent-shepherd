@@ -66,7 +66,7 @@ npx drizzle-kit generate --name <descriptive_name>
 ## Review Flow
 
 1. Agent submits PR via `agent-shepherd submit` (creates PR + first ReviewCycle + DiffSnapshot)
-2. Human reviews in web UI, adds inline comments with severity (`must-fix` / `request` / `suggestion`)
+2. Human reviews in web UI, adds inline comments with type (`question` / `suggestion` / `request` / `must-fix`)
 3. Human submits review: "Approve" or "Request Changes"
 4. On request changes: orchestrator builds prompt from comments, spawns new agent session
 5. Agent makes changes, replies via `agent-shepherd batch`, calls `agent-shepherd ready`
@@ -106,7 +106,7 @@ WebSocket broadcasts real-time events: `pr:*`, `comment:*`, `review:submitted`, 
 
 The orchestrator (`packages/backend/src/orchestrator/`) manages the AI agent lifecycle:
 
-- `prompt-builder.ts` constructs structured prompts from review comments (grouped by file, includes severity and threading)
+- `prompt-builder.ts` constructs structured prompts from review comments (grouped by file, includes type and threading)
 - `claude-code-adapter.ts` spawns Claude Code CLI as subprocess (always starts a new session)
 - `AgentAdapter` interface allows future adapters (Cursor, Aider, etc.)
 

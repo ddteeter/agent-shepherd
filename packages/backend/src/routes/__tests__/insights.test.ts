@@ -223,6 +223,54 @@ describe('Insights API', () => {
     expect(bodies).toEqual(['Consider renaming', 'This must be fixed']);
   });
 
+  it('GET /api/projects/:projectId/comments/history respects insightsIgnoredTypes config override', async () => {
+    // Set config to empty array — should include all types
+    await inject({
+      method: 'PUT',
+      url: `/api/projects/${projectId}/config`,
+      payload: { key: 'insightsIgnoredTypes', value: '[]' },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Why is this here?',
+        type: 'question',
+        author: 'human',
+      },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Must fix this',
+        type: 'must-fix',
+        author: 'human',
+      },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/comments/history`,
+    });
+    expect(response.statusCode).toBe(200);
+
+    const comments = jsonArrayBody(response);
+    expect(comments).toHaveLength(2);
+
+    const types = comments.map((c) => String(c.type));
+    types.sort((a, b) => a.localeCompare(b));
+    expect(types).toEqual(['must-fix', 'question']);
+  });
+
   it('GET /api/projects/:projectId/comments/history returns empty array for project with no PRs', async () => {
     const proj2Response = await inject({
       method: 'POST',
