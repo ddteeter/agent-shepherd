@@ -215,6 +215,56 @@ describe('InsightsAnalyzer', () => {
     );
   });
 
+  it('passes workingDirectory to findSessions when available', async () => {
+    const { runner } = createMockRunner();
+    const { provider: sessionLogProvider, findSessionsMock } =
+      createMockSessionLogProvider();
+    const database = createMockDatabase(); // default PR has workingDirectory: '/tmp/worktree'
+
+    const analyzer = new InsightsAnalyzer({
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
+      agentRunner: runner,
+      sessionLogProvider,
+    });
+
+    await analyzer.run('pr-1');
+
+    expect(findSessionsMock).toHaveBeenCalledWith({
+      projectPath: '/tmp/worktree',
+      branch: 'feat/x',
+    });
+  });
+
+  it('passes project.path to findSessions when workingDirectory is null', async () => {
+    const { runner } = createMockRunner();
+    const { provider: sessionLogProvider, findSessionsMock } =
+      createMockSessionLogProvider();
+    const database = createMockDatabase({
+      pr: {
+        id: 'pr-1',
+        projectId: 'proj-1',
+        title: 'Test',
+        sourceBranch: 'feat/x',
+        workingDirectory: undefined,
+      },
+    });
+
+    const analyzer = new InsightsAnalyzer({
+      db: database as unknown as AppDatabase,
+      schema: mockSchemaStub,
+      agentRunner: runner,
+      sessionLogProvider,
+    });
+
+    await analyzer.run('pr-1');
+
+    expect(findSessionsMock).toHaveBeenCalledWith({
+      projectPath: '/tmp/project',
+      branch: 'feat/x',
+    });
+  });
+
   it('falls back to project.path when workingDirectory is null', async () => {
     const { runner, runMock } = createMockRunner();
     const database = createMockDatabase({

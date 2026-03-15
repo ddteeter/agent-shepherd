@@ -44,8 +44,9 @@ export class InsightsAnalyzer {
       .get();
     if (!project) throw new Error(`Project not found: ${pr.projectId}`);
 
+    const effectivePath = pr.workingDirectory ?? project.path;
     const sessions = await this.sessionLogProvider.findSessions({
-      projectPath: project.path,
+      projectPath: effectivePath,
       branch: pr.sourceBranch,
     });
 
@@ -74,7 +75,6 @@ export class InsightsAnalyzer {
       previousUpdatedAt: existingInsights?.updatedAt,
     });
 
-    const effectivePath = pr.workingDirectory ?? project.path;
     const cleanupTranscripts = () =>
       rm(outputDirectory, { recursive: true, force: true }).catch(() => {
         /* cleanup failure is non-critical */
