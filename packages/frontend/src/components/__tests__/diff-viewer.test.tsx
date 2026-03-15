@@ -676,4 +676,79 @@ describe('DiffViewer — side-aware selection', () => {
     expect(call.side).toBe('new');
     expect(call.body).toBe('New side comment');
   });
+
+  it('does not extend drag selection from removed line to added line', () => {
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const removedLine = lines.find(
+      (element) =>
+        element.textContent.includes('-') &&
+        element.textContent.includes('3000'),
+    );
+    const addedLine = lines.find(
+      (element) =>
+        element.textContent.includes('+') &&
+        element.textContent.includes('8080'),
+    );
+    expect(removedLine).toBeTruthy();
+    expect(addedLine).toBeTruthy();
+
+    if (removedLine) fireEvent.mouseDown(removedLine);
+    if (addedLine) fireEvent.mouseEnter(addedLine);
+    if (addedLine) fireEvent.mouseUp(addedLine);
+
+    expect(screen.queryByText(/Commenting on lines/)).not.toBeInTheDocument();
+  });
+
+  it('starts new single-line selection when shift-clicking across sides', async () => {
+    const user = userEvent.setup();
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const removedLine = lines.find(
+      (element) =>
+        element.textContent.includes('-') &&
+        element.textContent.includes('3000'),
+    );
+    const addedLine = lines.find(
+      (element) =>
+        element.textContent.includes('+') &&
+        element.textContent.includes('8080'),
+    );
+    expect(removedLine).toBeTruthy();
+    expect(addedLine).toBeTruthy();
+
+    if (removedLine) fireEvent.click(removedLine);
+    if (addedLine) fireEvent.click(addedLine, { shiftKey: true });
+
+    const textarea = screen.getByPlaceholderText('Write a comment...');
+    await user.type(textarea, 'Cross-side shift click');
+    await user.click(screen.getByText('Add Comment'));
+
+    expect(onAddComment).toHaveBeenCalledTimes(1);
+    const call = onAddComment.mock.calls[0][0];
+    expect(call.startLine).toBe(call.endLine);
+    expect(call.side).toBe('new');
+  });
 });
