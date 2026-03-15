@@ -40,6 +40,7 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights creates insights on first call (upsert)', async () => {
     const categories = {
+      toolRecommendations: [],
       claudeMdRecommendations: [
         {
           title: 'Add lint rule',
@@ -71,6 +72,7 @@ describe('Insights API', () => {
 
   it('PUT /api/prs/:prId/insights updates existing insights (upsert)', async () => {
     const categories1 = {
+      toolRecommendations: [],
       claudeMdRecommendations: [
         { title: 'Rule A', description: 'Desc A', confidence: 'high' },
       ],
@@ -80,6 +82,7 @@ describe('Insights API', () => {
       recurringPatterns: [],
     };
     const categories2 = {
+      toolRecommendations: [],
       claudeMdRecommendations: [
         { title: 'Rule B', description: 'Desc B', confidence: 'medium' },
       ],
@@ -364,6 +367,7 @@ describe('Insights API', () => {
 
   it('GET /api/prs/:prId/insights returns insights after creation', async () => {
     const categories = {
+      toolRecommendations: [],
       claudeMdRecommendations: [],
       skillRecommendations: [],
       promptEngineering: [

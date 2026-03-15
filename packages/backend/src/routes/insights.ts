@@ -11,6 +11,7 @@ interface InsightItem {
 }
 
 interface InsightCategories {
+  toolRecommendations?: InsightItem[];
   claudeMdRecommendations?: InsightItem[];
   skillRecommendations?: InsightItem[];
   promptEngineering?: InsightItem[];
@@ -30,6 +31,7 @@ export function migrateInsightCategories(
     }));
 
   return {
+    toolRecommendations: migrate(categories.toolRecommendations ?? []),
     claudeMdRecommendations: migrate(categories.claudeMdRecommendations ?? []),
     skillRecommendations: migrate(categories.skillRecommendations ?? []),
     promptEngineering: migrate(categories.promptEngineering ?? []),

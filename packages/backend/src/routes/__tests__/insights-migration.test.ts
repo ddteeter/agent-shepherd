@@ -66,6 +66,47 @@ describe('migrateInsightCategories', () => {
     });
   });
 
+  it('defaults toolRecommendations to empty array when missing', () => {
+    const input = {
+      claudeMdRecommendations: [],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    const result = migrateInsightCategories(input);
+    expect(result.toolRecommendations).toEqual([]);
+  });
+
+  it('passes through existing toolRecommendations unchanged', () => {
+    const input = {
+      toolRecommendations: [
+        {
+          title: 'Add sonarjs',
+          description: 'Catches complexity',
+          confidence: 'high',
+          implementationPrompt: 'npm install eslint-plugin-sonarjs',
+        },
+      ],
+      claudeMdRecommendations: [],
+      skillRecommendations: [],
+      promptEngineering: [],
+      agentBehaviorObservations: [],
+      recurringPatterns: [],
+    };
+
+    const result = migrateInsightCategories(input);
+    expect(result.toolRecommendations).toEqual([
+      {
+        title: 'Add sonarjs',
+        description: 'Catches complexity',
+        confidence: 'high',
+        implementationPrompt: 'npm install eslint-plugin-sonarjs',
+      },
+    ]);
+  });
+
   it('handles missing categories gracefully', () => {
     const result = migrateInsightCategories(
       {} as unknown as Parameters<typeof migrateInsightCategories>[0],
