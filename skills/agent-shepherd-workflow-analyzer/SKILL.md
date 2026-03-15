@@ -159,13 +159,15 @@ Examples:
 
 ### 6. Recurring Pattern Alerts
 
-Cross-PR trends detected from comment history. Reference specific PRs where the pattern appeared.
+Cross-PR trends anchored to comments on the current PR. For each comment in `currentPr.comments`, check whether a similar concern appeared in `otherPrs[].comments`. If the same type of feedback appeared on 1+ other PRs, flag it as a recurring pattern. Reference the current PR comment that triggered the match and the specific past PRs where the pattern appeared.
+
+Do NOT independently scan `otherPrs` for standalone trends. Every recurring pattern alert must start from a specific comment on the current PR. If `currentPr` has no comments, this category is always empty.
 
 Examples:
 
-- "3rd time reviewer flagged unnecessary error handling (PRs: abc, def, ghi)"
-- "Reviewer has requested snake_case naming in 2 previous PRs"
-- "Agent consistently over-engineers validation logic"
+- "Reviewer flagged unnecessary error handling on this PR (comment: 'remove try/catch from internal helpers') — same concern appeared in PRs abc and def"
+- "Reviewer requested snake_case naming on this PR — same feedback given in PRs ghi and jkl"
+- "Reviewer flagged over-engineered validation on this PR — similar comments in PRs mno and pqr"
 
 ## Placement Priority
 
