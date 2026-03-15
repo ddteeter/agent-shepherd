@@ -43,6 +43,7 @@ interface CommentData {
   filePath: string | undefined;
   startLine: number | undefined;
   endLine: number | undefined;
+  side?: 'old' | 'new';
   body: string;
   type: string;
   author: string;
