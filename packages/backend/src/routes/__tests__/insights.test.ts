@@ -131,7 +131,7 @@ describe('Insights API', () => {
         startLine: 1,
         endLine: 1,
         body: 'Fix in PR1',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -144,7 +144,7 @@ describe('Insights API', () => {
         startLine: 5,
         endLine: 5,
         body: 'Fix in PR2',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -167,6 +167,60 @@ describe('Insights API', () => {
     const expectedPrIds = [prId, prId2];
     expectedPrIds.sort((a, b) => a.localeCompare(b));
     expect(prIds).toEqual(expectedPrIds);
+  });
+
+  it('GET /api/projects/:projectId/comments/history filters out question comments by default', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/a.ts',
+        startLine: 1,
+        endLine: 1,
+        body: 'Why is this here?',
+        type: 'question',
+        author: 'human',
+      },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/b.ts',
+        startLine: 2,
+        endLine: 2,
+        body: 'Consider renaming',
+        type: 'suggestion',
+        author: 'human',
+      },
+    });
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/comments`,
+      payload: {
+        filePath: 'src/c.ts',
+        startLine: 3,
+        endLine: 3,
+        body: 'This must be fixed',
+        type: 'must-fix',
+        author: 'human',
+      },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/projects/${projectId}/comments/history`,
+    });
+    expect(response.statusCode).toBe(200);
+
+    const comments = jsonArrayBody(response);
+    expect(comments).toHaveLength(2);
+
+    const bodies = comments.map((c) => String(c.body));
+    bodies.sort((a, b) => a.localeCompare(b));
+    expect(bodies).toEqual(['Consider renaming', 'This must be fixed']);
   });
 
   it('GET /api/projects/:projectId/comments/history returns empty array for project with no PRs', async () => {

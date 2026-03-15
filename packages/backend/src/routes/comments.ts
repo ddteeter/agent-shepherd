@@ -30,24 +30,23 @@ export function buildCommentSummary(
     (comment: CommentRow) => !comment.parentCommentId && !comment.resolved,
   );
 
-  const bySeverity: Record<string, number> = {};
+  const byType: Record<string, number> = {};
   const fileMap = new Map<
     string,
-    { count: number; bySeverity: Record<string, number> }
+    { count: number; byType: Record<string, number> }
   >();
   let generalCount = 0;
 
   for (const comment of topLevel) {
-    bySeverity[comment.severity] = (bySeverity[comment.severity] ?? 0) + 1;
+    byType[comment.type] = (byType[comment.type] ?? 0) + 1;
 
     if (comment.filePath) {
       const existing = fileMap.get(comment.filePath) ?? {
         count: 0,
-        bySeverity: {},
+        byType: {},
       };
       existing.count++;
-      existing.bySeverity[comment.severity] =
-        (existing.bySeverity[comment.severity] ?? 0) + 1;
+      existing.byType[comment.type] = (existing.byType[comment.type] ?? 0) + 1;
       fileMap.set(comment.filePath, existing);
     } else {
       generalCount++;
@@ -73,11 +72,11 @@ export function buildCommentSummary(
     return {
       path: filePath_,
       count: entry?.count ?? 0,
-      bySeverity: entry?.bySeverity ?? {},
+      byType: entry?.byType ?? {},
     };
   });
 
-  return { total: topLevel.length, bySeverity, files, generalCount };
+  return { total: topLevel.length, byType, files, generalCount };
 }
 
 function getDiffFileOrder(
@@ -129,7 +128,7 @@ function getCommentSummary(
   cycles: ReviewCycleRow[],
 ): CommentSummary {
   if (cycleIds.length === 0) {
-    return { total: 0, bySeverity: {}, files: [], generalCount: 0 };
+    return { total: 0, byType: {}, files: [], generalCount: 0 };
   }
   const allComments = database
     .select()
@@ -143,7 +142,7 @@ function getFilteredComments(
   database: AppDatabase,
   cycleIds: string[],
   filePath?: string,
-  severity?: string,
+  type?: string,
 ): CommentRow[] {
   if (cycleIds.length === 0) {
     return [];
@@ -160,10 +159,8 @@ function getFilteredComments(
       (comment: CommentRow) => comment.filePath === filePath,
     );
   }
-  if (severity) {
-    comments = comments.filter(
-      (comment: CommentRow) => comment.severity === severity,
-    );
+  if (type) {
+    comments = comments.filter((comment: CommentRow) => comment.type === type);
   }
 
   return comments;
@@ -174,6 +171,28 @@ export function commentRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/projects/:projectId/comments/history', (request) => {
     const { projectId } = request.params as { projectId: string };
+
+    const project = database
+      .select()
+      .from(schema.projects)
+      .where(eq(schema.projects.id, projectId))
+      .get();
+
+    let ignoredTypes: string[] = ['question'];
+    if (project) {
+      const config = fastify.configService.getMergedProjectConfig(
+        projectId,
+        project.path,
+      );
+      const configValue = config.insightsIgnoredTypes;
+      if (configValue !== undefined) {
+        if (Array.isArray(configValue)) {
+          ignoredTypes = configValue as string[];
+        } else if (typeof configValue === 'string') {
+          ignoredTypes = JSON.parse(configValue) as string[];
+        }
+      }
+    }
 
     const prs = database
       .select()
@@ -198,10 +217,12 @@ export function commentRoutes(fastify: FastifyInstance) {
       .all();
 
     const cycleToPr = new Map(cycles.map((cycle) => [cycle.id, cycle.prId]));
-    return allComments.map((comment) => ({
-      ...comment,
-      prId: cycleToPr.get(comment.reviewCycleId),
-    }));
+    return allComments
+      .filter((comment) => !ignoredTypes.includes(comment.type))
+      .map((comment) => ({
+        ...comment,
+        prId: cycleToPr.get(comment.reviewCycleId),
+      }));
   });
 
   fastify.post('/api/prs/:prId/comments', async (request, reply) => {
@@ -211,7 +232,7 @@ export function commentRoutes(fastify: FastifyInstance) {
       startLine,
       endLine,
       body,
-      severity,
+      type,
       author,
       parentCommentId,
     } = request.body as CreateCommentInput;
@@ -234,7 +255,7 @@ export function commentRoutes(fastify: FastifyInstance) {
         startLine,
         endLine,
         body,
-        severity: severity ?? 'suggestion',
+        type: type ?? 'suggestion',
         author,
         parentCommentId,
       })
@@ -274,9 +295,9 @@ export function commentRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/prs/:prId/comments', async (request, reply) => {
     const { prId } = request.params as { prId: string };
-    const { filePath, severity, summary } = request.query as {
+    const { filePath, type, summary } = request.query as {
       filePath?: string;
-      severity?: string;
+      type?: string;
       summary?: string;
     };
 
@@ -293,9 +314,7 @@ export function commentRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    await reply.send(
-      getFilteredComments(database, cycleIds, filePath, severity),
-    );
+    await reply.send(getFilteredComments(database, cycleIds, filePath, type));
   });
 
   fastify.put('/api/comments/:id', async (request, reply) => {
@@ -363,7 +382,7 @@ export function commentRoutes(fastify: FastifyInstance) {
           startLine: comment.startLine,
           endLine: comment.endLine,
           body: comment.body,
-          severity: comment.severity ?? 'suggestion',
+          type: comment.type ?? 'suggestion',
           author: 'agent',
         })
         .run();
@@ -396,7 +415,7 @@ export function commentRoutes(fastify: FastifyInstance) {
               startLine: parent.startLine,
               endLine: parent.endLine,
               body: replyItem.body,
-              severity: replyItem.severity ?? 'suggestion',
+              type: replyItem.type ?? 'suggestion',
               author: 'agent',
               parentCommentId: replyItem.parentCommentId,
             })

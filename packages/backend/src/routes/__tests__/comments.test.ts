@@ -42,12 +42,12 @@ describe('Comments API', () => {
         startLine: 10,
         endLine: 12,
         body: 'This needs work',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
     expect(response.statusCode).toBe(201);
-    expect(jsonBody(response).severity).toBe('must-fix');
+    expect(jsonBody(response).type).toBe('must-fix');
   });
 
   it('GET /api/prs/:id/comments lists comments', async () => {
@@ -59,7 +59,7 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'comment 1',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -81,7 +81,7 @@ describe('Comments API', () => {
         startLine: 5,
         endLine: 5,
         body: 'Fix this',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
@@ -95,7 +95,7 @@ describe('Comments API', () => {
         startLine: 5,
         endLine: 5,
         body: 'Done',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'agent',
         parentCommentId: parentId,
       },
@@ -113,7 +113,7 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'test',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -137,7 +137,7 @@ describe('Comments API', () => {
         startLine: 5,
         endLine: 5,
         body: 'Fix this',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -157,7 +157,7 @@ describe('Comments API', () => {
         startLine: 5,
         endLine: 5,
         body: 'Actually, this still needs work',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
         parentCommentId: parentId,
       },
@@ -182,7 +182,7 @@ describe('Comments API', () => {
         startLine: 10,
         endLine: 10,
         body: 'Needs refactoring',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
@@ -203,7 +203,7 @@ describe('Comments API', () => {
           {
             parentCommentId: parentId,
             body: 'Done with changes',
-            severity: 'suggestion',
+            type: 'suggestion',
           },
         ],
       },
@@ -228,7 +228,7 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'fix auth',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -240,7 +240,7 @@ describe('Comments API', () => {
         startLine: 5,
         endLine: 5,
         body: 'fix db',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -254,7 +254,7 @@ describe('Comments API', () => {
     expect(filteredData[0].body).toBe('fix auth');
   });
 
-  it('GET /api/prs/:id/comments filters by severity', async () => {
+  it('GET /api/prs/:id/comments filters by type', async () => {
     await inject({
       method: 'POST',
       url: `/api/prs/${prId}/comments`,
@@ -263,7 +263,7 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'must fix this',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -275,18 +275,18 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'suggestion',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
 
     const filtered = await inject({
       method: 'GET',
-      url: `/api/prs/${prId}/comments?severity=must-fix`,
+      url: `/api/prs/${prId}/comments?type=must-fix`,
     });
     const filteredData = jsonArrayBody(filtered);
     expect(filteredData).toHaveLength(1);
-    expect(filteredData[0].severity).toBe('must-fix');
+    expect(filteredData[0].type).toBe('must-fix');
   });
 
   it('GET /api/prs/:id/comments?summary=true returns comment stats', async () => {
@@ -298,7 +298,7 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'fix1',
-        severity: 'must-fix',
+        type: 'must-fix',
         author: 'human',
       },
     });
@@ -310,7 +310,7 @@ describe('Comments API', () => {
         startLine: 10,
         endLine: 10,
         body: 'fix2',
-        severity: 'request',
+        type: 'request',
         author: 'human',
       },
     });
@@ -322,7 +322,7 @@ describe('Comments API', () => {
         startLine: 5,
         endLine: 5,
         body: 'suggestion1',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -331,7 +331,7 @@ describe('Comments API', () => {
       url: `/api/prs/${prId}/comments`,
       payload: {
         body: 'Overall feedback',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'human',
       },
     });
@@ -346,7 +346,7 @@ describe('Comments API', () => {
         startLine: 1,
         endLine: 1,
         body: 'reply',
-        severity: 'suggestion',
+        type: 'suggestion',
         author: 'agent',
         parentCommentId: parentId,
       },
@@ -357,12 +357,12 @@ describe('Comments API', () => {
       url: `/api/prs/${prId}/comments?summary=true`,
     });
     const summary = jsonBody(response);
-    const bySeverity = summary.bySeverity as Record<string, number>;
+    const byType = summary.byType as Record<string, number>;
     const files = summary.files as Record<string, unknown>[];
     expect(summary.total).toBe(4);
-    expect(bySeverity['must-fix']).toBe(1);
-    expect(bySeverity.request).toBe(1);
-    expect(bySeverity.suggestion).toBe(2);
+    expect(byType['must-fix']).toBe(1);
+    expect(byType.request).toBe(1);
+    expect(byType.suggestion).toBe(2);
     expect(summary.generalCount).toBe(1);
     expect(files).toHaveLength(2);
     expect(files[0].path).toBe('src/auth.ts');
@@ -380,14 +380,14 @@ describe('Comments API', () => {
             startLine: 1,
             endLine: 1,
             body: 'c1',
-            severity: 'suggestion',
+            type: 'suggestion',
           },
           {
             filePath: 'src/b.ts',
             startLine: 2,
             endLine: 2,
             body: 'c2',
-            severity: 'request',
+            type: 'request',
           },
         ],
         replies: [],
