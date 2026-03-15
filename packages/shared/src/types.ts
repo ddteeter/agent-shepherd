@@ -10,7 +10,7 @@ export type ReviewCycleStatus =
   | 'approved'
   | 'superseded';
 
-export type CommentSeverity = 'suggestion' | 'request' | 'must-fix';
+export type CommentType = 'question' | 'suggestion' | 'request' | 'must-fix';
 
 export type CommentAuthor = 'human' | 'agent';
 
@@ -53,7 +53,7 @@ export interface Comment {
   startLine: number | null;
   endLine: number | null;
   body: string;
-  severity: CommentSeverity;
+  type: CommentType;
   author: CommentAuthor;
   parentCommentId: string | null;
   resolved: boolean;
@@ -79,12 +79,12 @@ export interface BatchCommentPayload {
     startLine?: number | null;
     endLine?: number | null;
     body: string;
-    severity?: CommentSeverity;
+    type?: CommentType;
   }[];
   replies?: {
     parentCommentId: string;
     body: string;
-    severity?: CommentSeverity;
+    type?: CommentType;
   }[];
 }
 
@@ -106,8 +106,8 @@ export interface CreatePRInput {
 
 export interface CommentSummary {
   total: number;
-  bySeverity: Record<string, number>;
-  files: { path: string; count: number; bySeverity: Record<string, number> }[];
+  byType: Record<string, number>;
+  files: { path: string; count: number; byType: Record<string, number> }[];
   generalCount: number;
 }
 
@@ -116,7 +116,7 @@ export interface CreateCommentInput {
   startLine?: number | null;
   endLine?: number | null;
   body: string;
-  severity?: CommentSeverity;
+  type?: CommentType;
   author: CommentAuthor;
   parentCommentId?: string;
 }
