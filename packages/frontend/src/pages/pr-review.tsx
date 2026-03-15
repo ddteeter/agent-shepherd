@@ -293,6 +293,7 @@ export function PRReview() {
     endLine: number | undefined;
     body: string;
     type: string;
+    side: 'old' | 'new' | undefined;
   }) => {
     if (!prId) return;
     try {
@@ -300,6 +301,7 @@ export function PRReview() {
         filePath: data.filePath,
         startLine: data.startLine,
         endLine: data.endLine,
+        side: data.side,
         body: data.body,
         type: data.type,
         author: 'human',

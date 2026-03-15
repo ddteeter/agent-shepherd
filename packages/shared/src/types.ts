@@ -14,6 +14,8 @@ export type CommentType = 'question' | 'suggestion' | 'request' | 'must-fix';
 
 export type CommentAuthor = 'human' | 'agent';
 
+export type CommentSide = 'old' | 'new';
+
 export interface Project {
   id: string;
   name: string;
@@ -56,6 +58,7 @@ export interface Comment {
   filePath: string | null;
   startLine: number | null;
   endLine: number | null;
+  side: CommentSide | null;
   body: string;
   type: CommentType;
   author: CommentAuthor;
@@ -82,6 +85,7 @@ export interface BatchCommentPayload {
     filePath?: string | null;
     startLine?: number | null;
     endLine?: number | null;
+    side?: CommentSide | null;
     body: string;
     type?: CommentType;
   }[];
@@ -119,6 +123,7 @@ export interface CreateCommentInput {
   filePath?: string | null;
   startLine?: number | null;
   endLine?: number | null;
+  side?: CommentSide | null;
   body: string;
   type?: CommentType;
   author: CommentAuthor;

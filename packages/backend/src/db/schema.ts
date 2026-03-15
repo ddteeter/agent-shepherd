@@ -57,6 +57,7 @@ export const comments = sqliteTable('comments', {
   filePath: text('file_path'),
   startLine: integer('start_line'),
   endLine: integer('end_line'),
+  side: text('side'),
   body: text('body').notNull(),
   type: text('type').notNull().default('suggestion'),
   author: text('author').notNull(),

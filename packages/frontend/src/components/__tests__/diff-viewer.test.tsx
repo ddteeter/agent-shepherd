@@ -50,6 +50,7 @@ interface AddCommentData {
   endLine: number | undefined;
   body: string;
   type: string;
+  side: 'old' | 'new' | undefined;
 }
 
 describe('DiffViewer — multi-line comment support', () => {
@@ -529,5 +530,225 @@ describe('DiffViewer — large file collapse', () => {
     );
     await user.click(screen.getByText('Expand'));
     expect(screen.getByText('line 1')).toBeInTheDocument();
+  });
+});
+
+const SIDE_AWARE_DIFF = `diff --git a/src/config.ts b/src/config.ts
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,3 +1,3 @@
+ import config from './config';
+-const port = 3000;
++const port = 8080;
+ export default port;`;
+
+describe('DiffViewer — side-aware comment matching', () => {
+  it('renders comment only on the removed line when side is old', () => {
+    const comment = {
+      id: '1',
+      reviewCycleId: 'rc1',
+      filePath: 'src/config.ts',
+      startLine: 2,
+      endLine: 2,
+      side: 'old' as const,
+      body: 'Why change this?',
+      type: 'question',
+      author: 'human' as const,
+      parentCommentId: undefined,
+      resolved: false,
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    render(
+      <DiffViewer
+        diff={SIDE_AWARE_DIFF}
+        files={['src/config.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        comments={[comment]}
+        onAddComment={vi.fn()}
+        onReplyComment={vi.fn()}
+        onResolveComment={vi.fn()}
+      />,
+    );
+
+    const matches = screen.getAllByText('Why change this?');
+    expect(matches).toHaveLength(1);
+  });
+
+  it('renders comment only on the added line when side is new', () => {
+    const comment = {
+      id: '2',
+      reviewCycleId: 'rc1',
+      filePath: 'src/config.ts',
+      startLine: 2,
+      endLine: 2,
+      side: 'new' as const,
+      body: 'Good change!',
+      type: 'suggestion',
+      author: 'human' as const,
+      parentCommentId: undefined,
+      resolved: false,
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    render(
+      <DiffViewer
+        diff={SIDE_AWARE_DIFF}
+        files={['src/config.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        comments={[comment]}
+        onAddComment={vi.fn()}
+        onReplyComment={vi.fn()}
+        onResolveComment={vi.fn()}
+      />,
+    );
+
+    const matches = screen.getAllByText('Good change!');
+    expect(matches).toHaveLength(1);
+  });
+});
+
+describe('DiffViewer — side-aware selection', () => {
+  it('passes side: old when submitting comment on removed line', async () => {
+    const user = userEvent.setup();
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const removedLine = lines.find(
+      (element) =>
+        element.textContent.includes('-') &&
+        element.textContent.includes('3000'),
+    );
+    expect(removedLine).toBeTruthy();
+    if (removedLine) fireEvent.click(removedLine);
+
+    const textarea = screen.getByPlaceholderText('Write a comment...');
+    await user.type(textarea, 'Old side comment');
+    await user.click(screen.getByText('Add Comment'));
+
+    expect(onAddComment).toHaveBeenCalledTimes(1);
+    const call = onAddComment.mock.calls[0][0];
+    expect(call.side).toBe('old');
+    expect(call.body).toBe('Old side comment');
+  });
+
+  it('passes side: new when submitting comment on added line', async () => {
+    const user = userEvent.setup();
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const addedLine = lines.find(
+      (element) =>
+        element.textContent.includes('+') &&
+        element.textContent.includes('8080'),
+    );
+    expect(addedLine).toBeTruthy();
+    if (addedLine) fireEvent.click(addedLine);
+
+    const textarea = screen.getByPlaceholderText('Write a comment...');
+    await user.type(textarea, 'New side comment');
+    await user.click(screen.getByText('Add Comment'));
+
+    expect(onAddComment).toHaveBeenCalledTimes(1);
+    const call = onAddComment.mock.calls[0][0];
+    expect(call.side).toBe('new');
+    expect(call.body).toBe('New side comment');
+  });
+
+  it('does not extend drag selection from removed line to added line', () => {
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const removedLine = lines.find(
+      (element) =>
+        element.textContent.includes('-') &&
+        element.textContent.includes('3000'),
+    );
+    const addedLine = lines.find(
+      (element) =>
+        element.textContent.includes('+') &&
+        element.textContent.includes('8080'),
+    );
+    expect(removedLine).toBeTruthy();
+    expect(addedLine).toBeTruthy();
+
+    if (removedLine) fireEvent.mouseDown(removedLine);
+    if (addedLine) fireEvent.mouseEnter(addedLine);
+    if (addedLine) fireEvent.mouseUp(addedLine);
+
+    expect(screen.queryByText(/Commenting on lines/)).not.toBeInTheDocument();
+  });
+
+  it('starts new single-line selection when shift-clicking across sides', async () => {
+    const user = userEvent.setup();
+    const onAddComment = vi.fn<(data: AddCommentData) => void>();
+
+    const { container } = render(
+      <DiffViewer
+        diff={SIMPLE_DIFF}
+        files={['src/app.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        onAddComment={onAddComment}
+      />,
+    );
+
+    const lines = getDiffLines(container);
+    const removedLine = lines.find(
+      (element) =>
+        element.textContent.includes('-') &&
+        element.textContent.includes('3000'),
+    );
+    const addedLine = lines.find(
+      (element) =>
+        element.textContent.includes('+') &&
+        element.textContent.includes('8080'),
+    );
+    expect(removedLine).toBeTruthy();
+    expect(addedLine).toBeTruthy();
+
+    if (removedLine) fireEvent.click(removedLine);
+    if (addedLine) fireEvent.click(addedLine, { shiftKey: true });
+
+    const textarea = screen.getByPlaceholderText('Write a comment...');
+    await user.type(textarea, 'Cross-side shift click');
+    await user.click(screen.getByText('Add Comment'));
+
+    expect(onAddComment).toHaveBeenCalledTimes(1);
+    const call = onAddComment.mock.calls[0][0];
+    expect(call.startLine).toBe(call.endLine);
+    expect(call.side).toBe('new');
   });
 });

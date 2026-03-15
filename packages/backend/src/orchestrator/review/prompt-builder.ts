@@ -201,6 +201,7 @@ agent-shepherd ready ${prId}
       "filePath": "src/index.ts",
       "startLine": 42,
       "endLine": 42,
+      "side": "new",
       "body": "Note: I moved this validation to a shared utility since it is used in three places now.",
       "type": "suggestion"
     }
