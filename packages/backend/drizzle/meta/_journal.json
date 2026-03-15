@@ -57,6 +57,13 @@
       "when": 1772938412000,
       "tag": "0007_rename-severity-to-type",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1773608699892,
+      "tag": "0008_add_comment_side",
+      "breakpoints": true
     }
   ]
 }
