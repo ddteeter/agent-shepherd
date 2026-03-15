@@ -22,6 +22,10 @@ export interface Project {
   createdAt: string;
 }
 
+export interface ProjectWithStats extends Project {
+  pendingReviewCount: number;
+}
+
 export interface PullRequest {
   id: string;
   projectId: string;
@@ -141,7 +145,15 @@ export interface RecurringPatternItem {
   prIds: string[];
 }
 
+export interface ToolRecommendationItem {
+  title: string;
+  description: string;
+  confidence: InsightConfidence;
+  implementationPrompt: string;
+}
+
 export interface InsightCategories {
+  toolRecommendations: ToolRecommendationItem[];
   claudeMdRecommendations: InsightItem[];
   skillRecommendations: InsightItem[];
   promptEngineering: InsightItem[];
