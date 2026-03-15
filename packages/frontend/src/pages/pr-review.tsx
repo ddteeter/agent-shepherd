@@ -846,7 +846,7 @@ export function PRReview() {
                   onDeleteComment={(commentId) => {
                     void handleDeleteComment(commentId);
                   }}
-                  canEditComments={selectedCycle === 'current'}
+                  canEditComments={true}
                   globalCommentForm={globalCommentForm}
                   onToggleGlobalCommentForm={() => {
                     setGlobalCommentForm(!globalCommentForm);
