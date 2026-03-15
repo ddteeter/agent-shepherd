@@ -64,6 +64,13 @@
       "when": 1773608699892,
       "tag": "0008_add_comment_side",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1773608709482,
+      "tag": "0009_add_insights_previous_updated_at",
+      "breakpoints": true
     }
   ]
 }
