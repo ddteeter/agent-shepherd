@@ -50,7 +50,17 @@ export function migrateCategories(
   return result;
 }
 
+const MIGRATION_KEY = 'data_migration:legacy_insight_categories';
+
 export function migrateLegacyInsightCategories(database: AppDatabase): void {
+  const existing = database
+    .select()
+    .from(schema.globalConfig)
+    .where(eq(schema.globalConfig.key, MIGRATION_KEY))
+    .get();
+
+  if (existing) return;
+
   const rows = database.select().from(schema.insights).all();
 
   for (const row of rows) {
@@ -66,4 +76,9 @@ export function migrateLegacyInsightCategories(database: AppDatabase): void {
       .where(eq(schema.insights.id, row.id))
       .run();
   }
+
+  database
+    .insert(schema.globalConfig)
+    .values({ key: MIGRATION_KEY, value: 'completed' })
+    .run();
 }
