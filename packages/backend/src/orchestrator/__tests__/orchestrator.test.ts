@@ -75,18 +75,18 @@ describe('Orchestrator cross-cycle comment query', () => {
       (c) => !c.parentCommentId && !c.resolved,
     );
 
-    const bySeverity: Record<string, number> = {};
+    const byType: Record<string, number> = {};
     const fileMap = new Map<
       string,
-      { count: number; bySeverity: Record<string, number> }
+      { count: number; byType: Record<string, number> }
     >();
     let generalCount = 0;
     for (const c of topLevel) {
-      bySeverity[c.severity] = (bySeverity[c.severity] ?? 0) + 1;
+      byType[c.type] = (byType[c.type] ?? 0) + 1;
       if (c.filePath) {
-        const entry = fileMap.get(c.filePath) ?? { count: 0, bySeverity: {} };
+        const entry = fileMap.get(c.filePath) ?? { count: 0, byType: {} };
         entry.count++;
-        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] ?? 0) + 1;
+        entry.byType[c.type] = (entry.byType[c.type] ?? 0) + 1;
         fileMap.set(c.filePath, entry);
       } else {
         generalCount++;
@@ -99,7 +99,7 @@ describe('Orchestrator cross-cycle comment query', () => {
       agentContext: undefined,
       commentSummary: {
         total: topLevel.length,
-        bySeverity,
+        byType,
         files: [...fileMap.entries()].map(([filePath, data]) => ({
           path: filePath,
           ...data,
@@ -168,18 +168,18 @@ describe('Orchestrator cross-cycle comment query', () => {
       (c) => !c.parentCommentId && !c.resolved,
     );
 
-    const bySeverity: Record<string, number> = {};
+    const byType: Record<string, number> = {};
     const fileMap = new Map<
       string,
-      { count: number; bySeverity: Record<string, number> }
+      { count: number; byType: Record<string, number> }
     >();
     let generalCount = 0;
     for (const c of topLevel) {
-      bySeverity[c.severity] = (bySeverity[c.severity] ?? 0) + 1;
+      byType[c.type] = (byType[c.type] ?? 0) + 1;
       if (c.filePath) {
-        const entry = fileMap.get(c.filePath) ?? { count: 0, bySeverity: {} };
+        const entry = fileMap.get(c.filePath) ?? { count: 0, byType: {} };
         entry.count++;
-        entry.bySeverity[c.severity] = (entry.bySeverity[c.severity] ?? 0) + 1;
+        entry.byType[c.type] = (entry.byType[c.type] ?? 0) + 1;
         fileMap.set(c.filePath, entry);
       } else {
         generalCount++;
@@ -192,7 +192,7 @@ describe('Orchestrator cross-cycle comment query', () => {
       agentContext: undefined,
       commentSummary: {
         total: topLevel.length,
-        bySeverity,
+        byType,
         files: [...fileMap.entries()].map(([filePath, data]) => ({
           path: filePath,
           ...data,
