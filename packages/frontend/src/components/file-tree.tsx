@@ -72,7 +72,7 @@ function FileItemButton({
       >
         {count > 0 && (
           <span
-            className="text-xs shrink-0 px-1.5 py-0.5 rounded-full font-medium"
+            className="text-xs shrink-0 px-1 rounded-full font-medium leading-4 min-w-4 text-center"
             style={{
               backgroundColor:
                 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
@@ -82,16 +82,11 @@ function FileItemButton({
             {count}
           </span>
         )}
-        <span className="inline-flex items-center justify-end shrink-0 w-5">
-          {badge && (
-            <span
-              className="text-xs font-bold shrink-0"
-              style={{ color: badge.color }}
-            >
-              {badge.label}
-            </span>
-          )}
-        </span>
+        {badge && (
+          <span className="text-xs font-bold" style={{ color: badge.color }}>
+            {badge.label}
+          </span>
+        )}
         <FileIcon
           fileName={displayName}
           autoAssign

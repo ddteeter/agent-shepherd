@@ -296,12 +296,12 @@ describe('FileTree', () => {
     expect(button).toBeTruthy();
     const children = [...(button as HTMLElement).children];
     const commentPill = children[0];
-    const statusColumn = children[1];
+    const statusBadge = children[1];
     const fileIcon = children[2];
     const fileName = children[3];
 
     expect(commentPill.textContent).toBe('3');
-    expect(statusColumn.textContent).toContain('M');
+    expect(statusBadge.textContent).toBe('M');
     expect(['img', 'svg']).toContain(fileIcon.tagName.toLowerCase());
     expect(fileName.textContent).toBe('index.ts');
   });
