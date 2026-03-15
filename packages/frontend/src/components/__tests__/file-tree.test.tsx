@@ -292,8 +292,9 @@ describe('FileTree', () => {
         commentCounts={{ 'src/index.ts': 3 }}
       />,
     );
-    const button = screen.getByText('index.ts').closest('button')!;
-    const children = [...button.children];
+    const button = screen.getByText('index.ts').closest('button');
+    expect(button).toBeTruthy();
+    const children = [...(button as HTMLElement).children];
     const indicatorColumn = children[0];
     const fileIcon = children[1];
     const fileName = children[2];

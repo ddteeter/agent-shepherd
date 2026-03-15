@@ -10,7 +10,8 @@
     "**/coverage/**",
     "**/drizzle/**",
     "**/__tests__/**",
-    "**/vitest.config.*"
+    "**/vitest.config.*",
+    "**/.playwright-cli/**"
   ],
   "gitignore": true
 }
