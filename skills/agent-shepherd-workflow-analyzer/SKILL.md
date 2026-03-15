@@ -40,8 +40,9 @@ Use the CLI commands provided in your prompt to fetch:
 1. **Read existing insights** -- Call `agent-shepherd insights get <pr-id>` first. If insights already exist, build on them rather than replacing them.
 
 2. **Fetch comment history** -- Call the `insights history` command from your prompt (it includes the `--pr` flag). The response is grouped:
-   - `currentPr.comments` — comments on this PR. Use these for categories 1-5 (tools, CLAUDE.md, skills, prompt engineering, agent behavior). If `currentPr` is absent, there are no reviewer comments on this PR yet — skip categories 1-5 comment analysis.
-   - `otherPrs[].comments` — comments on other PRs in this project. Use these ONLY for category 6 (Recurring Pattern Alerts).
+   - `currentPr.comments` — comments on this PR. Use these for categories 1-5 (tools, CLAUDE.md, skills, prompt engineering, agent behavior).
+   - `otherPrs[].comments` — comments on other PRs in this project. Use these ONLY for category 6 (Recurring Pattern Alerts), and only to check whether a `currentPr` comment echoes a concern from a past PR.
+   - **If `currentPr` is absent or has zero comments, skip ALL comment-based analysis (categories 1-6).** Do not read or analyze `otherPrs` data — there is nothing on the current PR to anchor against. Previous insight runs on those PRs already surfaced any historical patterns.
 
 3. **Read session transcripts** -- Read the JSONL files listed in your prompt. Scan for patterns described above.
 
