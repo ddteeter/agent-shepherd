@@ -40,21 +40,25 @@ Add a new section to the type-handling instructions in the review prompt builder
 
 **`question`** — Answer the question. If the question reveals an actual issue, fix it. If not, just reply with the answer — no code changes needed.
 
-The existing sections for `must-fix`, `request`, and `suggestion` remain unchanged in behavior. All references to "severity" in the prompt text rename to "type".
+The existing sections for `must-fix`, `request`, and `suggestion` remain unchanged in behavior. All references to "severity" in the prompt text rename to "type", including the section heading ("Severity Levels and How to Handle Them" becomes "Comment Types and How to Handle Them").
 
 ### 4. Insights Filtering
 
-The insights history endpoint (`GET /api/projects/:projectId/comments/history`) reads the `insights.ignoredTypes` config key from the merged project config and excludes those comment types from the response.
-
-- **Config key:** `insights.ignoredTypes`
-- **Default:** `["question"]`
-- **Stored as:** JSON-serialized string array in the config system
-- **Configurable at:** Global level (via `global_config` / `~/.agent-shepherd/config.yml`) and per-project (via `project_config` / `.agent-shepherd.yml`), with per-project overriding global per the existing three-tier precedence
-- **Empty array (`[]`):** All comment types included (no filtering)
-
-The filtering happens unconditionally inside the history endpoint — no query param needed since this endpoint is only used by insights.
+The insights history endpoint (`GET /api/projects/:projectId/comments/history`) filters out configurable comment types before returning results. Since this endpoint is only used by the insights agent, no query param is needed — the filtering is unconditional.
 
 The fix agent's comment endpoints (`GET /api/prs/:prId/comments`) remain unfiltered. The fix agent needs to see all comments including questions since it should answer them.
+
+**Config key:** `insightsIgnoredTypes` (flat key, not dotted — matches the existing flat key-value config pattern used by `reviewModel`, `baseBranch`, etc.)
+
+- **DB storage:** A JSON-serialized string array (e.g., `'["question"]'`)
+- **YAML file storage:** A YAML array under the flat key (e.g., `insightsIgnoredTypes: [question]`), which `js-yaml` parses as a native JS array
+- **Default (no config set):** `["question"]` — applied in code when the key is absent from merged config
+- **Empty array (`[]`):** All comment types included (no filtering)
+- **Configurable at:** Global and per-project levels, with per-project overriding global per the existing three-tier precedence
+
+**Parsing:** The history endpoint handler is responsible for reading the config value and normalizing it to an array — `JSON.parse()` for DB string values, pass-through for YAML-sourced arrays. `ConfigService` itself remains a generic key-value store and does not parse values.
+
+**Wiring:** The history endpoint in `comments.ts` needs access to `ConfigService` to read the merged config. `ConfigService` is already instantiated in the server setup — it will be made available to the comments route via Fastify's decorator/plugin pattern (same approach used by other routes that need services). The endpoint also needs the project path for `getMergedProjectConfig()`, which it can resolve from the project record.
 
 ### 5. Frontend
 
@@ -69,7 +73,7 @@ const typeColors: Record<string, string> = {
 };
 ```
 
-**Comment form** — The selector renames from severity to type. `question` appears first:
+**Comment form** — The selector renames from severity to type. `question` appears first in the dropdown. The default selected value remains `suggestion` (unchanged).
 
 ```
 Question | Suggestion | Request | Must Fix
@@ -81,6 +85,7 @@ Question | Suggestion | Request | Must Fix
 
 - CLI `review comments`: `--severity` flag becomes `--type`
 - CLI `review.ts`: local `Comment` interface field `severity` becomes `type`, format functions update variable names accordingly
+- CLI `insights history`: No changes needed — server-side filtering means the CLI command silently receives filtered results
 - API routes (`comments.ts`): query param `severity` becomes `type`, `buildCommentSummary` output keys rename `bySeverity` to `byType`
 - API request/response bodies: `severity` field becomes `type` in comment creation and batch payloads
 
@@ -91,6 +96,7 @@ Existing tests update to reflect the rename and new value:
 - Shared types test: `CommentType` with 4 values
 - Comment route tests: All `severity` references become `type`, add a test case for `question` comments
 - Comment summary tests: Verify `byType` key name
+- Insights history filtering: Verify `insightsIgnoredTypes` config is respected by the history endpoint
 - Prompt builder tests: Update severity references to type
 - Frontend component tests: Update accordingly
 - Coverage remains at 80%+
