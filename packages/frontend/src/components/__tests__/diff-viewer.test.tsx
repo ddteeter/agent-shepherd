@@ -531,3 +531,80 @@ describe('DiffViewer — large file collapse', () => {
     expect(screen.getByText('line 1')).toBeInTheDocument();
   });
 });
+
+const SIDE_AWARE_DIFF = `diff --git a/src/config.ts b/src/config.ts
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -1,3 +1,3 @@
+ import config from './config';
+-const port = 3000;
++const port = 8080;
+ export default port;`;
+
+describe('DiffViewer — side-aware comment matching', () => {
+  it('renders comment only on the removed line when side is old', () => {
+    const comment = {
+      id: '1',
+      reviewCycleId: 'rc1',
+      filePath: 'src/config.ts',
+      startLine: 2,
+      endLine: 2,
+      side: 'old' as const,
+      body: 'Why change this?',
+      type: 'question',
+      author: 'human' as const,
+      parentCommentId: undefined,
+      resolved: false,
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    render(
+      <DiffViewer
+        diff={SIDE_AWARE_DIFF}
+        files={['src/config.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        comments={[comment]}
+        onAddComment={vi.fn()}
+        onReplyComment={vi.fn()}
+        onResolveComment={vi.fn()}
+      />,
+    );
+
+    const matches = screen.getAllByText('Why change this?');
+    expect(matches).toHaveLength(1);
+  });
+
+  it('renders comment only on the added line when side is new', () => {
+    const comment = {
+      id: '2',
+      reviewCycleId: 'rc1',
+      filePath: 'src/config.ts',
+      startLine: 2,
+      endLine: 2,
+      side: 'new' as const,
+      body: 'Good change!',
+      type: 'suggestion',
+      author: 'human' as const,
+      parentCommentId: undefined,
+      resolved: false,
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    render(
+      <DiffViewer
+        diff={SIDE_AWARE_DIFF}
+        files={['src/config.ts']}
+        scrollToFile={undefined}
+        scrollKey={0}
+        comments={[comment]}
+        onAddComment={vi.fn()}
+        onReplyComment={vi.fn()}
+        onResolveComment={vi.fn()}
+      />,
+    );
+
+    const matches = screen.getAllByText('Good change!');
+    expect(matches).toHaveLength(1);
+  });
+});

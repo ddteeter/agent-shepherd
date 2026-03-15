@@ -242,6 +242,10 @@ function symbolForLineType(type: string): string {
   return ' ';
 }
 
+function sideForLineType(type: string): 'old' | 'new' {
+  return type === 'remove' ? 'old' : 'new';
+}
+
 function backgroundForSelection(
   isSelected: boolean,
   isInRange: boolean,
@@ -427,8 +431,12 @@ function FileDiffComponent({
                 {hunk.header}
               </div>
               {hunk.lines.map((line, lineIndex) => {
-                const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
-                const lineKey = `${file.path}:${String(lineNo)}`;
+                const side = sideForLineType(line.type);
+                const lineNo =
+                  side === 'old'
+                    ? (line.oldLineNo ?? 0)
+                    : (line.newLineNo ?? line.oldLineNo ?? 0);
+                const lineKey = `${file.path}:${String(lineNo)}:${side}`;
                 const activeRange = dragSelection ?? commentFormLine;
                 const isInSelectedRange =
                   activeRange?.file === file.path &&
@@ -625,8 +633,12 @@ function buildValidLineKeys(parsedFiles: FileDiffData[]): {
     diffFilePaths.add(file.path);
     for (const hunk of file.hunks) {
       for (const line of hunk.lines) {
-        const lineNo = line.newLineNo ?? line.oldLineNo ?? 0;
-        validLineKeys.add(`${file.path}:${String(lineNo)}`);
+        const side = sideForLineType(line.type);
+        const lineNo =
+          side === 'old'
+            ? (line.oldLineNo ?? 0)
+            : (line.newLineNo ?? line.oldLineNo ?? 0);
+        validLineKeys.add(`${file.path}:${String(lineNo)}:${side}`);
       }
     }
   }
@@ -669,7 +681,8 @@ function categorizeComment(
     }
     return;
   }
-  const key = `${comment.filePath}:${String(comment.endLine ?? comment.startLine)}`;
+  const side = comment.side ?? 'new';
+  const key = `${comment.filePath}:${String(comment.endLine ?? comment.startLine)}:${side}`;
   if (validLineKeys.has(key)) {
     appendToMap(byFileLine, key, comment);
   } else {
@@ -687,8 +700,9 @@ function buildCommentRangeLines(comments: Comment[]): Set<string> {
       comment.endLine !== undefined &&
       comment.startLine !== comment.endLine
     ) {
+      const side = comment.side ?? 'new';
       for (let l = comment.startLine; l <= comment.endLine; l++) {
-        rangeLines.add(`${comment.filePath}:${String(l)}`);
+        rangeLines.add(`${comment.filePath}:${String(l)}:${side}`);
       }
     }
   }
