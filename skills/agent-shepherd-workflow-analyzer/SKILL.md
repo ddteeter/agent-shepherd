@@ -177,7 +177,7 @@ Each insight goes in exactly ONE category. When an insight could fit multiple ca
 2. **CLAUDE.md Recommendations** — the fix is a concrete rule that would prevent the issue, and you're confident the rule is right
 3. **Skill Recommendations** — the fix is a new or modified skill, and you're confident the change is correct
 4. **Prompt & Context Engineering** — the root cause is the human's input or context, not the agent's behavior
-5. **Recurring Pattern Alerts** — this is a cross-PR trend (evidence from 2+ PRs) without a clear single-category fix yet
+5. **Recurring Pattern Alerts** — a comment on the current PR echoes a concern from 1+ other PRs, confirming a cross-PR trend without a clear single-category fix yet
 6. **Agent Behavior Observations** — the issue doesn't yet have a confident actionable fix; use this as a holding category until evidence supports a concrete recommendation
 
 If you're unsure a CLAUDE.md rule or skill change would actually help, the insight belongs in Agent Behavior Observations — not in the actionable category. Prefer observations over speculative fixes.
