@@ -107,4 +107,5 @@ export const insights = sqliteTable('insights', {
   updatedAt: text('updated_at')
     .notNull()
     .default(sql`(datetime('now') || 'Z')`),
+  previousUpdatedAt: text('previous_updated_at'),
 });
