@@ -1,10 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
   createTestServer,
   jsonBody,
   jsonArrayBody,
 } from '../../__tests__/helpers.js';
+import { broadcast } from '../../ws.js';
+
+vi.mock('../../ws.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../ws.js')>();
+  return {
+    ...original,
+    broadcast: vi.fn(original.broadcast),
+  };
+});
 
 describe('Projects API', () => {
   let server: FastifyInstance;
@@ -103,6 +112,23 @@ describe('Projects API', () => {
       url: '/api/projects/nonexistent',
     });
     expect(response.statusCode).toBe(404);
+  });
+
+  it('POST /api/projects broadcasts project:created', async () => {
+    const response = await inject({
+      method: 'POST',
+      url: '/api/projects',
+      payload: { name: 'broadcast-test', path: '/tmp/bt' },
+    });
+    expect(response.statusCode).toBe(201);
+    const body = jsonBody(response);
+    expect(broadcast).toHaveBeenCalledWith(
+      'project:created',
+      expect.objectContaining({
+        id: body.id,
+        name: 'broadcast-test',
+      }),
+    );
   });
 
   it('DELETE /api/projects/:id removes a project', async () => {

@@ -41,6 +41,8 @@ export function projectRoutes(fastify: FastifyInstance) {
       .where(eq(schema.projects.id, id))
       .get();
 
+    fastify.broadcast('project:created', project);
+
     await reply.code(201).send(project);
   });
 
