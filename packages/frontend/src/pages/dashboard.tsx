@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import type { Project } from '../api.js';
+import { useWebSocket } from '../hooks/use-web-socket.js';
 
 export function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -15,6 +16,19 @@ export function Dashboard() {
         setLoading(false);
       });
   }, []);
+
+  useWebSocket((message) => {
+    if (
+      message.event === 'pr:created' ||
+      message.event === 'pr:updated' ||
+      message.event === 'review:submitted' ||
+      message.event === 'agent:completed' ||
+      message.event === 'agent:error' ||
+      message.event === 'project:created'
+    ) {
+      void api.projects.list().then(setProjects);
+    }
+  });
 
   if (loading) return <div className="p-6">Loading...</div>;
 
