@@ -1,6 +1,6 @@
 import { FileTree } from './file-tree.js';
 import { DiffViewer } from './diff-viewer.js';
-import type { FileStatus, AddCommentData } from './diff-viewer.js';
+import type { FileStatus, CommentActions } from './diff-viewer.js';
 import { AgentStatusSection } from './agent-status-section.js';
 import type { ActivityEntry } from './agent-activity-panel.js';
 import { CommentFilter } from './comment-filter.js';
@@ -34,11 +34,7 @@ interface ReviewContentProperties {
   onVisibleFileChange: (file: string) => void;
   filteredComments: Comment[];
   threadStatusMap: Map<string, ThreadStatus>;
-  onAddComment: (data: AddCommentData) => void;
-  onReplyComment: (commentId: string, body: string) => void;
-  onResolveComment: (commentId: string) => void;
-  onEditComment: (commentId: string, body: string) => void;
-  onDeleteComment: (commentId: string) => void;
+  commentActions: CommentActions;
   globalCommentForm: boolean;
   onToggleGlobalCommentForm: () => void;
 }
@@ -66,11 +62,7 @@ export function ReviewContent({
   onVisibleFileChange,
   filteredComments,
   threadStatusMap,
-  onAddComment,
-  onReplyComment,
-  onResolveComment,
-  onEditComment,
-  onDeleteComment,
+  commentActions,
   globalCommentForm,
   onToggleGlobalCommentForm,
 }: Readonly<ReviewContentProperties>) {
@@ -122,11 +114,7 @@ export function ReviewContent({
               onVisibleFileChange={onVisibleFileChange}
               comments={filteredComments}
               threadStatusMap={threadStatusMap}
-              onAddComment={onAddComment}
-              onReplyComment={onReplyComment}
-              onResolveComment={onResolveComment}
-              onEditComment={onEditComment}
-              onDeleteComment={onDeleteComment}
+              commentActions={commentActions}
               canEditComments={true}
               globalCommentForm={globalCommentForm}
               onToggleGlobalCommentForm={onToggleGlobalCommentForm}

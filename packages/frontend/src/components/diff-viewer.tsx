@@ -16,7 +16,7 @@ import {
 import type { ThreadStatus } from '../utils/comment-thread-status.js';
 import { parseDiff, type FileDiffData } from '../utils/diff-parser.js';
 import { categorizeComments } from '../utils/comment-categorizer.js';
-import type { AddCommentData } from './diff-viewer-types.js';
+import type { AddCommentData, CommentActions } from './diff-viewer-types.js';
 import { GlobalComments } from './global-comments.js';
 import { FileGroupHeader } from './file-group-header.js';
 import { OrphanedComments } from './orphaned-comments.js';
@@ -47,11 +47,7 @@ interface DiffViewerProperties {
   onVisibleFileChange?: (file: string) => void;
   comments?: Comment[];
   threadStatusMap?: Map<string, ThreadStatus>;
-  onAddComment?: (data: AddCommentData) => void;
-  onReplyComment?: (commentId: string, body: string) => void;
-  onResolveComment?: (commentId: string) => void;
-  onEditComment?: (commentId: string, body: string) => void;
-  onDeleteComment?: (commentId: string) => void;
+  commentActions?: CommentActions;
   canEditComments?: boolean;
   globalCommentForm?: boolean;
   onToggleGlobalCommentForm?: () => void;
@@ -171,7 +167,7 @@ function FileDiffComponent({
   onDragOver: (filePath: string, lineNo: number, side: 'old' | 'new') => void;
   onFinalizeDrag: () => void;
   onCancelComment: () => void;
-  onAddComment?: DiffViewerProperties['onAddComment'];
+  onAddComment?: (data: AddCommentData) => void;
   handleAddComment: (
     filePath: string | undefined,
     startLine: number | undefined,
@@ -180,10 +176,10 @@ function FileDiffComponent({
     type: string,
     side: 'old' | 'new' | undefined,
   ) => void;
-  onReplyComment?: DiffViewerProperties['onReplyComment'];
-  onResolveComment?: DiffViewerProperties['onResolveComment'];
-  onEditComment?: DiffViewerProperties['onEditComment'];
-  onDeleteComment?: DiffViewerProperties['onDeleteComment'];
+  onReplyComment?: (commentId: string, body: string) => void;
+  onResolveComment?: (commentId: string) => void;
+  onEditComment?: (commentId: string, body: string) => void;
+  onDeleteComment?: (commentId: string) => void;
   canEditComments?: boolean;
   commentRangeLines: Set<string>;
   tokenizeLine: (code: string, lang: string) => TokenizedLine | undefined;
@@ -478,17 +474,18 @@ export function DiffViewer({
   onVisibleFileChange,
   comments = [],
   threadStatusMap,
-  onAddComment,
-  onReplyComment,
-  onResolveComment,
-  onEditComment,
-  onDeleteComment,
+  commentActions,
   canEditComments,
   globalCommentForm,
   onToggleGlobalCommentForm,
   fileGroups,
   viewMode,
 }: Readonly<DiffViewerProperties>) {
+  const onAddComment = commentActions?.onAdd;
+  const onReplyComment = commentActions?.onReply;
+  const onResolveComment = commentActions?.onResolve;
+  const onEditComment = commentActions?.onEdit;
+  const onDeleteComment = commentActions?.onDelete;
   const {
     commentFormLine,
     dragSelection,

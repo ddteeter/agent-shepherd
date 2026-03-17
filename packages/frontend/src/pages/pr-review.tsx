@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ReviewBar } from '../components/review-bar.js';
 import { InsightsTab } from '../components/insights-tab.js';
@@ -6,6 +6,7 @@ import { PRHeader } from '../components/pr-header.js';
 import { PRTabBar } from '../components/pr-tab-bar.js';
 import { InsightsFooter } from '../components/insights-footer.js';
 import { ReviewContent } from '../components/review-content.js';
+import type { CommentActions } from '../components/diff-viewer-types.js';
 import { usePrData, formatAgentError } from '../hooks/use-pr-data.js';
 
 export function PRReview() {
@@ -27,6 +28,41 @@ export function PRReview() {
     setScrollToFile(file);
     setVisibleFile(file);
   }, []);
+
+  const {
+    handleAddComment,
+    handleReplyComment,
+    handleResolveComment,
+    handleEditComment,
+    handleDeleteComment,
+  } = data;
+
+  const commentActions: CommentActions = useMemo(
+    () => ({
+      onAdd: (commentData) => {
+        void handleAddComment(commentData);
+      },
+      onReply: (commentId, body) => {
+        void handleReplyComment(commentId, body);
+      },
+      onResolve: (commentId) => {
+        void handleResolveComment(commentId);
+      },
+      onEdit: (commentId, body) => {
+        void handleEditComment(commentId, body);
+      },
+      onDelete: (commentId) => {
+        void handleDeleteComment(commentId);
+      },
+    }),
+    [
+      handleAddComment,
+      handleReplyComment,
+      handleResolveComment,
+      handleEditComment,
+      handleDeleteComment,
+    ],
+  );
 
   if (data.loading) return <div className="p-6">Loading...</div>;
   if (data.error)
@@ -91,21 +127,7 @@ export function PRReview() {
           onVisibleFileChange={setVisibleFile}
           filteredComments={data.filteredComments}
           threadStatusMap={data.threadStatusMap}
-          onAddComment={(commentData) => {
-            void data.handleAddComment(commentData);
-          }}
-          onReplyComment={(commentId, body) => {
-            void data.handleReplyComment(commentId, body);
-          }}
-          onResolveComment={(commentId) => {
-            void data.handleResolveComment(commentId);
-          }}
-          onEditComment={(commentId, body) => {
-            void data.handleEditComment(commentId, body);
-          }}
-          onDeleteComment={(commentId) => {
-            void data.handleDeleteComment(commentId);
-          }}
+          commentActions={commentActions}
           globalCommentForm={data.globalCommentForm}
           onToggleGlobalCommentForm={() => {
             data.setGlobalCommentForm(!data.globalCommentForm);
