@@ -7,6 +7,7 @@ import { AgentStatusSection } from '../components/agent-status-section.js';
 import { CommentFilter } from '../components/comment-filter.js';
 import { InsightsTab } from '../components/insights-tab.js';
 import { PRHeader } from '../components/pr-header.js';
+import { PRTabBar } from '../components/pr-tab-bar.js';
 import { usePrData, formatAgentError } from '../hooks/use-pr-data.js';
 
 export function PRReview() {
@@ -57,50 +58,12 @@ export function PRReview() {
         }}
       />
 
-      {/* Tab navigation */}
-      <div
-        className="flex border-b shrink-0"
-        style={{ borderColor: 'var(--color-border)' }}
-      >
-        <button
-          onClick={() => {
-            data.setActiveTab('review');
-          }}
-          className={`px-4 py-2 text-sm flex items-center gap-1.5 ${data.activeTab === 'review' ? 'border-b-2' : 'opacity-60'}`}
-          style={
-            data.activeTab === 'review'
-              ? {
-                  borderColor: 'var(--color-accent)',
-                  color: 'var(--color-accent)',
-                }
-              : {}
-          }
-        >
-          Review
-          {data.agentWorking && (
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
-          )}
-        </button>
-        <button
-          onClick={() => {
-            data.setActiveTab('insights');
-          }}
-          className={`px-4 py-2 text-sm flex items-center gap-1.5 ${data.activeTab === 'insights' ? 'border-b-2' : 'opacity-60'}`}
-          style={
-            data.activeTab === 'insights'
-              ? {
-                  borderColor: 'var(--color-accent)',
-                  color: 'var(--color-accent)',
-                }
-              : {}
-          }
-        >
-          Insights
-          {data.analyzerRunning && (
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
-          )}
-        </button>
-      </div>
+      <PRTabBar
+        activeTab={data.activeTab}
+        onTabChange={data.setActiveTab}
+        agentWorking={data.agentWorking}
+        analyzerRunning={data.analyzerRunning}
+      />
 
       {/* Main content area */}
       {data.activeTab === 'review' ? (
