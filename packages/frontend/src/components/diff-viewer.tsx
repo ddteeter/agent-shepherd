@@ -17,6 +17,7 @@ import type { ThreadStatus } from '../utils/comment-thread-status.js';
 import { parseDiff, type FileDiffData } from '../utils/diff-parser.js';
 import { categorizeComments } from '../utils/comment-categorizer.js';
 import type { AddCommentData } from './diff-viewer-types.js';
+import { GlobalComments } from './global-comments.js';
 
 export type {
   FileStatus,
@@ -623,54 +624,20 @@ export function DiffViewer({
           : undefined
       }
     >
-      {/* Global/PR-level comments */}
       {(globalComments.length > 0 || globalCommentForm) && (
-        <div
-          className="mb-6 border rounded overflow-hidden"
-          style={{ borderColor: 'var(--color-border)' }}
-        >
-          <div
-            className="px-4 py-2 text-sm font-medium border-b flex items-center gap-2"
-            style={{
-              backgroundColor: 'var(--color-bg-secondary)',
-              borderColor: 'var(--color-border)',
-            }}
-          >
-            <span
-              className="px-1.5 py-0.5 rounded text-xs"
-              style={{
-                backgroundColor: 'rgba(130, 80, 223, 0.15)',
-                color: '#8250df',
-              }}
-            >
-              PR
-            </span>
-            General comments
-          </div>
-          {globalComments.map((comment) => (
-            <CommentThread
-              key={comment.id}
-              comment={comment}
-              replies={repliesByParent.get(comment.id) ?? []}
-              onReply={onReplyComment ?? noopCallback}
-              onResolve={onResolveComment ?? noopCallback}
-              onEdit={onEditComment}
-              onDelete={onDeleteComment}
-              canEdit={canEditComments}
-              threadStatus={threadStatusMap?.get(comment.id)}
-            />
-          ))}
-          {globalCommentForm && (
-            <div className="mx-4 my-2">
-              <CommentForm
-                onSubmit={({ body, type }) => {
-                  handleGlobalComment(body, type ?? 'suggestion');
-                }}
-                onCancel={() => onToggleGlobalCommentForm?.()}
-              />
-            </div>
-          )}
-        </div>
+        <GlobalComments
+          comments={globalComments}
+          repliesByParent={repliesByParent}
+          onReply={onReplyComment ?? noopCallback}
+          onResolve={onResolveComment ?? noopCallback}
+          onEdit={onEditComment}
+          onDelete={onDeleteComment}
+          canEditComments={canEditComments}
+          threadStatusMap={threadStatusMap}
+          globalCommentForm={globalCommentForm ?? false}
+          onToggleGlobalCommentForm={onToggleGlobalCommentForm}
+          onSubmit={handleGlobalComment}
+        />
       )}
 
       {parsedFiles.map((file, index) => (
