@@ -8,6 +8,7 @@ import { CommentFilter } from '../components/comment-filter.js';
 import { InsightsTab } from '../components/insights-tab.js';
 import { PRHeader } from '../components/pr-header.js';
 import { PRTabBar } from '../components/pr-tab-bar.js';
+import { InsightsFooter } from '../components/insights-footer.js';
 import { usePrData, formatAgentError } from '../hooks/use-pr-data.js';
 
 export function PRReview() {
@@ -186,42 +187,16 @@ export function PRReview() {
           }}
         />
       ) : (
-        <div
-          className="px-6 py-3 border-t flex items-center justify-end"
-          style={{
-            borderColor: 'var(--color-border)',
-            backgroundColor: 'var(--color-bg-secondary)',
+        <InsightsFooter
+          analyzerRunning={data.analyzerRunning}
+          hasComments={data.topLevelComments.length > 0}
+          onRunAnalyzer={() => {
+            void data.handleRunAnalyzer();
           }}
-        >
-          {data.analyzerRunning && (
-            <button
-              onClick={() => {
-                void data.handleCancelAnalyzer();
-              }}
-              className="px-4 py-1.5 text-sm rounded font-medium border hover:opacity-80"
-              style={{
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text)',
-              }}
-            >
-              Cancel Analyzer
-            </button>
-          )}
-          {data.topLevelComments.length > 0 && !data.analyzerRunning && (
-            <button
-              onClick={() => {
-                void data.handleRunAnalyzer();
-              }}
-              className="btn-danger px-4 py-1.5 text-sm rounded font-medium"
-              style={{
-                backgroundColor: 'var(--color-btn-danger-bg)',
-                color: 'var(--color-btn-danger-fg)',
-              }}
-            >
-              Run Analyzer
-            </button>
-          )}
-        </div>
+          onCancelAnalyzer={() => {
+            void data.handleCancelAnalyzer();
+          }}
+        />
       )}
     </div>
   );
