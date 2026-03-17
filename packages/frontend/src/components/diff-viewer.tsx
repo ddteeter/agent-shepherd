@@ -18,6 +18,7 @@ import { parseDiff, type FileDiffData } from '../utils/diff-parser.js';
 import { categorizeComments } from '../utils/comment-categorizer.js';
 import type { AddCommentData } from './diff-viewer-types.js';
 import { GlobalComments } from './global-comments.js';
+import { FileGroupHeader } from './file-group-header.js';
 
 export type {
   FileStatus,
@@ -642,61 +643,27 @@ export function DiffViewer({
 
       {parsedFiles.map((file, index) => (
         <div key={file.path}>
-          {(() => {
-            if (!fileToGroup) return;
-            const group = fileToGroup.get(file.path);
-            const previousFile = parsedFiles[index - 1] as
-              | FileDiffData
-              | undefined;
-            const previousGroup = previousFile
-              ? fileToGroup.get(previousFile.path)
-              : undefined;
-            const isNewGroup = group && previousGroup?.name !== group.name;
-            const isUngrouped =
-              !group &&
-              (index === 0 ||
-                (previousFile && fileToGroup.has(previousFile.path)));
-            if (isNewGroup) {
+          {fileToGroup &&
+            (() => {
+              const group = fileToGroup.get(file.path);
+              const previousFile = parsedFiles[index - 1] as
+                | FileDiffData
+                | undefined;
+              const previousGroup = previousFile
+                ? fileToGroup.get(previousFile.path)
+                : undefined;
               return (
-                <div
-                  className="px-4 py-3 mb-2 border-b"
-                  style={{
-                    borderColor: 'var(--color-border)',
-                    backgroundColor:
-                      'var(--color-bg-secondary, var(--color-surface))',
-                  }}
-                >
-                  <div
-                    className="text-sm font-semibold"
-                    style={{ color: 'var(--color-text)' }}
-                  >
-                    {group.name}
-                  </div>
-                  {group.description && (
-                    <div className="text-xs mt-0.5 opacity-60">
-                      {group.description}
-                    </div>
-                  )}
-                </div>
+                <FileGroupHeader
+                  group={group}
+                  isNewGroup={!!(group && previousGroup?.name !== group.name)}
+                  isUngrouped={
+                    !group &&
+                    (index === 0 ||
+                      (!!previousFile && fileToGroup.has(previousFile.path)))
+                  }
+                />
               );
-            }
-            if (isUngrouped) {
-              return (
-                <div
-                  className="px-4 py-3 mb-2 border-b"
-                  style={{
-                    borderColor: 'var(--color-border)',
-                    backgroundColor:
-                      'var(--color-bg-secondary, var(--color-surface))',
-                  }}
-                >
-                  <div className="text-sm font-semibold opacity-60">
-                    Other Changes
-                  </div>
-                </div>
-              );
-            }
-          })()}
+            })()}
           <div
             ref={createFileReferenceCallback(file.path)}
             data-file-path={file.path}
