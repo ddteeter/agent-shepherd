@@ -7,6 +7,7 @@ import {
   getLangFromPath,
   type TokenizedLine,
 } from '../hooks/use-highlighter.js';
+import { useLineSelection } from '../hooks/use-line-selection.js';
 import {
   getFileTreeOrder,
   getGroupedFileOrder,
@@ -575,41 +576,23 @@ export function DiffViewer({
 }: Readonly<DiffViewerProperties>) {
   const containerReference = useRef<HTMLDivElement>(undefined);
   const fileReferences = useRef<Record<string, HTMLDivElement | undefined>>({});
-  const [commentFormLine, setCommentFormLine] = useState<
-    | {
-        file: string;
-        startLine: number;
-        endLine: number;
-        side: 'old' | 'new';
-      }
-    | undefined
-  >();
-  const [rangeAnchor, setRangeAnchor] = useState<
-    | {
-        file: string;
-        line: number;
-        side: 'old' | 'new';
-      }
-    | undefined
-  >();
-  const [dragSelection, setDragSelection] = useState<
-    | {
-        file: string;
-        startLine: number;
-        endLine: number;
-        side: 'old' | 'new';
-      }
-    | undefined
-  >();
-  const [buttonsHidden, setButtonsHidden] = useState(false);
-  const isDragging = useRef(false);
-  const dragAnchor = useRef<
-    { file: string; line: number; side: 'old' | 'new' } | undefined
-  >(undefined);
+  const {
+    commentFormLine,
+    dragSelection,
+    buttonsHidden,
+    setButtonsHidden,
+    fileCommentFormPath,
+    setFileCommentFormPath,
+    handleLineClick,
+    handleCancelComment,
+    handleAddComment,
+    handleFileComment,
+    handleGlobalComment,
+    handleDragStart,
+    handleDragOver,
+    finalizeDrag,
+  } = useLineSelection({ onAddComment, onToggleGlobalCommentForm });
   const isScrolling = useRef(false);
-  const [fileCommentFormPath, setFileCommentFormPath] = useState<
-    string | undefined
-  >();
 
   const [visible, setVisible] = useState<Set<string>>(new Set());
   const observerReference = useRef<IntersectionObserver | undefined>(undefined);
@@ -781,143 +764,6 @@ export function DiffViewer({
     () => categorizeComments(comments, parsedFiles),
     [comments, parsedFiles],
   );
-
-  const handleLineClick = useCallback(
-    (
-      filePath: string,
-      lineNo: number,
-      shiftKey: boolean,
-      side: 'old' | 'new',
-    ) => {
-      if (isDragging.current) return;
-      if (
-        shiftKey &&
-        rangeAnchor?.file === filePath &&
-        rangeAnchor.side === side
-      ) {
-        const startLine = Math.min(rangeAnchor.line, lineNo);
-        const endLine = Math.max(rangeAnchor.line, lineNo);
-        setCommentFormLine({ file: filePath, startLine, endLine, side });
-      } else {
-        setRangeAnchor({ file: filePath, line: lineNo, side });
-        setCommentFormLine({
-          file: filePath,
-          startLine: lineNo,
-          endLine: lineNo,
-          side,
-        });
-      }
-    },
-    [rangeAnchor],
-  );
-
-  const handleCancelComment = useCallback(() => {
-    setCommentFormLine(undefined);
-    setRangeAnchor(undefined);
-    setDragSelection(undefined);
-    setButtonsHidden(true);
-  }, []);
-
-  const handleAddComment = useCallback(
-    (
-      filePath: string | undefined,
-      startLine: number | undefined,
-      endLine: number | undefined,
-      body: string,
-      type: string,
-      side: 'old' | 'new' | undefined,
-    ) => {
-      onAddComment?.({ filePath, startLine, endLine, body, type, side });
-      setCommentFormLine(undefined);
-      setRangeAnchor(undefined);
-    },
-    [onAddComment],
-  );
-
-  const handleFileComment = useCallback(
-    (filePath: string, body: string, type: string) => {
-      onAddComment?.({
-        filePath,
-        startLine: undefined,
-        endLine: undefined,
-        body,
-        type,
-        side: undefined,
-      });
-      setFileCommentFormPath(undefined);
-    },
-    [onAddComment],
-  );
-
-  const handleGlobalComment = useCallback(
-    (body: string, type: string) => {
-      onAddComment?.({
-        filePath: undefined,
-        startLine: undefined,
-        endLine: undefined,
-        body,
-        type,
-        side: undefined,
-      });
-      onToggleGlobalCommentForm?.();
-    },
-    [onAddComment, onToggleGlobalCommentForm],
-  );
-
-  const handleDragStart = useCallback(
-    (filePath: string, lineNo: number, side: 'old' | 'new') => {
-      dragAnchor.current = { file: filePath, line: lineNo, side };
-    },
-    [],
-  );
-
-  const handleDragOver = useCallback(
-    (filePath: string, lineNo: number, side: 'old' | 'new') => {
-      if (dragAnchor.current?.file !== filePath) return;
-      if (dragAnchor.current.side !== side) return;
-      if (dragAnchor.current.line === lineNo && !isDragging.current) return;
-      isDragging.current = true;
-      const start = Math.min(dragAnchor.current.line, lineNo);
-      const end = Math.max(dragAnchor.current.line, lineNo);
-      setDragSelection({
-        file: filePath,
-        startLine: start,
-        endLine: end,
-        side,
-      });
-    },
-    [],
-  );
-
-  const finalizeDrag = useCallback(() => {
-    const wasDragging = isDragging.current;
-    isDragging.current = false;
-    dragAnchor.current = undefined;
-    if (wasDragging) {
-      setDragSelection((sel) => {
-        if (sel) {
-          setCommentFormLine(sel);
-          setRangeAnchor({
-            file: sel.file,
-            line: sel.startLine,
-            side: sel.side,
-          });
-        }
-        // Keep current selection (cleared by next mouse interaction)
-        return sel;
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    const onMouseUp = () => {
-      if (dragAnchor.current) finalizeDrag();
-    };
-    globalThis.addEventListener('mouseup', onMouseUp);
-    return () => {
-      globalThis.removeEventListener('mouseup', onMouseUp);
-    };
-  }, [finalizeDrag]);
 
   if (parsedFiles.length === 0) {
     return (
