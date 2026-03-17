@@ -19,6 +19,7 @@ import { categorizeComments } from '../utils/comment-categorizer.js';
 import type { AddCommentData } from './diff-viewer-types.js';
 import { GlobalComments } from './global-comments.js';
 import { FileGroupHeader } from './file-group-header.js';
+import { OrphanedComments } from './orphaned-comments.js';
 
 export type {
   FileStatus,
@@ -455,45 +456,16 @@ function FileDiffComponent({
           ))}
         </div>
       </div>
-      {orphanedComments.length > 0 && (
-        <div
-          className="border-t"
-          style={{ borderColor: 'var(--color-border)' }}
-        >
-          <div
-            className="px-4 py-2 text-xs"
-            style={{
-              opacity: 0.6,
-              backgroundColor: 'var(--color-bg-secondary)',
-            }}
-          >
-            Comments on lines no longer in this diff
-          </div>
-          {orphanedComments.map((comment) => (
-            <div key={comment.id} className="px-4 py-1">
-              {comment.startLine !== undefined && (
-                <div className="text-xs mb-1" style={{ opacity: 0.5 }}>
-                  Line
-                  {comment.startLine !== comment.endLine &&
-                  comment.endLine !== undefined
-                    ? `s ${String(comment.startLine)}–${String(comment.endLine)}`
-                    : ` ${String(comment.startLine)}`}
-                </div>
-              )}
-              <CommentThread
-                comment={comment}
-                replies={repliesByParent.get(comment.id) ?? []}
-                onReply={onReplyComment ?? noopCallback}
-                onResolve={onResolveComment ?? noopCallback}
-                onEdit={onEditComment}
-                onDelete={onDeleteComment}
-                canEdit={canEditComments}
-                threadStatus={threadStatusMap?.get(comment.id)}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      <OrphanedComments
+        comments={orphanedComments}
+        repliesByParent={repliesByParent}
+        onReply={onReplyComment ?? noopCallback}
+        onResolve={onResolveComment ?? noopCallback}
+        onEdit={onEditComment}
+        onDelete={onDeleteComment}
+        canEditComments={canEditComments}
+        threadStatusMap={threadStatusMap}
+      />
     </div>
   );
 }
@@ -765,10 +737,9 @@ export function DiffViewer({
         </div>
       ))}
 
-      {/* Orphaned comments on files no longer in the diff */}
       {[...orphanedByFile.entries()]
         .filter(([filePath]) => !parsedFiles.some((f) => f.path === filePath))
-        .map(([filePath, orphanedComments]) => (
+        .map(([filePath, orphanComments]) => (
           <div
             key={`orphaned-${filePath}`}
             className="mb-6 border rounded overflow-hidden"
@@ -786,43 +757,16 @@ export function DiffViewer({
                 (not in current diff)
               </span>
             </div>
-            <div
-              className="border-t"
-              style={{ borderColor: 'var(--color-border)' }}
-            >
-              <div
-                className="px-4 py-2 text-xs"
-                style={{
-                  opacity: 0.6,
-                  backgroundColor: 'var(--color-bg-secondary)',
-                }}
-              >
-                Comments on lines no longer in this diff
-              </div>
-              {orphanedComments.map((comment) => (
-                <div key={comment.id} className="px-4 py-1">
-                  {comment.startLine !== undefined && (
-                    <div className="text-xs mb-1" style={{ opacity: 0.5 }}>
-                      Line
-                      {comment.startLine !== comment.endLine &&
-                      comment.endLine !== undefined
-                        ? `s ${String(comment.startLine)}–${String(comment.endLine)}`
-                        : ` ${String(comment.startLine)}`}
-                    </div>
-                  )}
-                  <CommentThread
-                    comment={comment}
-                    replies={repliesByParent.get(comment.id) ?? []}
-                    onReply={onReplyComment ?? noopCallback}
-                    onResolve={onResolveComment ?? noopCallback}
-                    onEdit={onEditComment}
-                    onDelete={onDeleteComment}
-                    canEdit={canEditComments}
-                    threadStatus={threadStatusMap?.get(comment.id)}
-                  />
-                </div>
-              ))}
-            </div>
+            <OrphanedComments
+              comments={orphanComments}
+              repliesByParent={repliesByParent}
+              onReply={onReplyComment ?? noopCallback}
+              onResolve={onResolveComment ?? noopCallback}
+              onEdit={onEditComment}
+              onDelete={onDeleteComment}
+              canEditComments={canEditComments}
+              threadStatusMap={threadStatusMap}
+            />
           </div>
         ))}
     </div>
