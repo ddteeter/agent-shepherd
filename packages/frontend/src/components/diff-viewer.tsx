@@ -12,11 +12,15 @@ import {
   getGroupedFileOrder,
 } from './file-tree-utilities.js';
 import type { ThreadStatus } from '../utils/comment-thread-status.js';
-import type { CommentSide } from '@agent-shepherd/shared';
 import { parseDiff, type FileDiffData } from '../utils/diff-parser.js';
 import { categorizeComments } from '../utils/comment-categorizer.js';
+import type { AddCommentData } from './diff-viewer-types.js';
 
-export type { FileStatus } from '../utils/diff-parser.js';
+export type {
+  FileStatus,
+  AddCommentData,
+  CommentActions,
+} from './diff-viewer-types.js';
 
 /** Typed wrapper for Array.prototype.toSorted since TS target < ES2023 */
 function sortedCopy<T>(
@@ -28,15 +32,6 @@ function sortedCopy<T>(
       toSorted: (sortFunction: (a: T, b: T) => number) => T[];
     }
   ).toSorted(compareFunction);
-}
-
-interface AddCommentData {
-  filePath: string | undefined;
-  startLine: number | undefined;
-  endLine: number | undefined;
-  body: string;
-  type: string;
-  side: CommentSide | undefined;
 }
 
 interface DiffViewerProperties {
