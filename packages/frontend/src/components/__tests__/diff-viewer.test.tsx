@@ -67,7 +67,7 @@ describe('DiffViewer — multi-line comment support', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -88,7 +88,7 @@ describe('DiffViewer — multi-line comment support', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -109,7 +109,7 @@ describe('DiffViewer — multi-line comment support', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -135,7 +135,7 @@ describe('DiffViewer — multi-line comment support', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -175,7 +175,7 @@ describe('DiffViewer — multi-line comment support', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[multiLineComment]}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -280,7 +280,7 @@ describe('DiffViewer — file-level comments', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[fileComment]}
-        onAddComment={vi.fn()}
+        commentActions={{ onAdd: vi.fn() }}
       />,
     );
     expect(screen.getByText('File-level comment here')).toBeInTheDocument();
@@ -310,7 +310,7 @@ describe('DiffViewer — global/PR-level comments', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[globalComment]}
-        onAddComment={vi.fn()}
+        commentActions={{ onAdd: vi.fn() }}
       />,
     );
     expect(screen.getByText('Overall PR feedback')).toBeInTheDocument();
@@ -326,7 +326,7 @@ describe('DiffViewer — global/PR-level comments', () => {
         scrollKey={0}
         globalCommentForm={true}
         onToggleGlobalCommentForm={vi.fn()}
-        onAddComment={vi.fn()}
+        commentActions={{ onAdd: vi.fn() }}
       />,
     );
     expect(screen.getByText('General comments')).toBeInTheDocument();
@@ -345,7 +345,7 @@ describe('DiffViewer — file-level comment form', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={vi.fn()}
+        commentActions={{ onAdd: vi.fn() }}
       />,
     );
     const commentBtns = screen.getAllByText('Comment');
@@ -377,7 +377,7 @@ describe('DiffViewer — orphaned comments', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[orphanedComment]}
-        onAddComment={vi.fn()}
+        commentActions={{ onAdd: vi.fn() }}
       />,
     );
     expect(screen.getByText('Orphaned line comment')).toBeInTheDocument();
@@ -408,7 +408,7 @@ describe('DiffViewer — orphaned comments', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[orphanedComment]}
-        onAddComment={vi.fn()}
+        commentActions={{ onAdd: vi.fn() }}
       />,
     );
     expect(screen.getByText('Comment on deleted file')).toBeInTheDocument();
@@ -481,9 +481,11 @@ describe('DiffViewer — reply comments', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[parentComment, replyComment]}
-        onAddComment={vi.fn()}
-        onReplyComment={vi.fn()}
-        onResolveComment={vi.fn()}
+        commentActions={{
+          onAdd: vi.fn(),
+          onReply: vi.fn(),
+          onResolve: vi.fn(),
+        }}
       />,
     );
     expect(screen.getByText('Parent comment')).toBeInTheDocument();
@@ -566,9 +568,11 @@ describe('DiffViewer — side-aware comment matching', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[comment]}
-        onAddComment={vi.fn()}
-        onReplyComment={vi.fn()}
-        onResolveComment={vi.fn()}
+        commentActions={{
+          onAdd: vi.fn(),
+          onReply: vi.fn(),
+          onResolve: vi.fn(),
+        }}
       />,
     );
 
@@ -599,9 +603,11 @@ describe('DiffViewer — side-aware comment matching', () => {
         scrollToFile={undefined}
         scrollKey={0}
         comments={[comment]}
-        onAddComment={vi.fn()}
-        onReplyComment={vi.fn()}
-        onResolveComment={vi.fn()}
+        commentActions={{
+          onAdd: vi.fn(),
+          onReply: vi.fn(),
+          onResolve: vi.fn(),
+        }}
       />,
     );
 
@@ -621,7 +627,7 @@ describe('DiffViewer — side-aware selection', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -654,7 +660,7 @@ describe('DiffViewer — side-aware selection', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -686,7 +692,7 @@ describe('DiffViewer — side-aware selection', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
@@ -721,7 +727,7 @@ describe('DiffViewer — side-aware selection', () => {
         files={['src/app.ts']}
         scrollToFile={undefined}
         scrollKey={0}
-        onAddComment={onAddComment}
+        commentActions={{ onAdd: onAddComment }}
       />,
     );
 
