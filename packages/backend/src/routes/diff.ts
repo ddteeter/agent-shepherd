@@ -170,6 +170,21 @@ export function diffRoutes(fastify: FastifyInstance) {
       return handleCycleDiff(database, id, cycle, reply);
     }
 
+    // Non-open PRs: serve latest snapshot instead of computing from git
+    // (source branch may no longer exist after merge/close)
+    if (pr.status !== 'open') {
+      const latestCycle = getLatestCycle(database, id);
+      if (!latestCycle) {
+        return reply.code(404).send({ error: 'No diff snapshots available' });
+      }
+      return handleCycleDiff(
+        database,
+        id,
+        String(latestCycle.cycleNumber),
+        reply,
+      );
+    }
+
     const project = await findProjectOrFail(database, pr.projectId, reply);
     if (!project) return;
 

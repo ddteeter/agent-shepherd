@@ -9,6 +9,7 @@ import {
   jsonBody,
   jsonArrayBody,
 } from '../../__tests__/helpers.js';
+import { schema } from '../../db/index.js';
 
 describe('Diff API', () => {
   let server: FastifyInstance;
@@ -214,5 +215,59 @@ describe('Diff API', () => {
       url: '/api/prs/nonexistent/cycles/details',
     });
     expect(response.statusCode).toBe(404);
+  });
+
+  it('GET /api/prs/:id/diff returns latest snapshot for approved PR', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/review`,
+      payload: { action: 'approve' },
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff`,
+    });
+    expect(response.statusCode).toBe(200);
+    const body = jsonBody(response);
+    expect(body.diff).toContain('+const y = 2;');
+    expect(body.isSnapshot).toBe(true);
+    expect(body.cycleNumber).toBe(1);
+  });
+
+  it('GET /api/prs/:id/diff returns latest snapshot for closed PR', async () => {
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/close`,
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff`,
+    });
+    expect(response.statusCode).toBe(200);
+    const body = jsonBody(response);
+    expect(body.diff).toContain('+const y = 2;');
+    expect(body.isSnapshot).toBe(true);
+    expect(body.cycleNumber).toBe(1);
+  });
+
+  it('GET /api/prs/:id/diff returns 404 for non-open PR with no snapshots', async () => {
+    const database = server.db;
+    database.delete(schema.diffSnapshots).run();
+
+    await inject({
+      method: 'POST',
+      url: `/api/prs/${prId}/close`,
+    });
+
+    const response = await inject({
+      method: 'GET',
+      url: `/api/prs/${prId}/diff`,
+    });
+    expect(response.statusCode).toBe(404);
+    expect(jsonBody(response).error).toContain(
+      'No diff snapshot found for cycle',
+    );
   });
 });
