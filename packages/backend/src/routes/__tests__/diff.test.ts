@@ -266,6 +266,8 @@ describe('Diff API', () => {
       url: `/api/prs/${prId}/diff`,
     });
     expect(response.statusCode).toBe(404);
-    expect(jsonBody(response).error).toContain('No diff snapshots available');
+    expect(jsonBody(response).error).toContain(
+      'No diff snapshot found for cycle',
+    );
   });
 });

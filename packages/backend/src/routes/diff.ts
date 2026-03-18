@@ -174,22 +174,15 @@ export function diffRoutes(fastify: FastifyInstance) {
     // (source branch may no longer exist after merge/close)
     if (pr.status !== 'open') {
       const latestCycle = getLatestCycle(database, id);
-      if (latestCycle) {
-        const snapshot = database
-          .select()
-          .from(schema.diffSnapshots)
-          .where(eq(schema.diffSnapshots.reviewCycleId, latestCycle.id))
-          .get();
-        if (snapshot) {
-          return handleCycleDiff(
-            database,
-            id,
-            String(latestCycle.cycleNumber),
-            reply,
-          );
-        }
+      if (!latestCycle) {
+        return reply.code(404).send({ error: 'No diff snapshots available' });
       }
-      return reply.code(404).send({ error: 'No diff snapshots available' });
+      return handleCycleDiff(
+        database,
+        id,
+        String(latestCycle.cycleNumber),
+        reply,
+      );
     }
 
     const project = await findProjectOrFail(database, pr.projectId, reply);
