@@ -106,4 +106,23 @@ describe('PromptBuilder', () => {
 
     expect(prompt).toContain('### `question`');
   });
+
+  it('instructs agent to use Write tool for batch JSON instead of echo', () => {
+    const prompt = buildReviewPrompt({
+      prId: 'test-pr-id',
+      prTitle: 'PR',
+      agentContext: undefined,
+      commentSummary: {
+        total: 1,
+        byType: { request: 1 },
+        files: [{ path: 'src/a.ts', count: 1, byType: { request: 1 } }],
+        generalCount: 0,
+      },
+    });
+
+    expect(prompt).toContain('Write tool');
+    expect(prompt).toContain('agent-shepherd-batch.json');
+    expect(prompt).toContain('--file /tmp/agent-shepherd-batch.json');
+    expect(prompt).not.toContain("echo '");
+  });
 });

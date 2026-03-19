@@ -144,9 +144,11 @@ a. Fetch that file's comments:
    \`\`\`
 b. Read the file and understand the comments
 c. Make the requested changes
-d. Reply to those comments immediately:
-   \`\`\`bash
-   echo '{"replies":[{"parentCommentId":"<id>","body":"<your reply>"}]}' | agent-shepherd batch ${prId} --stdin
+d. Reply to those comments immediately using a temp file (never use echo with JSON — shell escaping will break it):
+   \`\`\`
+   1. Use the Write tool to create /tmp/agent-shepherd-batch.json with your JSON payload
+   2. Run: agent-shepherd batch ${prId} --file /tmp/agent-shepherd-batch.json
+   3. Run: rm /tmp/agent-shepherd-batch.json
    \`\`\`
 
 Reply as you go -- do not wait until the end. This prevents losing reply details to context compaction on large reviews.
@@ -226,6 +228,7 @@ agent-shepherd ready ${prId}
 3. **Pushing back without concrete reasoning.** "I think the current approach is fine" is not a pushback. "The current approach avoids an extra database query per request, which matters because this endpoint handles 1000+ req/s" is a pushback.
 4. **Making large unrelated changes.** This makes re-review harder. Stick to what was requested.
 5. **Forgetting to call \`agent-shepherd ready\` or forgetting to reply incrementally.** Without the ready signal, the reviewer is not notified that you are done. The PR will sit in \`agent_working\` status indefinitely. And if you wait until the end to reply, context compaction may cause you to lose details from earlier comments.
+6. **Using \`echo\` or shell heredocs to pipe JSON to \`agent-shepherd batch --stdin\`.** Shell escaping will corrupt quotes, newlines, and special characters in your reply text. Always use the Write tool to create a temp JSON file, then pass it with \`--file\`.
 `);
 
   return sections.join('\n');
