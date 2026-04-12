@@ -15,14 +15,14 @@
   "dependencies": {
     "@agent-shepherd/shared": "*",
     "@fastify/cors": "^11.2.0",
-    "@fastify/static": "^9.0.0",
+    "@fastify/static": "^9.1.0",
     "@fastify/websocket": "^11.2.0",
     "better-sqlite3": "^12.8.0",
-    "drizzle-orm": "^0.45.1",
-    "fastify": "^5.8.2",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.8.4",
     "js-yaml": "^4.1.1",
     "node-notifier": "^10.0.1",
-    "simple-git": "^3.33.0"
+    "simple-git": "^3.36.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
